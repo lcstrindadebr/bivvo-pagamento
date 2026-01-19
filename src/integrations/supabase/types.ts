@@ -14,7 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      payments: {
+        Row: {
+          amount: number
+          asaas_payment_id: string | null
+          asaas_subscription_id: string | null
+          created_at: string | null
+          id: string
+          paid_at: string | null
+          plan: string
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          created_at?: string | null
+          id?: string
+          paid_at?: string | null
+          plan: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          created_at?: string | null
+          id?: string
+          paid_at?: string | null
+          plan?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          asaas_customer_id: string | null
+          bairro: string | null
+          billing_name: string | null
+          cep: string | null
+          cidade: string | null
+          complemento: string | null
+          cpf: string | null
+          created_at: string | null
+          data_expiracao: string | null
+          email: string
+          endereco: string | null
+          estado: string | null
+          id: string
+          name: string
+          numero: string | null
+          plano_ativo: string | null
+          status: string | null
+          updated_at: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          asaas_customer_id?: string | null
+          bairro?: string | null
+          billing_name?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cpf?: string | null
+          created_at?: string | null
+          data_expiracao?: string | null
+          email: string
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          name: string
+          numero?: string | null
+          plano_ativo?: string | null
+          status?: string | null
+          updated_at?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          asaas_customer_id?: string | null
+          bairro?: string | null
+          billing_name?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cpf?: string | null
+          created_at?: string | null
+          data_expiracao?: string | null
+          email?: string
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          name?: string
+          numero?: string | null
+          plano_ativo?: string | null
+          status?: string | null
+          updated_at?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

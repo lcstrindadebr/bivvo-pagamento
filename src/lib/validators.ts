@@ -1,0 +1,100 @@
+// Validação de CPF brasileiro
+export function validateCPF(cpf: string): boolean {
+  const cleanCPF = cpf.replace(/\D/g, '');
+  
+  if (cleanCPF.length !== 11) return false;
+  
+  // Verificar se todos os dígitos são iguais
+  if (/^(\d)\1+$/.test(cleanCPF)) return false;
+  
+  // Validar dígitos verificadores
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
+  }
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.charAt(9))) return false;
+  
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.charAt(10))) return false;
+  
+  return true;
+}
+
+// Validação de número de cartão (algoritmo de Luhn)
+export function validateCardNumber(cardNumber: string): boolean {
+  const cleanCard = cardNumber.replace(/\s/g, '');
+  
+  if (!/^\d{13,19}$/.test(cleanCard)) return false;
+  
+  let sum = 0;
+  let isEven = false;
+  
+  for (let i = cleanCard.length - 1; i >= 0; i--) {
+    let digit = parseInt(cleanCard.charAt(i));
+    
+    if (isEven) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    
+    sum += digit;
+    isEven = !isEven;
+  }
+  
+  return sum % 10 === 0;
+}
+
+// Máscara para CPF
+export function maskCPF(value: string): string {
+  const clean = value.replace(/\D/g, '').slice(0, 11);
+  return clean
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
+// Máscara para número de cartão
+export function maskCardNumber(value: string): string {
+  const clean = value.replace(/\D/g, '').slice(0, 16);
+  return clean.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+}
+
+// Máscara para CEP
+export function maskCEP(value: string): string {
+  const clean = value.replace(/\D/g, '').slice(0, 8);
+  return clean.replace(/(\d{5})(\d)/, '$1-$2');
+}
+
+// Máscara para validade do cartão
+export function maskExpiry(value: string): string {
+  const clean = value.replace(/\D/g, '').slice(0, 4);
+  return clean.replace(/(\d{2})(\d)/, '$1/$2');
+}
+
+// Máscara para telefone
+export function maskPhone(value: string): string {
+  const clean = value.replace(/\D/g, '').slice(0, 11);
+  if (clean.length <= 10) {
+    return clean
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4})(\d)/, '$1-$2');
+  }
+  return clean
+    .replace(/(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2');
+}
+
+// Formatar valor em reais
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+}
