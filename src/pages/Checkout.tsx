@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Shield, Lock, CreditCard, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,25 +18,52 @@ import {
   formatCurrency,
 } from '@/lib/validators';
 
-type Step = 'value' | 'personal' | 'address' | 'payment' | 'processing' | 'success' | 'error';
+type Step = 'personal' | 'address' | 'payment' | 'processing' | 'success' | 'error';
+
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+}
+
+const PLANS: Record<string, Plan> = {
+  standard: {
+    id: 'standard',
+    name: 'Standard',
+    price: 147.90,
+    description: 'Plano Standard',
+  },
+  silver: {
+    id: 'silver',
+    name: 'Silver',
+    price: 287.90,
+    description: 'Plano Silver',
+  },
+  pro: {
+    id: 'pro',
+    name: 'Pro',
+    price: 429.90,
+    description: 'Plano Pro',
+  },
+};
 
 const STEPS: { id: Step; label: string }[] = [
-  { id: 'value', label: 'Valor' },
   { id: 'personal', label: 'Dados' },
   { id: 'address', label: 'Endereço' },
   { id: 'payment', label: 'Pagamento' },
 ];
 
-const SUGGESTED_VALUES = [29.90, 49.90, 99.90, 149.90];
-
 const Checkout = () => {
+  const { planId } = useParams<{ planId: string }>();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { fetchAddress, loading: cepLoading } = useViaCep();
   const { processPayment, loading: paymentLoading, error: paymentError, status: paymentStatus, reset } = usePayment();
 
-  const [currentStep, setCurrentStep] = useState<Step>('value');
-  const [customValue, setCustomValue] = useState<string>('');
-  const [selectedValue, setSelectedValue] = useState<number>(49.90);
+  const plan = planId ? PLANS[planId] : null;
+
+  const [currentStep, setCurrentStep] = useState<Step>('personal');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -65,6 +93,28 @@ const Checkout = () => {
       setCurrentStep('error');
     }
   }, [paymentStatus, paymentError]);
+
+  // Redirect if invalid plan
+  if (!plan) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center space-y-6">
+          <div className="w-20 h-20 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+            <XCircle className="h-10 w-10 text-destructive" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold">Plano não encontrado</h2>
+            <p className="text-muted-foreground text-sm">
+              O plano selecionado não existe
+            </p>
+          </div>
+          <Button onClick={() => navigate('/')} className="w-full">
+            Voltar ao início
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const handleInputChange = (field: string, value: string) => {
     let maskedValue = value;
@@ -110,31 +160,8 @@ const Checkout = () => {
     }
   };
 
-  const handleCustomValueChange = (value: string) => {
-    const numericValue = value.replace(/\D/g, '');
-    if (numericValue) {
-      const formatted = (parseInt(numericValue) / 100).toFixed(2);
-      setCustomValue(formatted);
-      setSelectedValue(parseFloat(formatted));
-    } else {
-      setCustomValue('');
-    }
-  };
-
-  const handleSelectSuggestedValue = (value: number) => {
-    setSelectedValue(value);
-    setCustomValue('');
-  };
-
   const validateStep = (step: Step): boolean => {
     const newErrors: Record<string, string> = {};
-
-    if (step === 'value') {
-      if (selectedValue < 1) {
-        toast({ title: 'Valor inválido', description: 'O valor mínimo é R$ 1,00', variant: 'destructive' });
-        return false;
-      }
-    }
 
     if (step === 'personal') {
       if (!formData.name.trim()) newErrors.name = 'Nome obrigatório';
@@ -184,7 +211,7 @@ const Checkout = () => {
       return;
     }
 
-    const stepOrder: Step[] = ['value', 'personal', 'address', 'payment'];
+    const stepOrder: Step[] = ['personal', 'address', 'payment'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex < stepOrder.length - 1) {
       setCurrentStep(stepOrder[currentIndex + 1]);
@@ -192,7 +219,7 @@ const Checkout = () => {
   };
 
   const goToPreviousStep = () => {
-    const stepOrder: Step[] = ['value', 'personal', 'address', 'payment'];
+    const stepOrder: Step[] = ['personal', 'address', 'payment'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(stepOrder[currentIndex - 1]);
@@ -209,8 +236,8 @@ const Checkout = () => {
     const [expiryMonth, expiryYear] = formData.cardExpiry.split('/');
 
     const result = await processPayment({
-      plan: 'custom',
-      amount: selectedValue,
+      plan: plan.id,
+      amount: plan.price,
       customerData: {
         name: formData.name,
         email: formData.email,
@@ -282,10 +309,10 @@ const Checkout = () => {
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">Pagamento aprovado!</h2>
             <p className="text-muted-foreground text-sm">
-              Você receberá um email de confirmação
+              Sua assinatura do plano {plan.name} foi ativada
             </p>
           </div>
-          <Button onClick={() => window.location.href = '/'} className="w-full">
+          <Button onClick={() => navigate('/')} className="w-full">
             Continuar
           </Button>
         </div>
@@ -338,6 +365,16 @@ const Checkout = () => {
         </div>
       </header>
 
+      {/* Plan Info Bar */}
+      <div className="bg-primary text-primary-foreground py-3">
+        <div className="max-w-lg mx-auto px-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm opacity-80">Plano {plan.name}</p>
+          </div>
+          <p className="text-lg font-bold">{formatCurrency(plan.price)}</p>
+        </div>
+      </div>
+
       {/* Progress */}
       <div className="max-w-lg mx-auto px-4 pt-6 pb-4">
         <div className="flex items-center justify-between mb-2">
@@ -360,7 +397,7 @@ const Checkout = () => {
               </div>
               {index < STEPS.length - 1 && (
                 <div
-                  className={`w-12 sm:w-16 h-0.5 mx-1 transition-colors ${
+                  className={`w-16 sm:w-24 h-0.5 mx-1 transition-colors ${
                     index < currentStepIndex ? 'bg-accent' : 'bg-muted'
                   }`}
                 />
@@ -384,56 +421,7 @@ const Checkout = () => {
 
       {/* Content */}
       <main className="max-w-lg mx-auto px-4 pb-32">
-        {/* Step 1: Value */}
-        {currentStep === 'value' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold">Qual valor deseja pagar?</h1>
-              <p className="text-muted-foreground text-sm">
-                Escolha uma das opções ou digite um valor personalizado
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {SUGGESTED_VALUES.map((value) => (
-                <button
-                  key={value}
-                  onClick={() => handleSelectSuggestedValue(value)}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    selectedValue === value && !customValue
-                      ? 'border-accent bg-accent/5'
-                      : 'border-border hover:border-accent/50'
-                  }`}
-                >
-                  <span className="text-lg font-semibold">{formatCurrency(value)}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <span className="text-muted-foreground text-lg">R$</span>
-              </div>
-              <Input
-                type="text"
-                inputMode="decimal"
-                placeholder="0,00"
-                value={customValue}
-                onChange={(e) => handleCustomValueChange(e.target.value)}
-                className="pl-12 h-14 text-lg text-center"
-              />
-            </div>
-
-            <div className="bg-muted/50 rounded-xl p-4 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Valor selecionado</span>
-                <span className="text-xl font-bold">{formatCurrency(selectedValue)}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Personal Data */}
+        {/* Step 1: Personal Data */}
         {currentStep === 'personal' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
@@ -496,7 +484,7 @@ const Checkout = () => {
           </div>
         )}
 
-        {/* Step 3: Address */}
+        {/* Step 2: Address */}
         {currentStep === 'address' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
@@ -612,7 +600,7 @@ const Checkout = () => {
           </div>
         )}
 
-        {/* Step 4: Payment */}
+        {/* Step 3: Payment */}
         {currentStep === 'payment' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
@@ -625,8 +613,10 @@ const Checkout = () => {
             {/* Order Summary */}
             <div className="bg-muted/50 rounded-xl p-4">
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Total a pagar</span>
-                <span className="text-2xl font-bold text-accent">{formatCurrency(selectedValue)}</span>
+                <div>
+                  <span className="text-muted-foreground text-sm">Plano {plan.name}</span>
+                </div>
+                <span className="text-2xl font-bold text-accent">{formatCurrency(plan.price)}</span>
               </div>
             </div>
 
@@ -694,33 +684,33 @@ const Checkout = () => {
 
       {/* Fixed Footer */}
       <footer className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 safe-area-bottom">
-          <div className="max-w-lg mx-auto">
-            {currentStep === 'payment' ? (
-              <Button
-                onClick={handleSubmit}
-                disabled={paymentLoading}
-                className="w-full h-14 text-base font-semibold"
-              >
-                {paymentLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Processando...
-                  </>
-                ) : (
-                  <>
-                    Pagar {formatCurrency(selectedValue)}
-                    <Lock className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            ) : (
-              <Button onClick={goToNextStep} className="w-full h-14 text-base font-semibold">
-                Continuar
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </footer>
+        <div className="max-w-lg mx-auto">
+          {currentStep === 'payment' ? (
+            <Button
+              onClick={handleSubmit}
+              disabled={paymentLoading}
+              className="w-full h-14 text-base font-semibold"
+            >
+              {paymentLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  Pagar {formatCurrency(plan.price)}
+                  <Lock className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button onClick={goToNextStep} className="w-full h-14 text-base font-semibold">
+              Continuar
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </footer>
     </div>
   );
 };
