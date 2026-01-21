@@ -10,6 +10,7 @@ import { usePayment } from '@/hooks/usePayment';
 import TrustBadges from '@/components/checkout/TrustBadges';
 import CardBrands from '@/components/checkout/CardBrands';
 import SecurityFooter from '@/components/checkout/SecurityFooter';
+import bivvoLogo from '@/assets/bivvo-logo.png';
 import {
   validateCPF,
   validateCardNumber,
@@ -367,7 +368,7 @@ const Checkout = () => {
               Voltar
             </button>
           ) : (
-            <div />
+            <img src={bivvoLogo} alt="Bivvo" className="h-6" />
           )}
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <div className="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center">
