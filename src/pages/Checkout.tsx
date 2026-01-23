@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Shield, Lock, CreditCard, Loader2, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Shield, Lock, CreditCard, Loader2, CheckCircle2, XCircle, Sparkles, QrCode, Barcode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,9 @@ import { usePayment } from '@/hooks/usePayment';
 import TrustBadges from '@/components/checkout/TrustBadges';
 import CardBrands from '@/components/checkout/CardBrands';
 import SecurityFooter from '@/components/checkout/SecurityFooter';
+import PaymentMethodSelector, { PaymentMethod } from '@/components/checkout/PaymentMethodSelector';
+import PixPayment from '@/components/checkout/PixPayment';
+import BoletoPayment from '@/components/checkout/BoletoPayment';
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import {
   validateCPF,
@@ -22,7 +25,7 @@ import {
   formatCurrency,
 } from '@/lib/validators';
 
-type Step = 'personal' | 'address' | 'payment' | 'processing' | 'success' | 'error';
+type Step = 'personal' | 'address' | 'payment' | 'processing' | 'success' | 'error' | 'awaiting_payment';
 
 interface Plan {
   id: string;
@@ -68,6 +71,10 @@ const Checkout = () => {
   const plan = planId ? PLANS[planId] : null;
 
   const [currentStep, setCurrentStep] = useState<Step>('personal');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CREDIT_CARD');
+  const [pixData, setPixData] = useState<{ qrCodeImage?: string; qrCodeText?: string; expiresAt?: string } | null>(null);
+  const [boletoData, setBoletoData] = useState<{ boletoUrl?: string; barCode?: string; dueDate?: string } | null>(null);
+  const [generatingPayment, setGeneratingPayment] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -190,7 +197,7 @@ const Checkout = () => {
       if (!formData.estado.trim()) newErrors.estado = 'Estado obrigatório';
     }
 
-    if (step === 'payment') {
+    if (step === 'payment' && paymentMethod === 'CREDIT_CARD') {
       if (!formData.cardName.trim()) newErrors.cardName = 'Nome obrigatório';
       if (!validateCardNumber(formData.cardNumber)) newErrors.cardNumber = 'Cartão inválido';
       if (!formData.cardExpiry.trim() || formData.cardExpiry.length !== 5) {
@@ -230,7 +237,7 @@ const Checkout = () => {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmitCreditCard = async () => {
     if (!validateStep('payment')) {
       return;
     }
@@ -274,8 +281,75 @@ const Checkout = () => {
     }
   };
 
+  const handleSubmitPixOrBoleto = async () => {
+    setGeneratingPayment(true);
+
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      const { data: result, error: fnError } = await supabase.functions.invoke('create-subscription', {
+        body: {
+          plan: plan.id,
+          billingType: paymentMethod,
+          customerData: {
+            name: formData.name,
+            email: formData.email,
+            cpf: formData.cpf,
+            whatsapp: formData.whatsapp,
+            billingName: formData.billingName,
+            cep: formData.cep,
+            endereco: formData.endereco,
+            numero: formData.numero,
+            complemento: formData.complemento,
+            bairro: formData.bairro,
+            cidade: formData.cidade,
+            estado: formData.estado,
+          },
+        },
+      });
+
+      if (fnError) throw new Error(fnError.message);
+      if (!result.success) throw new Error(result.error);
+
+      if (paymentMethod === 'PIX') {
+        setPixData({
+          qrCodeImage: result.pixQrCode,
+          qrCodeText: result.pixCopyPaste,
+          expiresAt: result.expiresAt,
+        });
+      } else {
+        setBoletoData({
+          boletoUrl: result.boletoUrl,
+          barCode: result.barCode,
+          dueDate: result.dueDate,
+        });
+      }
+
+      setCurrentStep('awaiting_payment');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao gerar pagamento';
+      toast({
+        title: 'Erro',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingPayment(false);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (paymentMethod === 'CREDIT_CARD') {
+      handleSubmitCreditCard();
+    } else {
+      handleSubmitPixOrBoleto();
+    }
+  };
+
   const handleRetry = () => {
     reset();
+    setPixData(null);
+    setBoletoData(null);
     setCurrentStep('payment');
   };
 
@@ -298,6 +372,68 @@ const Checkout = () => {
                 : 'Aguarde um momento...'}
             </p>
           </div>
+          <SecurityFooter />
+        </div>
+      </div>
+    );
+  }
+
+  // Awaiting PIX/Boleto payment
+  if (currentStep === 'awaiting_payment') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center px-4">
+        <div className="absolute inset-0 gradient-mesh opacity-50" />
+        <div className="relative w-full max-w-sm space-y-6">
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center">
+              {paymentMethod === 'PIX' ? (
+                <QrCode className="h-8 w-8 text-accent" />
+              ) : (
+                <Barcode className="h-8 w-8 text-accent" />
+              )}
+            </div>
+            <h2 className="text-xl font-bold">
+              {paymentMethod === 'PIX' ? 'Pague com PIX' : 'Pague com Boleto'}
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Plano {plan.name} - {formatCurrency(plan.price)}/mês
+            </p>
+          </div>
+
+          {/* Payment Details */}
+          {paymentMethod === 'PIX' ? (
+            <PixPayment
+              qrCodeImage={pixData?.qrCodeImage}
+              qrCodeText={pixData?.qrCodeText}
+              expiresAt={pixData?.expiresAt}
+            />
+          ) : (
+            <BoletoPayment
+              boletoUrl={boletoData?.boletoUrl}
+              barCode={boletoData?.barCode}
+              dueDate={boletoData?.dueDate}
+            />
+          )}
+
+          {/* Actions */}
+          <div className="space-y-3">
+            <Button
+              onClick={() => navigate('/')}
+              className="w-full h-12 bg-gradient-to-r from-accent to-primary hover:opacity-90 rounded-xl"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Voltar ao início
+            </Button>
+            <Button
+              onClick={handleRetry}
+              variant="outline"
+              className="w-full h-12 rounded-xl"
+            >
+              Escolher outra forma de pagamento
+            </Button>
+          </div>
+
           <SecurityFooter />
         </div>
       </div>
@@ -639,9 +775,9 @@ const Checkout = () => {
         {currentStep === 'payment' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold">Dados do cartão</h1>
+              <h1 className="text-2xl font-bold">Pagamento</h1>
               <p className="text-muted-foreground text-sm">
-                Informe os dados do seu cartão de crédito
+                Escolha a forma de pagamento
               </p>
             </div>
 
@@ -661,62 +797,98 @@ const Checkout = () => {
               </div>
             </div>
 
-            {/* Card Brands */}
-            <CardBrands />
+            {/* Payment Method Selector */}
+            <PaymentMethodSelector selected={paymentMethod} onChange={setPaymentMethod} />
 
-            <div className="card-glass rounded-2xl p-5 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="cardName" className="text-sm font-medium">Nome no cartão</Label>
-                <Input
-                  id="cardName"
-                  value={formData.cardName}
-                  onChange={(e) => handleInputChange('cardName', e.target.value.toUpperCase())}
-                  className={`h-12 input-glass rounded-xl ${errors.cardName ? 'border-destructive' : ''}`}
-                  placeholder="NOME COMO NO CARTÃO"
-                />
-                {errors.cardName && <p className="text-xs text-destructive">{errors.cardName}</p>}
-              </div>
+            {/* Credit Card Form */}
+            {paymentMethod === 'CREDIT_CARD' && (
+              <>
+                <CardBrands />
+                <div className="card-glass rounded-2xl p-5 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cardName" className="text-sm font-medium">Nome no cartão</Label>
+                    <Input
+                      id="cardName"
+                      value={formData.cardName}
+                      onChange={(e) => handleInputChange('cardName', e.target.value.toUpperCase())}
+                      className={`h-12 input-glass rounded-xl ${errors.cardName ? 'border-destructive' : ''}`}
+                      placeholder="NOME COMO NO CARTÃO"
+                    />
+                    {errors.cardName && <p className="text-xs text-destructive">{errors.cardName}</p>}
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="cardNumber" className="text-sm font-medium">Número do cartão</Label>
-                <div className="relative">
-                  <Input
-                    id="cardNumber"
-                    value={formData.cardNumber}
-                    onChange={(e) => handleInputChange('cardNumber', e.target.value)}
-                    placeholder="0000 0000 0000 0000"
-                    className={`h-12 input-glass rounded-xl pr-12 ${errors.cardNumber ? 'border-destructive' : ''}`}
-                  />
-                  <CreditCard className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <div className="space-y-2">
+                    <Label htmlFor="cardNumber" className="text-sm font-medium">Número do cartão</Label>
+                    <div className="relative">
+                      <Input
+                        id="cardNumber"
+                        value={formData.cardNumber}
+                        onChange={(e) => handleInputChange('cardNumber', e.target.value)}
+                        placeholder="0000 0000 0000 0000"
+                        className={`h-12 input-glass rounded-xl pr-12 ${errors.cardNumber ? 'border-destructive' : ''}`}
+                      />
+                      <CreditCard className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    </div>
+                    {errors.cardNumber && <p className="text-xs text-destructive">{errors.cardNumber}</p>}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="cardExpiry" className="text-sm font-medium">Validade</Label>
+                      <Input
+                        id="cardExpiry"
+                        value={formData.cardExpiry}
+                        onChange={(e) => handleInputChange('cardExpiry', e.target.value)}
+                        placeholder="MM/AA"
+                        className={`h-12 input-glass rounded-xl ${errors.cardExpiry ? 'border-destructive' : ''}`}
+                      />
+                      {errors.cardExpiry && <p className="text-xs text-destructive">{errors.cardExpiry}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cardCvv" className="text-sm font-medium">CVV</Label>
+                      <Input
+                        id="cardCvv"
+                        value={formData.cardCvv}
+                        onChange={(e) => handleInputChange('cardCvv', e.target.value)}
+                        placeholder="000"
+                        className={`h-12 input-glass rounded-xl ${errors.cardCvv ? 'border-destructive' : ''}`}
+                      />
+                      {errors.cardCvv && <p className="text-xs text-destructive">{errors.cardCvv}</p>}
+                    </div>
+                  </div>
                 </div>
-                {errors.cardNumber && <p className="text-xs text-destructive">{errors.cardNumber}</p>}
-              </div>
+              </>
+            )}
 
-              <div className="grid grid-cols-2 gap-3">
+            {/* PIX Info */}
+            {paymentMethod === 'PIX' && (
+              <div className="card-glass rounded-2xl p-5 space-y-4 text-center">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
+                  <QrCode className="h-8 w-8 text-accent" />
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cardExpiry" className="text-sm font-medium">Validade</Label>
-                  <Input
-                    id="cardExpiry"
-                    value={formData.cardExpiry}
-                    onChange={(e) => handleInputChange('cardExpiry', e.target.value)}
-                    placeholder="MM/AA"
-                    className={`h-12 input-glass rounded-xl ${errors.cardExpiry ? 'border-destructive' : ''}`}
-                  />
-                  {errors.cardExpiry && <p className="text-xs text-destructive">{errors.cardExpiry}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cardCvv" className="text-sm font-medium">CVV</Label>
-                  <Input
-                    id="cardCvv"
-                    value={formData.cardCvv}
-                    onChange={(e) => handleInputChange('cardCvv', e.target.value)}
-                    placeholder="000"
-                    className={`h-12 input-glass rounded-xl ${errors.cardCvv ? 'border-destructive' : ''}`}
-                  />
-                  {errors.cardCvv && <p className="text-xs text-destructive">{errors.cardCvv}</p>}
+                  <p className="font-semibold">Pagamento via PIX</p>
+                  <p className="text-sm text-muted-foreground">
+                    Após confirmar, você receberá um QR Code para pagamento instantâneo
+                  </p>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Boleto Info */}
+            {paymentMethod === 'BOLETO' && (
+              <div className="card-glass rounded-2xl p-5 space-y-4 text-center">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
+                  <Barcode className="h-8 w-8 text-accent" />
+                </div>
+                <div className="space-y-2">
+                  <p className="font-semibold">Pagamento via Boleto</p>
+                  <p className="text-sm text-muted-foreground">
+                    O boleto será gerado com vencimento em 3 dias úteis
+                  </p>
+                </div>
+              </div>
+            )}
 
             <SecurityFooter />
           </div>
@@ -729,18 +901,23 @@ const Checkout = () => {
           {currentStep === 'payment' ? (
             <Button
               onClick={handleSubmit}
-              disabled={paymentLoading}
+              disabled={paymentLoading || generatingPayment}
               className="w-full h-14 text-base font-semibold bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-all shadow-lg shadow-accent/30 rounded-xl"
             >
-              {paymentLoading ? (
+              {paymentLoading || generatingPayment ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Processando...
+                  {paymentMethod === 'CREDIT_CARD' ? 'Processando...' : 'Gerando...'}
                 </>
               ) : (
                 <>
                   <Lock className="mr-2 h-4 w-4" />
-                  Pagar {formatCurrency(plan.price)}
+                  {paymentMethod === 'CREDIT_CARD' 
+                    ? `Pagar ${formatCurrency(plan.price)}`
+                    : paymentMethod === 'PIX'
+                    ? 'Gerar PIX'
+                    : 'Gerar Boleto'
+                  }
                 </>
               )}
             </Button>
