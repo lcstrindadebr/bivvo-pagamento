@@ -223,6 +223,8 @@ serve(async (req) => {
     // 2. Create or find customer in Asaas
     if (!asaasCustomerId) {
       console.log('Creating customer in Asaas...');
+      console.log('Using Asaas URL:', ASAAS_BASE_URL);
+      
       const customerResponse = await fetch(`${ASAAS_BASE_URL}/customers`, {
         method: 'POST',
         headers: {
@@ -246,11 +248,22 @@ serve(async (req) => {
         }),
       });
 
+      console.log('Customer response status:', customerResponse.status);
+      
+      // Check if response is JSON before parsing
+      const contentType = customerResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await customerResponse.text();
+        console.error('Non-JSON response from Asaas:', textResponse.substring(0, 500));
+        throw new Error('Asaas API retornou resposta inválida. Verifique a configuração da API.');
+      }
+
       const customerResult = await customerResponse.json();
       console.log('Asaas customer response:', JSON.stringify(customerResult));
 
-      if (customerResult.errors) {
-        throw new Error(`Asaas error: ${customerResult.errors[0]?.description || 'Unknown error'}`);
+      if (!customerResponse.ok || customerResult.errors) {
+        const errorMsg = customerResult.errors?.[0]?.description || `HTTP ${customerResponse.status}`;
+        throw new Error(`Erro Asaas: ${errorMsg}`);
       }
 
       asaasCustomerId = customerResult.id;
