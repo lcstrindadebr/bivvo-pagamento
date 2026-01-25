@@ -1,0 +1,68 @@
+# =============================================================================
+# BIVVO CHECKOUT - DOCKER COMPOSE PARA PORTAINER + TRAEFIK
+# =============================================================================
+# Use este arquivo para deploy em produção com Traefik como reverse proxy
+# Ajuste os labels do Traefik conforme sua configuração
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Frontend (React/Vite) com Traefik
+  # ---------------------------------------------------------------------------
+  bivvo-frontend:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+        - VITE_SUPABASE_PROJECT_ID=${VITE_SUPABASE_PROJECT_ID}
+    container_name: bivvo-frontend
+    restart: unless-stopped
+    environment:
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+      - VITE_SUPABASE_PROJECT_ID=${VITE_SUPABASE_PROJECT_ID}
+    networks:
+      - traefik-public
+    labels:
+      # Habilitar Traefik
+      - "traefik.enable=true"
+      
+      # Roteador HTTP -> HTTPS redirect
+      - "traefik.http.routers.bivvo-http.rule=Host(`${DOMAIN:-checkout.seudominio.com.br}`)"
+      - "traefik.http.routers.bivvo-http.entrypoints=http"
+      - "traefik.http.routers.bivvo-http.middlewares=https-redirect"
+      
+      # Roteador HTTPS
+      - "traefik.http.routers.bivvo-https.rule=Host(`${DOMAIN:-checkout.seudominio.com.br}`)"
+      - "traefik.http.routers.bivvo-https.entrypoints=https"
+      - "traefik.http.routers.bivvo-https.tls=true"
+      - "traefik.http.routers.bivvo-https.tls.certresolver=letsencrypt"
+      
+      # Serviço
+      - "traefik.http.services.bivvo.loadbalancer.server.port=80"
+      
+      # Middlewares de segurança
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
+      
+      # Headers de segurança
+      - "traefik.http.middlewares.bivvo-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.bivvo-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.bivvo-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.bivvo-headers.headers.forceSTSHeader=true"
+      
+      # Aplicar middlewares
+      - "traefik.http.routers.bivvo-https.middlewares=bivvo-headers"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  traefik-public:
+    external: true

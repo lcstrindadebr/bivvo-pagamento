@@ -1,0 +1,40 @@
+# =============================================================================
+# BIVVO CHECKOUT - DOCKER COMPOSE PARA DESENVOLVIMENTO LOCAL
+# =============================================================================
+# Use este arquivo para testar localmente antes de deploy em Portainer
+# Comando: docker-compose up -d
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Frontend (React/Vite)
+  # ---------------------------------------------------------------------------
+  bivvo-frontend:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+        - VITE_SUPABASE_PROJECT_ID=${VITE_SUPABASE_PROJECT_ID}
+    container_name: bivvo-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+      - VITE_SUPABASE_PROJECT_ID=${VITE_SUPABASE_PROJECT_ID}
+    networks:
+      - bivvo-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  bivvo-network:
+    driver: bridge
