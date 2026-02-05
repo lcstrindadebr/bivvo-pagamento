@@ -381,9 +381,44 @@ deploy/
 │   ├── nginx.conf                      # Config do Nginx
 │   ├── docker-compose.yml              # Dev local
 │   ├── docker-compose.traefik.yml      # Produção com Traefik
+│   ├── deploy.sh                       # Script de deploy automatizado
 │   └── .env.example                    # Template de variáveis
+├── edge-functions/                     # ⭐ NOVO: Edge Functions para exportação
+│   ├── create-subscription/            # Criação de assinaturas PIX/Boleto
+│   │   └── index.ts
+│   ├── process-payment/                # Pagamento com cartão
+│   │   └── index.ts
+│   ├── check-payment-status/           # Verificação de status
+│   │   └── index.ts
+│   ├── asaas-webhook/                  # Webhook do Asaas
+│   │   └── index.ts
+│   └── README.md                       # Documentação das funções
+├── supabase-cli/
+│   ├── deploy-functions.sh             # Deploy automatizado
+│   └── setup-secrets.sh                # Configuração de secrets
 └── EXPORT_DOCUMENTATION.md             # Este arquivo
 ```
+
+---
+
+## 🔄 Atualizações das Edge Functions
+
+### v1.1.0 - Fix: Cliente Removido do Asaas
+
+As funções `create-subscription` e `process-payment` agora detectam automaticamente quando um cliente foi removido do Asaas e recriam o cliente antes de tentar a operação novamente.
+
+**Problema resolvido**: Erro "Não é possível criar uma cobrança para um cliente removido"
+
+**Como funciona**:
+1. A função tenta criar a assinatura/pagamento
+2. Se receber erro de "cliente removido", automaticamente:
+   - Cria um novo cliente no Asaas
+   - Atualiza o `asaas_customer_id` no banco de dados
+   - Tenta novamente a operação
+
+**Arquivos atualizados**:
+- `deploy/edge-functions/create-subscription/index.ts`
+- `deploy/edge-functions/process-payment/index.ts`
 
 ---
 
@@ -398,4 +433,4 @@ Se encontrar problemas:
 
 ---
 
-**Última atualização**: Janeiro 2025
+**Última atualização**: Fevereiro 2026
