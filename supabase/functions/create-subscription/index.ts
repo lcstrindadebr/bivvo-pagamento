@@ -274,33 +274,87 @@ serve(async (req) => {
     const nextDueDate = new Date();
     nextDueDate.setDate(nextDueDate.getDate() + (billingType === 'BOLETO' ? 3 : 1));
 
-    console.log('Creating subscription in Asaas...');
-    const subscriptionPayload = {
-      customer: asaasCustomerId,
-      billingType: billingType,
-      nextDueDate: nextDueDate.toISOString().split('T')[0],
-      value: amount,
-      cycle: 'MONTHLY',
-      description: `Assinatura Plano ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
-      externalReference: `${userId}_${plan}_subscription`,
+    const createSubscription = async (customerId: string) => {
+      console.log('Creating subscription in Asaas...');
+      const subscriptionPayload = {
+        customer: customerId,
+        billingType: billingType,
+        nextDueDate: nextDueDate.toISOString().split('T')[0],
+        value: amount,
+        cycle: 'MONTHLY',
+        description: `Assinatura Plano ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
+        externalReference: `${userId}_${plan}_subscription`,
+      };
+
+      console.log('Subscription payload:', JSON.stringify(subscriptionPayload));
+
+      const subscriptionResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'access_token': ASAAS_API_KEY,
+        },
+        body: JSON.stringify(subscriptionPayload),
+      });
+
+      return subscriptionResponse.json();
     };
 
-    console.log('Subscription payload:', JSON.stringify(subscriptionPayload));
-
-    const subscriptionResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'access_token': ASAAS_API_KEY,
-      },
-      body: JSON.stringify(subscriptionPayload),
-    });
-
-    const subscriptionResult = await subscriptionResponse.json();
+    let subscriptionResult = await createSubscription(asaasCustomerId!);
     console.log('Subscription response:', JSON.stringify(subscriptionResult));
 
+    // Handle case where customer was deleted in Asaas but still exists in our DB
     if (subscriptionResult.errors) {
-      throw new Error(`Subscription error: ${subscriptionResult.errors[0]?.description || 'Unknown error'}`);
+      const errorDesc = subscriptionResult.errors[0]?.description || '';
+      const isRemovedCustomer = errorDesc.includes('cliente removido') || 
+                                 errorDesc.includes('customer removed') ||
+                                 errorDesc.includes('invalid_object');
+      
+      if (isRemovedCustomer) {
+        console.log('Customer was removed from Asaas, creating new customer...');
+        
+        // Create new customer in Asaas
+        const customerResponse = await fetch(`${ASAAS_BASE_URL}/customers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'access_token': ASAAS_API_KEY,
+          },
+          body: JSON.stringify({
+            name: customerData.name.trim(),
+            cpfCnpj: cleanCpf,
+            email: customerData.email.toLowerCase().trim(),
+            mobilePhone: cleanWhatsapp,
+            postalCode: cleanCep,
+            address: customerData.endereco.trim(),
+            addressNumber: customerData.numero.trim(),
+            complement: customerData.complemento?.trim() || '',
+            province: customerData.bairro.trim(),
+            city: customerData.cidade.trim(),
+            state: customerData.estado.toUpperCase(),
+            externalReference: userId,
+            notificationDisabled: false,
+          }),
+        });
+
+        const customerResult = await customerResponse.json();
+        console.log('New customer created:', JSON.stringify(customerResult));
+
+        if (!customerResponse.ok || customerResult.errors) {
+          throw new Error(`Erro ao recriar cliente: ${customerResult.errors?.[0]?.description || 'Unknown error'}`);
+        }
+
+        asaasCustomerId = customerResult.id;
+        await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', userId);
+
+        // Retry subscription with new customer
+        subscriptionResult = await createSubscription(asaasCustomerId);
+        console.log('Retry subscription response:', JSON.stringify(subscriptionResult));
+      }
+
+      if (subscriptionResult.errors) {
+        throw new Error(`Subscription error: ${subscriptionResult.errors[0]?.description || 'Unknown error'}`);
+      }
     }
 
     const subscriptionId = subscriptionResult.id;
