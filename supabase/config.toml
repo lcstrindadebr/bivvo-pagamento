@@ -1,13 +1,1 @@
-project_id = "knuzfwqgtrgvyeezdwsc"
-
-[functions.process-payment]
-verify_jwt = false
-
-[functions.check-payment-status]
-verify_jwt = false
-
-[functions.create-subscription]
-verify_jwt = false
-
-[functions.asaas-webhook]
-verify_jwt = false
+project_id = "yrxwaujnmmmjofeljbnk"
