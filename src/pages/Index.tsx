@@ -1,8 +1,11 @@
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Check, Sparkles, Shield, Zap, Crown, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import { formatCurrency } from '@/lib/validators';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PlanFeature {
   text: string;
@@ -11,69 +14,37 @@ interface PlanFeature {
 
 interface Plan {
   id: string;
+  slug: string;
   name: string;
   price: number;
   description: string;
-  icon: React.ElementType;
+  icon: string;
   features: PlanFeature[];
-  popular?: boolean;
+  popular: boolean;
   gradient: string;
 }
 
-const PLANS: Plan[] = [
-  {
-    id: 'standard',
-    name: 'Standard',
-    price: 147.90,
-    description: 'Ideal para começar',
-    icon: Zap,
-    gradient: 'from-blue-500 to-cyan-500',
-    features: [
-      { text: 'Acesso à plataforma', included: true },
-      { text: 'Suporte por email', included: true },
-      { text: 'Atualizações mensais', included: true },
-      { text: 'Relatórios básicos', included: true },
-      { text: 'Integrações avançadas', included: false },
-      { text: 'Suporte prioritário', included: false },
-    ],
-  },
-  {
-    id: 'silver',
-    name: 'Silver',
-    price: 287.90,
-    description: 'Mais recursos e suporte',
-    icon: Shield,
-    gradient: 'from-violet-500 to-purple-600',
-    popular: true,
-    features: [
-      { text: 'Acesso à plataforma', included: true },
-      { text: 'Suporte por email', included: true },
-      { text: 'Atualizações mensais', included: true },
-      { text: 'Relatórios avançados', included: true },
-      { text: 'Integrações avançadas', included: true },
-      { text: 'Suporte prioritário', included: false },
-    ],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 429.90,
-    description: 'Experiência completa',
-    icon: Crown,
-    gradient: 'from-amber-500 to-orange-600',
-    features: [
-      { text: 'Acesso à plataforma', included: true },
-      { text: 'Suporte por email', included: true },
-      { text: 'Atualizações mensais', included: true },
-      { text: 'Relatórios avançados', included: true },
-      { text: 'Integrações avançadas', included: true },
-      { text: 'Suporte prioritário 24/7', included: true },
-    ],
-  },
-];
+const ICON_MAP: Record<string, React.ElementType> = {
+  Zap, Shield, Crown, Sparkles,
+};
 
 const Index = () => {
   const navigate = useNavigate();
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      const { data } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('active', true)
+        .order('sort_order');
+      if (data) setPlans(data as any);
+      setLoading(false);
+    };
+    fetchPlans();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
@@ -107,76 +78,80 @@ const Index = () => {
       <section className="relative py-8 px-4 pb-24">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
-            {PLANS.map((plan) => {
-              const IconComponent = plan.icon;
-              return (
-                <div
-                  key={plan.id}
-                  className={`relative card-glass rounded-3xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl ${
-                    plan.popular ? 'ring-2 ring-accent shadow-xl shadow-accent/10' : ''
-                  }`}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-accent to-primary text-white text-xs font-semibold shadow-lg">
-                        <Sparkles className="h-3 w-3" />
-                        Mais popular
-                      </span>
-                    </div>
-                  )}
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-[500px] rounded-3xl" />
+              ))
+            ) : (
+              plans.map((plan) => {
+                const IconComponent = ICON_MAP[plan.icon] || Zap;
+                const gradientColor = plan.gradient.includes('blue') ? '#3b82f6' : plan.gradient.includes('violet') ? '#8b5cf6' : '#f59e0b';
+                return (
+                  <div
+                    key={plan.id}
+                    className={`relative card-glass rounded-3xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl ${
+                      plan.popular ? 'ring-2 ring-accent shadow-xl shadow-accent/10' : ''
+                    }`}
+                  >
+                    {plan.popular && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-accent to-primary text-white text-xs font-semibold shadow-lg">
+                          <Sparkles className="h-3 w-3" />
+                          Mais popular
+                        </span>
+                      </div>
+                    )}
 
-                  <div className="space-y-6">
-                    {/* Plan Header */}
-                    <div className="text-center space-y-4 pt-2">
-                      <div className={`w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br ${plan.gradient} p-0.5`}>
-                        <div className="w-full h-full rounded-2xl bg-background/90 flex items-center justify-center">
-                          <IconComponent className={`h-7 w-7 text-transparent bg-gradient-to-br ${plan.gradient} bg-clip-text`} style={{ color: plan.gradient.includes('blue') ? '#3b82f6' : plan.gradient.includes('violet') ? '#8b5cf6' : '#f59e0b' }} />
+                    <div className="space-y-6">
+                      <div className="text-center space-y-4 pt-2">
+                        <div className={`w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br ${plan.gradient} p-0.5`}>
+                          <div className="w-full h-full rounded-2xl bg-background/90 flex items-center justify-center">
+                            <IconComponent className="h-7 w-7" style={{ color: gradientColor }} />
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold">{plan.name}</h3>
+                          <p className="text-sm text-muted-foreground">{plan.description}</p>
+                        </div>
+                        <div className="flex items-baseline justify-center gap-1">
+                          <span className="text-4xl font-bold">{formatCurrency(plan.price)}</span>
+                          <span className="text-muted-foreground">/mês</span>
                         </div>
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold">{plan.name}</h3>
-                        <p className="text-sm text-muted-foreground">{plan.description}</p>
-                      </div>
-                      <div className="flex items-baseline justify-center gap-1">
-                        <span className="text-4xl font-bold">{formatCurrency(plan.price)}</span>
-                        <span className="text-muted-foreground">/mês</span>
-                      </div>
+
+                      <ul className="space-y-3">
+                        {plan.features.map((feature, index) => (
+                          <li key={index} className="flex items-center gap-3">
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                              feature.included 
+                                ? 'bg-success/20 text-success' 
+                                : 'bg-muted/50 text-muted-foreground'
+                            }`}>
+                              <Check className="h-3 w-3" />
+                            </div>
+                            <span className={`text-sm ${!feature.included ? 'text-muted-foreground line-through' : ''}`}>
+                              {feature.text}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <Button
+                        onClick={() => navigate(`/checkout/${plan.slug}`)}
+                        className={`w-full h-12 text-base font-semibold rounded-xl transition-all ${
+                          plan.popular
+                            ? 'bg-gradient-to-r from-accent to-primary hover:opacity-90 shadow-lg shadow-accent/30'
+                            : 'bg-foreground/10 hover:bg-foreground/20 text-foreground'
+                        }`}
+                      >
+                        Assinar agora
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
                     </div>
-
-                    {/* Features */}
-                    <ul className="space-y-3">
-                      {plan.features.map((feature, index) => (
-                        <li key={index} className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                            feature.included 
-                              ? 'bg-success/20 text-success' 
-                              : 'bg-muted/50 text-muted-foreground'
-                          }`}>
-                            <Check className="h-3 w-3" />
-                          </div>
-                          <span className={`text-sm ${!feature.included ? 'text-muted-foreground line-through' : ''}`}>
-                            {feature.text}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* CTA Button */}
-                    <Button
-                      onClick={() => navigate(`/checkout/${plan.id}`)}
-                      className={`w-full h-12 text-base font-semibold rounded-xl transition-all ${
-                        plan.popular
-                          ? 'bg-gradient-to-r from-accent to-primary hover:opacity-90 shadow-lg shadow-accent/30'
-                          : 'bg-foreground/10 hover:bg-foreground/20 text-foreground'
-                      }`}
-                    >
-                      Assinar agora
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       </section>

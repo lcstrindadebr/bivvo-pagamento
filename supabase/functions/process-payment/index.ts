@@ -6,14 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Plan prices - server-side source of truth
-const PLAN_PRICES: Record<string, number> = {
-  standard: 147.90,
-  silver: 287.90,
-  pro: 429.90,
-};
-
-const VALID_PLANS = ['standard', 'silver', 'pro'];
+// Plan prices will be fetched from DB dynamically
 
 const VALID_STATES = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -85,17 +78,11 @@ function validateCardExpiry(month: string, year: string): boolean {
   return true;
 }
 
-// Comprehensive input validation
+// Comprehensive input validation (plan price checked later from DB)
 function validatePaymentRequest(data: any): { valid: boolean; error?: string } {
-  // Plan validation
-  if (!data.plan || !VALID_PLANS.includes(data.plan)) {
+  // Plan validation - just check it's a non-empty string
+  if (!data.plan || typeof data.plan !== 'string') {
     return { valid: false, error: 'Invalid plan' };
-  }
-  
-  // Amount validation - must match plan price
-  const expectedPrice = PLAN_PRICES[data.plan];
-  if (typeof data.amount !== 'number' || Math.abs(data.amount - expectedPrice) > 0.01) {
-    return { valid: false, error: 'Invalid amount for plan' };
   }
   
   // Customer data validation
@@ -295,8 +282,25 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     const { plan, customerData, cardData }: PaymentRequest = rawData;
     
-    // Use server-side price (ignore client-provided amount for security)
-    const amount = PLAN_PRICES[plan];
+    // Fetch plan price from database (server-side source of truth)
+    const { data: planData, error: planError } = await supabase
+      .from('plans')
+      .select('price')
+      .eq('slug', plan)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (planError || !planData) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Plano não encontrado ou inativo.',
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const amount = Number(planData.price);
 
     console.log('Processing payment for plan:', plan, 'amount:', amount);
 
