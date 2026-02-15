@@ -6,15 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Plan prices - server-side source of truth
-const PLAN_PRICES: Record<string, number> = {
-  standard: 147.90,
-  silver: 287.90,
-  pro: 429.90,
-};
-
-const VALID_PLANS = ['standard', 'silver', 'pro'];
-const VALID_BILLING_TYPES = ['PIX', 'BOLETO'];
+// Plan prices fetched from DB dynamically
 
 const VALID_STATES = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -48,10 +40,11 @@ function validateCPF(cpf: string): boolean {
 
 // Validate subscription request
 function validateSubscriptionRequest(data: any): { valid: boolean; error?: string } {
-  if (!data.plan || !VALID_PLANS.includes(data.plan)) {
+  if (!data.plan || typeof data.plan !== 'string') {
     return { valid: false, error: 'Invalid plan' };
   }
   
+  const VALID_BILLING_TYPES = ['PIX', 'BOLETO'];
   if (!data.billingType || !VALID_BILLING_TYPES.includes(data.billingType)) {
     return { valid: false, error: 'Invalid billing type' };
   }
@@ -162,7 +155,26 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     const { plan, billingType, customerData }: SubscriptionRequest = rawData;
-    const amount = PLAN_PRICES[plan];
+
+    // Fetch plan price from database
+    const { data: planData, error: planError } = await supabase
+      .from('plans')
+      .select('price')
+      .eq('slug', plan)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (planError || !planData) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Plano não encontrado ou inativo.',
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const amount = Number(planData.price);
 
     console.log('Processing subscription for plan:', plan, 'billingType:', billingType, 'amount:', amount);
 

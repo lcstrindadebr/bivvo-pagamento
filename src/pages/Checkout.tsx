@@ -14,6 +14,7 @@ import PaymentMethodSelector, { PaymentMethod } from '@/components/checkout/Paym
 import PixPayment from '@/components/checkout/PixPayment';
 import BoletoPayment from '@/components/checkout/BoletoPayment';
 import bivvoLogo from '@/assets/bivvo-logo.png';
+import { supabase } from '@/integrations/supabase/client';
 import {
   validateCPF,
   validateCardNumber,
@@ -29,31 +30,11 @@ type Step = 'personal' | 'address' | 'payment' | 'processing' | 'success' | 'err
 
 interface Plan {
   id: string;
+  slug: string;
   name: string;
   price: number;
   description: string;
 }
-
-const PLANS: Record<string, Plan> = {
-  standard: {
-    id: 'standard',
-    name: 'Standard',
-    price: 147.90,
-    description: 'Plano Standard',
-  },
-  silver: {
-    id: 'silver',
-    name: 'Silver',
-    price: 287.90,
-    description: 'Plano Silver',
-  },
-  pro: {
-    id: 'pro',
-    name: 'Pro',
-    price: 429.90,
-    description: 'Plano Pro',
-  },
-};
 
 const STEPS: { id: Step; label: string }[] = [
   { id: 'personal', label: 'Dados' },
@@ -68,7 +49,23 @@ const Checkout = () => {
   const { fetchAddress, loading: cepLoading } = useViaCep();
   const { processPayment, loading: paymentLoading, error: paymentError, status: paymentStatus, reset } = usePayment();
 
-  const plan = planId ? PLANS[planId] : null;
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [planLoading, setPlanLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPlan = async () => {
+      if (!planId) { setPlanLoading(false); return; }
+      const { data } = await supabase
+        .from('plans')
+        .select('id, slug, name, price, description')
+        .eq('slug', planId)
+        .eq('active', true)
+        .maybeSingle();
+      setPlan(data as Plan | null);
+      setPlanLoading(false);
+    };
+    fetchPlan();
+  }, [planId]);
 
   const [currentStep, setCurrentStep] = useState<Step>('personal');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CREDIT_CARD');
@@ -104,6 +101,15 @@ const Checkout = () => {
       setCurrentStep('error');
     }
   }, [paymentStatus, paymentError]);
+
+  // Loading state
+  if (planLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center px-4">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   // Redirect if invalid plan
   if (!plan) {
@@ -247,7 +253,7 @@ const Checkout = () => {
     const [expiryMonth, expiryYear] = formData.cardExpiry.split('/');
 
     const result = await processPayment({
-      plan: plan.id,
+      plan: plan.slug,
       amount: plan.price,
       customerData: {
         name: formData.name,
@@ -289,7 +295,7 @@ const Checkout = () => {
       
       const { data: result, error: fnError } = await supabase.functions.invoke('create-subscription', {
         body: {
-          plan: plan.id,
+          plan: plan.slug,
           billingType: paymentMethod,
           customerData: {
             name: formData.name,
