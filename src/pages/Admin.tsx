@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake } from 'lucide-react';
+import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import { formatCurrency } from '@/lib/validators';
 
@@ -260,6 +261,7 @@ const Admin = () => {
             <TabsTrigger value="plans" className="gap-2"><Package className="h-4 w-4" /> Planos</TabsTrigger>
             <TabsTrigger value="coupons" className="gap-2"><Ticket className="h-4 w-4" /> Cupons</TabsTrigger>
             <TabsTrigger value="subscriptions" className="gap-2"><Users className="h-4 w-4" /> Assinaturas</TabsTrigger>
+            <TabsTrigger value="affiliates" className="gap-2"><Handshake className="h-4 w-4" /> Afiliados</TabsTrigger>
           </TabsList>
 
           {/* PLANS TAB */}
@@ -515,6 +517,11 @@ const Admin = () => {
                 </Table>
               )}
             </div>
+          </TabsContent>
+
+          {/* AFFILIATES TAB */}
+          <TabsContent value="affiliates">
+            <AdminAffiliates />
           </TabsContent>
         </Tabs>
       </main>

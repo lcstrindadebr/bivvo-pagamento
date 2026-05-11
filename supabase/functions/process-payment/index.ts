@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { quoteBivvo, type BivvoConfig } from "../_shared/bivvo-calc.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -281,28 +282,48 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     const { plan, customerData, cardData }: PaymentRequest = rawData;
-    
-    // Fetch plan price from database (server-side source of truth)
-    const { data: planData, error: planError } = await supabase
-      .from('plans')
-      .select('price')
-      .eq('slug', plan)
-      .eq('active', true)
-      .maybeSingle();
+    const bivvoConfig: BivvoConfig | undefined = rawData.bivvoConfig;
+    const affiliateSlug: string | undefined = rawData.affiliateSlug;
 
-    if (planError || !planData) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Plano não encontrado ou inativo.',
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    let amount: number;
+    let recurringAmount: number;
+    let planLabel = plan;
+    let quote: ReturnType<typeof quoteBivvo> | null = null;
+
+    if (bivvoConfig) {
+      try {
+        quote = quoteBivvo(bivvoConfig);
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: 'Configuração inválida' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      amount = quote.total1m;
+      recurringAmount = quote.totalRec;
+      planLabel = quote.planLabel;
+    } else {
+      const { data: planData, error: planError } = await supabase
+        .from('plans').select('price').eq('slug', plan).eq('active', true).maybeSingle();
+      if (planError || !planData) {
+        return new Response(JSON.stringify({ success: false, error: 'Plano não encontrado ou inativo.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      amount = Number(planData.price);
+      recurringAmount = amount;
     }
 
-    const amount = Number(planData.price);
+    // Lookup affiliate (if provided)
+    let affiliate: { id: string; commission_percent: number; commission_recurring: boolean } | null = null;
+    if (affiliateSlug) {
+      const { data: aff } = await supabase
+        .from('affiliates')
+        .select('id, commission_percent, commission_recurring, status')
+        .eq('slug', affiliateSlug)
+        .eq('status', 'active')
+        .maybeSingle();
+      if (aff) affiliate = aff as any;
+    }
 
-    console.log('Processing payment for plan:', plan, 'amount:', amount);
+    console.log('Processing payment for plan:', plan, 'amount:', amount, 'affiliate:', affiliate?.id);
 
     // Sanitize data
     const cleanCpf = customerData.cpf.replace(/\D/g, '');
@@ -495,7 +516,6 @@ serve(async (req) => {
     // 5. Update user status if approved
     if (paymentData.status === 'approved') {
       const expirationDate = new Date();
-      // All plans give 1 year access
       expirationDate.setFullYear(expirationDate.getFullYear() + 1);
 
       await supabase.from('users').update({
@@ -503,6 +523,36 @@ serve(async (req) => {
         plano_ativo: plan,
         data_expiracao: expirationDate.toISOString(),
       }).eq('id', userId);
+    }
+
+    // 6. Register affiliate sale + first commission
+    if (affiliate && payment) {
+      const { data: sale } = await supabase.from('affiliate_sales').insert({
+        affiliate_id: affiliate.id,
+        payment_id: payment.id,
+        user_id: userId,
+        plan_slug: plan,
+        plan_label: planLabel,
+        config: bivvoConfig ?? {},
+        amount_first: amount,
+        amount_recurring: recurringAmount,
+        commission_percent: affiliate.commission_percent,
+        status: paymentData.status === 'approved' ? 'paid' : 'pending',
+        asaas_payment_id: paymentResult.id,
+      }).select('id').single();
+
+      if (sale) {
+        const commission = Math.round(amount * affiliate.commission_percent) / 100;
+        await supabase.from('affiliate_commissions').insert({
+          affiliate_id: affiliate.id,
+          sale_id: sale.id,
+          sale_amount: amount,
+          commission_percent: affiliate.commission_percent,
+          commission_amount: commission,
+          kind: 'first',
+          status: paymentData.status === 'approved' ? 'approved' : 'pending',
+        });
+      }
     }
 
     return new Response(JSON.stringify({

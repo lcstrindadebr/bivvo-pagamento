@@ -2,3 +2,6 @@ project_id = "yrxwaujnmmmjofeljbnk"
 
 [functions.admin-api]
 verify_jwt = false
+
+[functions.affiliate-api]
+verify_jwt = false
