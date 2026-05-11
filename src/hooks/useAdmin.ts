@@ -16,14 +16,9 @@ export function useAdmin() {
         navigate('/admin/login');
         return;
       }
-
       const { data: role } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', session.user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-
+        .from('user_roles').select('role')
+        .eq('user_id', session.user.id).eq('role', 'admin').maybeSingle();
       if (!role) {
         await supabase.auth.signOut();
         setIsAdmin(false);
@@ -33,36 +28,38 @@ export function useAdmin() {
       }
       setLoading(false);
     };
-
     checkAdmin();
   }, [navigate]);
 
-  const adminFetch = useCallback(async (action: string, params?: Record<string, string>) => {
+  const callAdmin = useCallback(async (
+    action: string,
+    opts: { params?: Record<string, string>; method?: 'GET' | 'POST'; body?: unknown } = {}
+  ) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Não autenticado');
-
-    const queryParams = new URLSearchParams({ action, ...params });
-    const { data, error } = await supabase.functions.invoke('admin-api', {
-      body: null,
-      headers: {},
-    });
-
-    // Use direct fetch for GET with query params
+    const queryParams = new URLSearchParams({ action, ...(opts.params || {}) });
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-api?${queryParams.toString()}`;
     const response = await fetch(url, {
+      method: opts.method || 'GET',
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
         'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        'Content-Type': 'application/json',
       },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
-
     if (!response.ok) {
-      const err = await response.json();
+      const err = await response.json().catch(() => ({}));
       throw new Error(err.error || 'Erro na requisição');
     }
-
     return response.json();
   }, []);
 
-  return { isAdmin, loading, adminFetch };
+  const adminFetch = useCallback((action: string, params?: Record<string, string>) =>
+    callAdmin(action, { params }), [callAdmin]);
+
+  const adminPost = useCallback((action: string, body: unknown) =>
+    callAdmin(action, { method: 'POST', body }), [callAdmin]);
+
+  return { isAdmin, loading, adminFetch, adminPost };
 }
