@@ -203,6 +203,66 @@ serve(async (req) => {
       }
     }
 
+    // Affiliate commission updates
+    const { data: sale } = await supabase
+      .from('affiliate_sales')
+      .select('id, affiliate_id, amount_recurring, commission_percent')
+      .eq('payment_id', paymentRecord.id)
+      .maybeSingle();
+
+    if (sale) {
+      // Update sale status
+      const saleStatus = newStatus === 'paid' ? 'paid'
+        : newStatus === 'refunded' ? 'refunded'
+        : newStatus === 'cancelled' ? 'cancelled'
+        : 'pending';
+      await supabase.from('affiliate_sales').update({ status: saleStatus }).eq('id', sale.id);
+
+      // Approve first commission when paid
+      if (newStatus === 'paid') {
+        await supabase.from('affiliate_commissions')
+          .update({ status: 'approved' })
+          .eq('sale_id', sale.id)
+          .eq('kind', 'first')
+          .eq('status', 'pending');
+      }
+      if (['cancelled','refunded','chargeback'].includes(newStatus)) {
+        await supabase.from('affiliate_commissions')
+          .update({ status: 'cancelled' })
+          .eq('sale_id', sale.id)
+          .neq('status', 'paid');
+      }
+
+      // Recurring commission: when subscription generates a new paid payment
+      if (newStatus === 'paid' && payment.subscription) {
+        const { data: aff } = await supabase
+          .from('affiliates')
+          .select('commission_recurring')
+          .eq('id', sale.affiliate_id)
+          .maybeSingle();
+
+        if (aff?.commission_recurring) {
+          // Avoid duplicate: only insert if first commission already exists and this payment is not the first.
+          const { count } = await supabase
+            .from('affiliate_commissions')
+            .select('id', { count: 'exact', head: true })
+            .eq('sale_id', sale.id);
+          if ((count ?? 0) >= 1) {
+            const recAmt = Math.round(Number(sale.amount_recurring) * Number(sale.commission_percent)) / 100;
+            await supabase.from('affiliate_commissions').insert({
+              affiliate_id: sale.affiliate_id,
+              sale_id: sale.id,
+              sale_amount: sale.amount_recurring,
+              commission_percent: sale.commission_percent,
+              commission_amount: recAmt,
+              kind: 'recurring',
+              status: 'approved',
+            });
+          }
+        }
+      }
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
       paymentId: paymentRecord.id,
