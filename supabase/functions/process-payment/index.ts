@@ -516,7 +516,6 @@ serve(async (req) => {
     // 5. Update user status if approved
     if (paymentData.status === 'approved') {
       const expirationDate = new Date();
-      // All plans give 1 year access
       expirationDate.setFullYear(expirationDate.getFullYear() + 1);
 
       await supabase.from('users').update({
@@ -524,6 +523,36 @@ serve(async (req) => {
         plano_ativo: plan,
         data_expiracao: expirationDate.toISOString(),
       }).eq('id', userId);
+    }
+
+    // 6. Register affiliate sale + first commission
+    if (affiliate && payment) {
+      const { data: sale } = await supabase.from('affiliate_sales').insert({
+        affiliate_id: affiliate.id,
+        payment_id: payment.id,
+        user_id: userId,
+        plan_slug: plan,
+        plan_label: planLabel,
+        config: bivvoConfig ?? {},
+        amount_first: amount,
+        amount_recurring: recurringAmount,
+        commission_percent: affiliate.commission_percent,
+        status: paymentData.status === 'approved' ? 'paid' : 'pending',
+        asaas_payment_id: paymentResult.id,
+      }).select('id').single();
+
+      if (sale) {
+        const commission = Math.round(amount * affiliate.commission_percent) / 100;
+        await supabase.from('affiliate_commissions').insert({
+          affiliate_id: affiliate.id,
+          sale_id: sale.id,
+          sale_amount: amount,
+          commission_percent: affiliate.commission_percent,
+          commission_amount: commission,
+          kind: 'first',
+          status: paymentData.status === 'approved' ? 'approved' : 'pending',
+        });
+      }
     }
 
     return new Response(JSON.stringify({
