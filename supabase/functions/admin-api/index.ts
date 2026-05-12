@@ -110,14 +110,18 @@ serve(async (req) => {
       
       // Enrich with customer names
       if (result.data && result.data.length > 0) {
-        const customerIds = [...new Set(result.data.map((s: any) => s.customer))];
+        const customerIds = [...new Set(result.data.map((s: any) => s.customer))].filter(Boolean) as string[];
+        console.log(`Enriquecendo ${customerIds.length} clientes para assinaturas`);
         const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
         
-        result.data = result.data.map((s: any) => ({
-          ...s,
-          customerName: userMap.get(s.customer)?.name || 'Desconhecido',
-          customerEmail: userMap.get(s.customer)?.email || '',
-        }));
+        result.data = result.data.map((s: any) => {
+          const userData = userMap.get(s.customer);
+          return {
+            ...s,
+            customerName: userData?.name || 'Desconhecido',
+            customerEmail: userData?.email || '',
+          };
+        });
       }
 
       return new Response(JSON.stringify(result), {
