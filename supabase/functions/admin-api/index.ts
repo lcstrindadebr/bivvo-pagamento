@@ -274,7 +274,9 @@ serve(async (req) => {
 
     if (action === 'list-affiliate-commissions') {
       const affiliateId = url.searchParams.get('affiliateId');
-      let q = supabase.from('affiliate_commissions').select('*, affiliates(name, email)').order('created_at', { ascending: false });
+      let q = supabase.from('affiliate_commissions')
+        .select('*, affiliates(name, email, pix_key, pix_key_type)')
+        .order('created_at', { ascending: false });
       if (affiliateId) q = q.eq('affiliate_id', affiliateId);
       const { data, error } = await q;
       if (error) throw error;
@@ -282,10 +284,14 @@ serve(async (req) => {
     }
 
     if (action === 'mark-commission-paid' && req.method === 'POST') {
-      const { id } = await req.json();
+      const { id, payment_proof_url } = await req.json();
       if (!id) throw new Error('id obrigatório');
       const { error } = await supabase.from('affiliate_commissions')
-        .update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', id);
+        .update({ 
+          status: 'paid', 
+          paid_at: new Date().toISOString(),
+          payment_proof_url: payment_proof_url || null
+        }).eq('id', id);
       if (error) throw error;
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
