@@ -152,16 +152,18 @@ serve(async (req) => {
       if (dateStart) paymentsUrl += `&dateCreated[ge]=${dateStart}`;
       if (dateEnd) paymentsUrl += `&dateCreated[le]=${dateEnd}`;
       
+      console.log(`Buscando pagamentos: ${paymentsUrl}`);
       const paymentsRes = await fetch(paymentsUrl, { headers: { 'access_token': ASAAS_API_KEY } });
       const paymentsData = await paymentsRes.json();
       
       // Get subscriptions to count total recurring
-      const subsUrl = `${ASAAS_BASE_URL}/subscriptions?limit=100`;
+      const subsUrl = `${ASAAS_BASE_URL}/subscriptions?limit=100&status=ACTIVE`;
       const subsRes = await fetch(subsUrl, { headers: { 'access_token': ASAAS_API_KEY } });
       const subsData = await subsRes.json();
 
       // Enrich payments with customer names AND FILTER ONLY SUBSCRIPTION PAYMENTS
-      let payments = (paymentsData.data || []).filter((p: any) => !!p.subscription);
+      // We only want payments that belong to a subscription
+      let payments = (paymentsData.data || []).filter((p: any) => p.subscription !== null && p.subscription !== undefined && p.subscription !== "");
       
       if (payments.length > 0) {
         const customerIds = [...new Set(payments.map((p: any) => p.customer))];

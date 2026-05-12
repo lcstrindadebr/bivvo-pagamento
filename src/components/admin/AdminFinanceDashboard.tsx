@@ -226,7 +226,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
 
       <Card className="card-glass border-none shadow-xl overflow-hidden">
         <CardHeader>
-          <CardTitle>Últimas Cobranças</CardTitle>
+          <CardTitle>Últimas Cobranças de Assinaturas</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
