@@ -214,6 +214,34 @@ export default function Affiliate() {
             </div>
           </TabsContent>
         </Tabs>
+
+        <Dialog open={!!cancellingSale} onOpenChange={v => !v && setCancellingSale(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Cancelar Venda</DialogTitle></DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Motivo do cancelamento</Label>
+                <textarea 
+                  className="w-full min-h-[100px] p-3 rounded-md border border-input bg-background"
+                  placeholder="Ex: Cliente desistiu, erro no cadastro..."
+                  value={cancelReason}
+                  onChange={e => setCancelReason(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCancellingSale(null)}>Voltar</Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleCancelSale} 
+                disabled={!cancelReason.trim() || isSubmittingCancel}
+              >
+                {isSubmittingCancel ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
+                Confirmar Cancelamento
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
