@@ -29,6 +29,7 @@ export interface BivvoConfig {
   plan: PlanSlug;
   users: number;
   channels: Record<string, number>;
+  channelsDiscount?: number;
   telefonia: boolean;
   protagonista: boolean;
 }
@@ -41,6 +42,7 @@ export interface BivvoQuote {
   base1m: number;
   baseRec: number;
   channelsTotal: number;
+  channelsDiscountPercent: number;
   telCost: number;
   total1m: number;
   totalRec: number;
@@ -63,13 +65,16 @@ export function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
   const base1m = basePromo;
   const baseRec = cfg.protagonista ? base1m : baseFull;
 
+  const discountPercent = Math.min(30, Math.max(0, cfg.channelsDiscount || 0));
+  const discountFactor = 1 - (discountPercent / 100);
+
   let channelsTotal = 0;
   const channelLines: BivvoQuote['channelLines'] = [];
   for (const c of CANAIS_DEF) {
     const qty = Math.max(0, Math.floor(cfg.channels[c.id] || 0));
     const extra = Math.max(0, qty - c.included);
     if (extra > 0) {
-      const amount = extra * c.unit;
+      const amount = round2(extra * c.unit * discountFactor);
       channelsTotal += amount;
       channelLines.push({ id: c.id, label: c.label, emoji: c.emoji, qty: extra, amount });
     }
@@ -89,6 +94,7 @@ export function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
     base1m: round2(base1m),
     baseRec: round2(baseRec),
     channelsTotal: round2(channelsTotal),
+    channelsDiscountPercent: discountPercent,
     telCost,
     total1m,
     totalRec,
