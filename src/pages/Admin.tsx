@@ -57,7 +57,7 @@ interface Subscription {
 }
 
 const Admin = () => {
-  const { isAdmin, loading: authLoading, adminFetch } = useAdmin();
+  const { isAdmin, loading: authLoading, adminFetch, adminPost } = useAdmin();
   const { toast } = useToast();
   const navigate = useNavigate();
 
