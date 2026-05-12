@@ -115,6 +115,7 @@ const Admin = () => {
       if (subsFilter && !params.status) params.status = subsFilter;
       if (subsBillingFilter && !params.billingType) params.billingType = subsBillingFilter;
       if (subsCustomerSearch && !params.customer) params.customer = subsCustomerSearch;
+      if (subsExtRefSearch && !params.externalReference) params.externalReference = subsExtRefSearch;
 
       const result = await adminFetch('list-subscriptions', params);
       setSubscriptions(result.data || []);
