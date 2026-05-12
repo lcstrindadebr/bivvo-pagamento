@@ -86,7 +86,10 @@ const Admin = () => {
   const [creatingAccount, setCreatingAccount] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
   const [subDetailsDialog, setSubDetailsDialog] = useState(false);
+  const [selectedSubPayments, setSelectedSubPayments] = useState<any[]>([]);
+  const [loadingSubPayments, setLoadingSubPayments] = useState(false);
   const [isUpdatingSub, setIsUpdatingSub] = useState(false);
+
   const [editFormData, setEditFormData] = useState({
     value: '',
     status: '',
