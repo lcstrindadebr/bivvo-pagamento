@@ -1,5 +1,4 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Sparkles, Shield, Zap, Crown } from 'lucide-react';
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
 import { encodeBivvoConfig, type BivvoConfig } from '@/lib/bivvo-calc';
@@ -26,11 +25,6 @@ const Index = () => {
       <header className="relative py-6 px-4 border-b border-border/40 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <img src={bivvoLogo} alt="Bivvo" className="h-8" />
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            <a href="#features" className="hover:text-accent transition-colors">Funcionalidades</a>
-            <a href="#pricing" className="hover:text-accent transition-colors">Preços</a>
-            <a href="#support" className="hover:text-accent transition-colors">Suporte</a>
-          </div>
         </div>
       </header>
 
@@ -38,8 +32,6 @@ const Index = () => {
       <section id="pricing" className="relative py-12 px-4 pb-24">
         <div className="max-w-6xl mx-auto">
           <div className="bg-background/40 backdrop-blur-xl border border-border/50 rounded-[2.5rem] p-4 md:p-8 shadow-2xl shadow-accent/5">
-
-            
             <BivvoCalculator 
               mode="customer" 
               onCheckout={handleCheckout}
@@ -47,6 +39,7 @@ const Index = () => {
           </div>
         </div>
       </section>
+
 
 
       {/* Footer */}
