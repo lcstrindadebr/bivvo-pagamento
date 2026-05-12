@@ -114,7 +114,8 @@ export default function Affiliate() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-4">
-        <div className="grid md:grid-cols-4 gap-3">
+        <div className="grid md:grid-cols-5 gap-3">
+          <div className="card-glass rounded-xl p-4"><div className="text-xs text-muted-foreground">Assinaturas Ativas</div><div className="text-xl font-bold text-accent">{me.stats?.activeSubscriptions ?? 0}</div></div>
           <div className="card-glass rounded-xl p-4"><div className="text-xs text-muted-foreground">Comissão</div><div className="text-xl font-bold">{me.commission_percent}%</div></div>
           <div className="card-glass rounded-xl p-4"><div className="text-xs text-muted-foreground">Total gerado</div><div className="text-xl font-bold">{formatCurrency(totalGen)}</div></div>
           <div className="card-glass rounded-xl p-4"><div className="text-xs text-muted-foreground">Pendente</div><div className="text-xl font-bold text-amber-600">{formatCurrency(totalPending)}</div></div>
