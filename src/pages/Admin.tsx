@@ -102,11 +102,19 @@ const Admin = () => {
     if (data) setCoupons(data as any);
   };
 
-  const loadSubscriptions = async (status?: string) => {
+  const loadSubscriptions = async (paramsOverride: Record<string, string> = {}) => {
     setLoadingData(true);
     try {
-      const params: Record<string, string> = { limit: '50' };
-      if (status) params.status = status;
+      const params: Record<string, string> = { 
+        limit: String(limit),
+        offset: String(subsOffset),
+        ...paramsOverride 
+      };
+      
+      if (subsFilter && !params.status) params.status = subsFilter;
+      if (subsBillingFilter && !params.billingType) params.billingType = subsBillingFilter;
+      if (subsCustomerSearch && !params.customer) params.customer = subsCustomerSearch;
+
       const result = await adminFetch('list-subscriptions', params);
       setSubscriptions(result.data || []);
       setSubsTotal(result.totalCount || 0);
@@ -116,6 +124,12 @@ const Admin = () => {
       setLoadingData(false);
     }
   };
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadSubscriptions();
+    }
+  }, [isAdmin, subsOffset]);
 
   const handleSavePlan = async () => {
     try {
