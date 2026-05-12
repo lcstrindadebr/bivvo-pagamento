@@ -206,8 +206,24 @@ const Admin = () => {
         nextDueDate: selectedSub.nextDueDate || '',
         description: selectedSub.description || ''
       });
+      loadSubPayments(selectedSub.id);
+    } else {
+      setSelectedSubPayments([]);
     }
   }, [selectedSub]);
+
+  const loadSubPayments = async (id: string) => {
+    setLoadingSubPayments(true);
+    try {
+      const res = await adminFetch('list-subscription-payments', { id });
+      setSelectedSubPayments(res.data || []);
+    } catch (err) {
+      console.error('Error loading sub payments:', err);
+    } finally {
+      setLoadingSubPayments(false);
+    }
+  };
+
 
   const loadPlans = async () => {
 
