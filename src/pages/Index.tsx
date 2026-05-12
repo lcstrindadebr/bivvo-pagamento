@@ -1,50 +1,21 @@
-import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { Check, Sparkles, Shield, Zap, Crown, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Sparkles, Shield, Zap, Crown } from 'lucide-react';
 import bivvoLogo from '@/assets/bivvo-logo.png';
-import { formatCurrency } from '@/lib/validators';
-import { supabase } from '@/integrations/supabase/client';
-
-interface PlanFeature {
-  text: string;
-  included: boolean;
-}
-
-interface Plan {
-  id: string;
-  slug: string;
-  name: string;
-  price: number;
-  description: string;
-  icon: string;
-  features: PlanFeature[];
-  popular: boolean;
-  gradient: string;
-}
-
-const ICON_MAP: Record<string, React.ElementType> = {
-  Zap, Shield, Crown, Sparkles,
-};
+import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
+import { encodeBivvoConfig, type BivvoConfig } from '@/lib/bivvo-calc';
 
 const Index = () => {
   const navigate = useNavigate();
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+  const aff = searchParams.get('aff');
 
-  useEffect(() => {
-    const fetchPlans = async () => {
-      const { data } = await supabase
-        .from('plans')
-        .select('*')
-        .eq('active', true)
-        .order('sort_order');
-      if (data) setPlans(data as any);
-      setLoading(false);
-    };
-    fetchPlans();
-  }, []);
+  const handleCheckout = (config: BivvoConfig) => {
+    const cfg = encodeBivvoConfig(config);
+    const params = new URLSearchParams();
+    if (aff) params.set('aff', aff);
+    params.set('cfg', cfg);
+    navigate(`/checkout/${config.plan}?${params.toString()}`);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
@@ -52,149 +23,95 @@ const Index = () => {
       <div className="fixed inset-0 gradient-mesh opacity-30 pointer-events-none" />
 
       {/* Header */}
-      <header className="relative py-6 px-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-center">
+      <header className="relative py-6 px-4 border-b border-border/40 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           <img src={bivvoLogo} alt="Bivvo" className="h-8" />
+          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
+            <a href="#features" className="hover:text-accent transition-colors">Funcionalidades</a>
+            <a href="#pricing" className="hover:text-accent transition-colors">Preços</a>
+            <a href="#support" className="hover:text-accent transition-colors">Suporte</a>
+          </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-12 px-4 text-center">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium">
+      <section className="relative py-16 px-4 text-center">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium animate-fade-in">
             <Sparkles className="h-4 w-4" />
-            Escolha o plano ideal para você
+            O Omni-channel mais completo do mercado
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
-            Potencialize seu negócio
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
+            Escalone seu atendimento<br />em um só lugar
           </h1>
-          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-            Selecione o plano que melhor se adapta às suas necessidades e comece a transformar seus resultados hoje mesmo.
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Personalize seu plano de acordo com sua necessidade. Pague apenas pelo que usar com total transparência e controle.
           </p>
         </div>
       </section>
 
-      {/* Plans Grid */}
-      <section className="relative py-8 px-4 pb-24">
+      {/* Main Content (Calculator) */}
+      <section id="pricing" className="relative py-8 px-4 pb-24">
         <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
-            {loading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-[500px] rounded-3xl" />
-              ))
-            ) : (
-              plans.map((plan) => {
-                const IconComponent = ICON_MAP[plan.icon] || Zap;
-                const gradientColor = plan.gradient.includes('blue') ? '#3b82f6' : plan.gradient.includes('violet') ? '#8b5cf6' : '#f59e0b';
-                return (
-                  <div
-                    key={plan.id}
-                    className={`relative card-glass rounded-3xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl ${
-                      plan.popular ? 'ring-2 ring-accent shadow-xl shadow-accent/10' : ''
-                    }`}
-                  >
-                    {plan.popular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-accent to-primary text-white text-xs font-semibold shadow-lg">
-                          <Sparkles className="h-3 w-3" />
-                          Mais popular
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="space-y-6">
-                      <div className="text-center space-y-4 pt-2">
-                        <div className={`w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br ${plan.gradient} p-0.5`}>
-                          <div className="w-full h-full rounded-2xl bg-background/90 flex items-center justify-center">
-                            <IconComponent className="h-7 w-7" style={{ color: gradientColor }} />
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold">{plan.name}</h3>
-                          <p className="text-sm text-muted-foreground">{plan.description}</p>
-                        </div>
-                        <div className="flex items-baseline justify-center gap-1">
-                          <span className="text-4xl font-bold">{formatCurrency(plan.price)}</span>
-                          <span className="text-muted-foreground">/mês</span>
-                        </div>
-                      </div>
-
-                      <ul className="space-y-3">
-                        {plan.features.map((feature, index) => (
-                          <li key={index} className="flex items-center gap-3">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                              feature.included 
-                                ? 'bg-success/20 text-success' 
-                                : 'bg-muted/50 text-muted-foreground'
-                            }`}>
-                              <Check className="h-3 w-3" />
-                            </div>
-                            <span className={`text-sm ${!feature.included ? 'text-muted-foreground line-through' : ''}`}>
-                              {feature.text}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-
-                      <Button
-                        onClick={() => navigate(`/checkout/${plan.slug}`)}
-                        className={`w-full h-12 text-base font-semibold rounded-xl transition-all ${
-                          plan.popular
-                            ? 'bg-gradient-to-r from-accent to-primary hover:opacity-90 shadow-lg shadow-accent/30'
-                            : 'bg-foreground/10 hover:bg-foreground/20 text-foreground'
-                        }`}
-                      >
-                        Assinar agora
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+          <div className="bg-background/40 backdrop-blur-xl border border-border/50 rounded-[2.5rem] p-4 md:p-8 shadow-2xl shadow-accent/5">
+            <div className="mb-8 text-center md:text-left">
+              <h2 className="text-2xl md:text-3xl font-bold">Simulador de Proposta</h2>
+              <p className="text-muted-foreground">Arraste e configure seu ecossistema Bivvo</p>
+            </div>
+            
+            <BivvoCalculator 
+              mode="customer" 
+              onCheckout={handleCheckout}
+            />
           </div>
         </div>
       </section>
 
-      {/* Trust Section */}
-      <section className="relative py-12 px-4 border-t border-border/50">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div className="space-y-2">
-              <div className="w-12 h-12 mx-auto rounded-xl bg-success/10 flex items-center justify-center">
-                <Shield className="h-6 w-6 text-success" />
-              </div>
-              <p className="text-sm font-medium">Pagamento seguro</p>
-              <p className="text-xs text-muted-foreground">SSL 256-bit</p>
-            </div>
-            <div className="space-y-2">
-              <div className="w-12 h-12 mx-auto rounded-xl bg-accent/10 flex items-center justify-center">
+      {/* Features/Trust Section */}
+      <section id="features" className="relative py-20 px-4 border-t border-border/50 bg-background/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
                 <Zap className="h-6 w-6 text-accent" />
               </div>
-              <p className="text-sm font-medium">Ativação imediata</p>
-              <p className="text-xs text-muted-foreground">Acesso instantâneo</p>
+              <h3 className="text-xl font-bold">Performance Extrema</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                Nossa infraestrutura garante 99.9% de uptime para que você nunca perca uma venda ou atendimento.
+              </p>
             </div>
-            <div className="space-y-2">
-              <div className="w-12 h-12 mx-auto rounded-xl bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-6 w-6 text-primary" />
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-success/10 flex items-center justify-center">
+                <Shield className="h-6 w-6 text-success" />
               </div>
-              <p className="text-sm font-medium">Garantia de 7 dias</p>
-              <p className="text-xs text-muted-foreground">Satisfação garantida</p>
+              <h3 className="text-xl font-bold">Segurança de Dados</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                Criptografia de ponta a ponta e conformidade total com a LGPD em todos os seus canais.
+              </p>
             </div>
-            <div className="space-y-2">
-              <div className="w-12 h-12 mx-auto rounded-xl bg-amber-500/10 flex items-center justify-center">
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center">
                 <Crown className="h-6 w-6 text-amber-500" />
               </div>
-              <p className="text-sm font-medium">Suporte dedicado</p>
-              <p className="text-xs text-muted-foreground">Equipe especializada</p>
+              <h3 className="text-xl font-bold">Suporte Premium</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                Time técnico especializado pronto para te ajudar a configurar sua operação em minutos.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="relative py-8 px-4 text-center text-sm text-muted-foreground">
-        <p>© 2025 Bivvo. Todos os direitos reservados.</p>
+      <footer className="relative py-12 px-4 border-t border-border/50 text-center text-sm text-muted-foreground">
+        <div className="max-w-6xl mx-auto space-y-4">
+          <img src={bivvoLogo} alt="Bivvo" className="h-6 mx-auto opacity-50 grayscale" />
+          <p>© 2026 Bivvo. Todos os direitos reservados. CNPJ 00.000.000/0001-00</p>
+          <div className="flex justify-center gap-6 mt-4">
+            <a href="#" className="hover:text-foreground transition-colors">Termos de Uso</a>
+            <a href="#" className="hover:text-foreground transition-colors">Privacidade</a>
+          </div>
+        </div>
       </footer>
     </div>
   );
