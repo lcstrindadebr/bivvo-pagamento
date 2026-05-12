@@ -162,12 +162,17 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Users className="h-4 w-4 text-accent" /> Assinaturas Ativas
+              <Users className="h-4 w-4 text-accent" /> MRR (Receita Mensal)
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              <div className="text-2xl font-bold">{stats?.activeSubscriptions || 0}</div>
+              <div className="flex flex-col">
+                <div className="text-2xl font-bold text-accent">{formatCurrency(stats?.mrr || 0)}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {stats?.activeSubscriptions || 0} assinaturas ativas
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
