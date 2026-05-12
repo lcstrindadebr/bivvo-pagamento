@@ -323,13 +323,43 @@ serve(async (req) => {
       if (aff) affiliate = aff as any;
     }
 
-    console.log('Processing payment for plan:', plan, 'amount:', amount, 'affiliate:', affiliate?.id);
+    console.log('Processing credit card payment for plan:', plan, 'amount:', amount, 'affiliate:', affiliate?.id);
 
-    // Sanitize data
+    // 1. Create/Update customer and subscription in our database
     const cleanCpf = customerData.cpf.replace(/\D/g, '');
-    const cleanWhatsapp = customerData.whatsapp.replace(/\D/g, '');
+    const cleanPhone = customerData.whatsapp.replace(/\D/g, '');
     const cleanCardNumber = cardData.number.replace(/\s/g, '');
     const cleanCep = customerData.cep.replace(/\D/g, '');
+
+    const { data: customer, error: customerUpsertError } = await supabase
+      .from('customers')
+      .upsert({
+        name: customerData.name.trim(),
+        email: customerData.email.toLowerCase().trim(),
+        phone: cleanPhone,
+      }, { onConflict: 'email' })
+      .select('id')
+      .single();
+
+    if (customerUpsertError) throw new Error(`Error saving customer: ${customerUpsertError.message}`);
+
+    const { data: dbSubscription, error: subInsertError } = await supabase
+      .from('subscriptions')
+      .insert({
+        customer_id: customer.id,
+        plan_slug: plan,
+        users_count: bivvoConfig?.users || 1,
+        channels_config: bivvoConfig?.channels || {},
+        is_protagonista: bivvoConfig?.protagonista || false,
+        has_telefonia: bivvoConfig?.telefonia || false,
+        channels_discount: bivvoConfig?.channelsDiscount || 0,
+        status: 'active'
+      })
+      .select('id')
+      .single();
+
+    if (subInsertError) throw new Error(`Error saving subscription: ${subInsertError.message}`);
+
 
     // 1. Create or find user in database
     let userId: string;
