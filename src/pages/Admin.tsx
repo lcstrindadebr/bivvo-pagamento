@@ -567,7 +567,10 @@ const Admin = () => {
                         <TableRow key={sub.id}>
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="font-medium text-sm">{sub.customerName}</span>
+                              <span className="font-medium text-sm">{sub.customerName || 'Desconhecido'}</span>
+                              {sub.customerEmail && (
+                                <span className="text-[10px] text-muted-foreground">{sub.customerEmail}</span>
+                              )}
                               <div className="flex gap-2">
                                 <span className="text-[10px] text-muted-foreground font-mono">Cus: {sub.customer}</span>
                                 {sub.externalReference && (
