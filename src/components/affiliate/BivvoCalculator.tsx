@@ -10,9 +10,11 @@ import { PLANS, CANAIS_DEF, quoteBivvo, fmtBRL, encodeBivvoConfig, type PlanSlug
 
 interface Props {
   affiliateSlug?: string;
+  mode?: 'affiliate' | 'customer';
+  onCheckout?: (config: BivvoConfig) => void;
 }
 
-export default function BivvoCalculator({ affiliateSlug }: Props) {
+export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onCheckout }: Props) {
   const { toast } = useToast();
   const [plan, setPlan] = useState<PlanSlug>('silver');
   const [users, setUsers] = useState(6);
@@ -164,7 +166,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
             </>
           )}
 
-          {affiliateSlug && (
+          {mode === 'affiliate' && affiliateSlug && (
             <div className="mt-4 space-y-2">
               <Button onClick={() => copy(checkoutUrl, 'Link copiado')} className="w-full" size="sm">
                 <Link2 className="h-4 w-4 mr-2" />Copiar link checkout
@@ -173,6 +175,19 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 <FileText className="h-4 w-4 mr-2" />Copiar proposta
               </Button>
               <textarea readOnly value={proposalText} className="w-full mt-2 p-2 text-[11px] rounded border bg-muted/30 h-40 font-mono" />
+            </div>
+          )}
+
+          {mode === 'customer' && (
+            <div className="mt-4">
+              <Button onClick={() => onCheckout?.(config)} className="w-full bg-accent hover:bg-accent/90 text-white py-6 text-lg font-bold shadow-lg shadow-accent/20">
+                Assinar agora
+              </Button>
+              <div className="mt-4 flex items-center justify-center gap-4 grayscale opacity-50">
+                <img src="https://logodownload.org/wp-content/uploads/2014/10/visa-logo.png" alt="Visa" className="h-4" />
+                <img src="https://logodownload.org/wp-content/uploads/2014/07/mastercard-logo.png" alt="Mastercard" className="h-6" />
+                <img src="https://logodownload.org/wp-content/uploads/2020/02/pix-logo.png" alt="Pix" className="h-4" />
+              </div>
             </div>
           )}
         </div>
