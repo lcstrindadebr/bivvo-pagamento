@@ -79,6 +79,10 @@ const Admin = () => {
   });
 
   const [subsFilter, setSubsFilter] = useState('');
+  const [subsBillingFilter, setSubsBillingFilter] = useState('');
+  const [subsCustomerSearch, setSubsCustomerSearch] = useState('');
+  const [subsOffset, setSubsOffset] = useState(0);
+  const limit = 20;
 
   useEffect(() => {
     if (isAdmin) {
