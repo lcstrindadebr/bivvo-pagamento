@@ -77,6 +77,38 @@ serve(async (req) => {
       });
     }
 
+    if (action === 'finance-stats') {
+      const dateStart = url.searchParams.get('dateCreated[ge]');
+      const dateEnd = url.searchParams.get('dateCreated[le]');
+      
+      // Get payments (cobrancas) with filters
+      let paymentsUrl = `${ASAAS_BASE_URL}/payments?limit=100`;
+      if (dateStart) paymentsUrl += `&dateCreated[ge]=${dateStart}`;
+      if (dateEnd) paymentsUrl += `&dateCreated[le]=${dateEnd}`;
+      
+      const paymentsRes = await fetch(paymentsUrl, { headers: { 'access_token': ASAAS_API_KEY } });
+      const paymentsData = await paymentsRes.json();
+      
+      // Get subscriptions to count total recurring
+      const subsUrl = `${ASAAS_BASE_URL}/subscriptions?limit=100`;
+      const subsRes = await fetch(subsUrl, { headers: { 'access_token': ASAAS_API_KEY } });
+      const subsData = await subsRes.json();
+      
+      const stats = {
+        totalPayments: paymentsData.totalCount || 0,
+        paidCount: (paymentsData.data || []).filter((p: any) => ['RECEIVED', 'CONFIRMED'].includes(p.status)).length,
+        totalValue: (paymentsData.data || []).reduce((acc: number, p: any) => acc + (p.value || 0), 0),
+        paidValue: (paymentsData.data || []).filter((p: any) => ['RECEIVED', 'CONFIRMED'].includes(p.status))
+          .reduce((acc: number, p: any) => acc + (p.value || 0), 0),
+        activeSubscriptions: subsData.totalCount || 0,
+        payments: paymentsData.data || []
+      };
+      
+      return new Response(JSON.stringify(stats), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (action === 'list-users') {
       const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
       if (error) throw error;
