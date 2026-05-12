@@ -118,7 +118,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 <div key={c.id} className="border rounded-lg p-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-medium">{c.emoji} {c.label}</span>
-                    <span className="text-muted-foreground">{c.included ? `${c.included} incl.` : 'extra'} · R$ {c.unit}</span>
+                    <span className="text-muted-foreground">{c.included ? `${c.included} incl.` : 'extra'} · {fmtBRL(c.unit)}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     <button onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))} className="w-6 h-6 border rounded hover:bg-muted">−</button>
