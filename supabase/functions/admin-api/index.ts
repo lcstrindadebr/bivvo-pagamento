@@ -43,10 +43,33 @@ serve(async (req) => {
       const offset = url.searchParams.get('offset') || '0';
       const limit = url.searchParams.get('limit') || '20';
       const status = url.searchParams.get('status') || '';
+      const customer = url.searchParams.get('customer') || '';
+      const billingType = url.searchParams.get('billingType') || '';
+      
       let asaasUrl = `${ASAAS_BASE_URL}/subscriptions?offset=${offset}&limit=${limit}`;
       if (status) asaasUrl += `&status=${status}`;
+      if (customer) asaasUrl += `&customer=${customer}`;
+      if (billingType) asaasUrl += `&billingType=${billingType}`;
+      
       const response = await fetch(asaasUrl, { headers: { 'access_token': ASAAS_API_KEY } });
       const result = await response.json();
+      
+      // Try to enrich with customer names from our DB
+      if (result.data && result.data.length > 0) {
+        const customerIds = [...new Set(result.data.map((s: any) => s.customer))];
+        const { data: users } = await supabase
+          .from('users')
+          .select('name, email, asaas_customer_id')
+          .in('asaas_customer_id', customerIds);
+        
+        const userMap = new Map(users?.map((u: any) => [u.asaas_customer_id, u]) || []);
+        result.data = result.data.map((s: any) => ({
+          ...s,
+          customerName: userMap.get(s.customer)?.name || 'Desconhecido',
+          customerEmail: userMap.get(s.customer)?.email || '',
+        }));
+      }
+
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
