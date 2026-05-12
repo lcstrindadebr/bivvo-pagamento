@@ -133,7 +133,7 @@ export default function Affiliate() {
           <TabsContent value="sales" className="mt-4">
             <div className="card-glass rounded-xl overflow-hidden">
               <Table>
-                <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Plano</TableHead><TableHead>1º mês</TableHead><TableHead>Recorrente</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Plano</TableHead><TableHead>1º mês</TableHead><TableHead>Recorrente</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {sales.map(s => (
                     <TableRow key={s.id}>
@@ -141,10 +141,21 @@ export default function Affiliate() {
                       <TableCell>{s.plan_label}</TableCell>
                       <TableCell>{formatCurrency(Number(s.amount_first))}</TableCell>
                       <TableCell>{formatCurrency(Number(s.amount_recurring))}</TableCell>
-                      <TableCell><Badge variant="outline">{s.status}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={s.status === 'cancelled' ? 'text-destructive border-destructive' : ''}>
+                          {s.status === 'cancelled' ? 'Cancelada' : s.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {s.status !== 'cancelled' && (
+                          <Button variant="ghost" size="sm" onClick={() => setCancellingSale(s.id)}>
+                            <XCircle className="h-4 w-4 text-destructive mr-1" /> Cancelar
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
-                  {sales.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Sem vendas ainda</TableCell></TableRow>}
+                  {sales.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Sem vendas ainda</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </div>
@@ -153,7 +164,7 @@ export default function Affiliate() {
           <TabsContent value="comm" className="mt-4">
             <div className="card-glass rounded-xl overflow-hidden">
               <Table>
-                <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Venda</TableHead><TableHead>%</TableHead><TableHead>Comissão</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Venda</TableHead><TableHead>%</TableHead><TableHead>Comissão</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Comprovante</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {commissions.map(c => (
                     <TableRow key={c.id}>
@@ -162,10 +173,23 @@ export default function Affiliate() {
                       <TableCell>{formatCurrency(Number(c.sale_amount))}</TableCell>
                       <TableCell>{c.commission_percent}%</TableCell>
                       <TableCell className="font-medium">{formatCurrency(Number(c.commission_amount))}</TableCell>
-                      <TableCell><Badge variant="outline">{c.status}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={c.status === 'cancelled' ? 'text-destructive border-destructive' : ''}>
+                          {c.status === 'cancelled' ? 'Cancelada' : c.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {c.payment_proof_url && (
+                          <Button variant="ghost" size="sm" asChild>
+                            <a href={c.payment_proof_url} target="_blank" rel="noopener noreferrer">
+                              <Eye className="h-4 w-4 mr-1" /> Ver
+                            </a>
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
-                  {commissions.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Sem comissões</TableCell></TableRow>}
+                  {commissions.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Sem comissões</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </div>
