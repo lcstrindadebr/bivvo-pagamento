@@ -142,8 +142,9 @@ serve(async (req) => {
       });
     }
 
-
+    if (action === 'finance-stats') {
       const dateStart = url.searchParams.get('dateCreated[ge]');
+
       const dateEnd = url.searchParams.get('dateCreated[le]');
       
       // Get payments (cobrancas) with filters
