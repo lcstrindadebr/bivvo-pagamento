@@ -225,7 +225,22 @@ const Admin = () => {
   };
 
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'RECEIVED':
+      case 'CONFIRMED':
+        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[9px] h-4">Pago</Badge>;
+      case 'PENDING':
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-500/20 text-[9px] h-4">Pendente</Badge>;
+      case 'OVERDUE':
+        return <Badge variant="outline" className="text-red-600 border-red-500/20 text-[9px] h-4">Atrasado</Badge>;
+      default:
+        return <Badge variant="outline" className="text-[9px] h-4">{status}</Badge>;
+    }
+  };
+
   const loadPlans = async () => {
+
 
     const { data } = await supabase.from('plans').select('*').order('sort_order');
     if (data) setPlans(data as any);
