@@ -229,11 +229,16 @@ const Admin = () => {
     switch (status) {
       case 'RECEIVED':
       case 'CONFIRMED':
+      case 'RECEIVED_IN_CASH':
         return <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[9px] h-4">Pago</Badge>;
       case 'PENDING':
         return <Badge variant="outline" className="text-yellow-600 border-yellow-500/20 text-[9px] h-4">Pendente</Badge>;
       case 'OVERDUE':
         return <Badge variant="outline" className="text-red-600 border-red-500/20 text-[9px] h-4">Atrasado</Badge>;
+      case 'CANCELLED':
+        return <Badge variant="outline" className="text-muted-foreground border-muted-foreground/20 text-[9px] h-4">Cancelada</Badge>;
+      case 'REFUNDED':
+        return <Badge variant="outline" className="text-purple-600 border-purple-500/20 text-[9px] h-4">Estornada</Badge>;
       default:
         return <Badge variant="outline" className="text-[9px] h-4">{status}</Badge>;
     }
