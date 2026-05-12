@@ -445,7 +445,7 @@ const Checkout = () => {
               {paymentMethod === 'PIX' ? 'Pague com PIX' : 'Pague com Boleto'}
             </h2>
             <p className="text-muted-foreground text-sm">
-              Plano {plan.name} - {formatCurrency(plan.price)}/mês
+              {plan.name} - {formatCurrency(plan.price)} {quote && quote.total1m !== quote.totalRec ? `(1º mês, depois ${formatCurrency(quote.totalRec)}/mês)` : '/mês'}
             </p>
           </div>
 
