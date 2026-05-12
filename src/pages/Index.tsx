@@ -40,10 +40,9 @@ const Index = () => {
         </div>
       </section>
 
-
-
       {/* Footer */}
       <footer className="relative py-12 px-4 border-t border-border/50 text-center text-sm text-muted-foreground">
+
         <div className="max-w-6xl mx-auto space-y-4">
           <img src={bivvoLogo} alt="Bivvo" className="h-6 mx-auto opacity-50 grayscale" />
           <p>© 2026 Bivvo. Todos os direitos reservados. CNPJ 00.000.000/0001-00</p>
