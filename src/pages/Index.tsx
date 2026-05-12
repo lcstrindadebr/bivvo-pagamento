@@ -34,30 +34,11 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative py-16 px-4 text-center">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium animate-fade-in">
-            <Sparkles className="h-4 w-4" />
-            O Omni-channel mais completo do mercado
-          </div>
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
-            Escalone seu atendimento<br />em um só lugar
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Personalize seu plano de acordo com sua necessidade. Pague apenas pelo que usar com total transparência e controle.
-          </p>
-        </div>
-      </section>
-
       {/* Main Content (Calculator) */}
-      <section id="pricing" className="relative py-8 px-4 pb-24">
+      <section id="pricing" className="relative py-12 px-4 pb-24">
         <div className="max-w-6xl mx-auto">
           <div className="bg-background/40 backdrop-blur-xl border border-border/50 rounded-[2.5rem] p-4 md:p-8 shadow-2xl shadow-accent/5">
-            <div className="mb-8 text-center md:text-left">
-              <h2 className="text-2xl md:text-3xl font-bold">Simulador de Proposta</h2>
-              <p className="text-muted-foreground">Arraste e configure seu ecossistema Bivvo</p>
-            </div>
+
             
             <BivvoCalculator 
               mode="customer" 
