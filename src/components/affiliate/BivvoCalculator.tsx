@@ -83,13 +83,16 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         {/* USERS + PROT */}
         <div className="card-glass rounded-xl p-4 space-y-3">
           <div className="text-sm font-semibold">🎯 Negociação</div>
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40">
-            <div>
-              <div className="text-sm font-medium">Preço Protagonista</div>
-              <div className="text-xs text-muted-foreground">Promo vira recorrência</div>
+          {mode === 'affiliate' && (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40">
+              <div>
+                <div className="text-sm font-medium">Preço Protagonista</div>
+                <div className="text-xs text-muted-foreground">Promo vira recorrência</div>
+              </div>
+              <Switch checked={protagonista} onCheckedChange={setProtagonista} />
             </div>
-            <Switch checked={protagonista} onCheckedChange={setProtagonista} />
-          </div>
+          )}
+
           <div className="flex items-center gap-3">
             <Label className="flex-1">Nº de usuários</Label>
             <div className="flex items-center border rounded-md">
