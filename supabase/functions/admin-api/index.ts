@@ -31,22 +31,33 @@ async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_
 
   // 2. Fetch missing from Asaas
   if (missingIds.length > 0) {
+    console.log(`Fetching ${missingIds.length} missing customers from Asaas:`, missingIds);
     const fetched = await Promise.all(missingIds.map(async (id) => {
       try {
-        const res = await fetch(`${ASAAS_BASE_URL}/customers/${id}`, {
-          headers: { 'access_token': ASAAS_API_KEY }
+        const url = `${ASAAS_BASE_URL}/customers/${id}`;
+        console.log(`Requesting customer from Asaas: ${url}`);
+        const res = await fetch(url, {
+          headers: { 
+            'access_token': ASAAS_API_KEY,
+            'User-Agent': 'Bivvo/1.0'
+          }
         });
+        
         if (res.ok) {
           const c = await res.json();
+          console.log(`Customer found in Asaas: ${id} -> ${c.name}`);
           return { asaas_customer_id: id, name: c.name, email: c.email };
+        } else {
+          const errText = await res.text();
+          console.error(`Asaas API error for customer ${id}: ${res.status} - ${errText}`);
         }
       } catch (e) {
-        console.error(`Error fetching customer ${id}:`, e);
+        console.error(`Fetch exception for customer ${id}:`, e);
       }
-      return { asaas_customer_id: id, name: 'Erro na busca', email: '' };
+      return { asaas_customer_id: id, name: 'Desconhecido (Erro API)', email: '' };
     }));
 
-    fetched.filter(Boolean).forEach((u: any) => {
+    fetched.forEach((u: any) => {
       userMap.set(u.asaas_customer_id, u);
     });
   }
