@@ -445,15 +445,15 @@ serve(async (req) => {
     };
 
     let paymentResult: any;
-    let paymentType: 'subscription' | 'payment' = 'payment';
+    let paymentType: 'subscription' | 'payment' = 'subscription';
 
-    // Single payment for all plans
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 1);
+    // Credit card subscription
+    const nextDueDate = new Date();
+    nextDueDate.setDate(nextDueDate.getDate() + 1);
 
-    console.log('Creating payment...');
+    console.log('Creating credit card subscription...');
     
-    const paymentResponse = await fetch(`${ASAAS_BASE_URL}/payments`, {
+    const subscriptionResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -462,30 +462,53 @@ serve(async (req) => {
       body: JSON.stringify({
         customer: asaasCustomerId,
         billingType: 'CREDIT_CARD',
-        value: amount,
-        description: `Plano ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
-        dueDate: dueDate.toISOString().split('T')[0],
-        externalReference,
+        value: recurringAmount,
+        nextDueDate: nextDueDate.toISOString().split('T')[0],
+        cycle: 'MONTHLY',
+        description: `Plano ${planLabel}`,
+        externalReference: `${userId}_${plan}_subscription`,
         creditCard,
         creditCardHolderInfo,
+        discount: amount < recurringAmount ? {
+          value: Math.round((recurringAmount - amount) * 100) / 100,
+          type: 'FIXED',
+          dueDateLimitDays: 0
+        } : undefined,
       }),
     });
 
-    paymentResult = await paymentResponse.json();
-    console.log('Payment response:', JSON.stringify(paymentResult));
+    paymentResult = await subscriptionResponse.json();
+    console.log('Subscription response:', JSON.stringify(paymentResult));
 
     if (paymentResult.errors) {
-      throw new Error(`Payment error: ${paymentResult.errors[0]?.description || 'Unknown error'}`);
+      throw new Error(`Subscription error: ${paymentResult.errors[0]?.description || 'Unknown error'}`);
     }
+
+    const subscriptionId = paymentResult.id;
+
+    // Fetch the first payment from the subscription
+    console.log('Fetching first payment from subscription...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const paymentsResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}/payments`, {
+      headers: { 'access_token': ASAAS_API_KEY },
+    });
+    const paymentsResult = await paymentsResponse.json();
+    
+    if (!paymentsResult.data || paymentsResult.data.length === 0) {
+      throw new Error('No payment found for subscription');
+    }
+
+    const firstPayment = paymentsResult.data[0];
+    const asaasPaymentId = firstPayment.id;
 
     // 4. Save payment to database
     const paymentData = {
       user_id: userId,
       plan,
       amount,
-      status: paymentResult.status === 'CONFIRMED' ? 'approved' : 'pending',
-      asaas_payment_id: paymentResult.id,
-      asaas_subscription_id: null,
+      status: firstPayment.status === 'CONFIRMED' || firstPayment.status === 'RECEIVED' ? 'approved' : 'pending',
+      asaas_payment_id: asaasPaymentId,
+      asaas_subscription_id: subscriptionId,
     };
 
     const { data: payment, error: paymentError } = await supabase
@@ -495,22 +518,22 @@ serve(async (req) => {
       .single();
 
     if (paymentError) {
-      console.error('Database save failed after successful payment', {
+      console.error('Database save failed after successful subscription', {
         error: paymentError,
-        asaasPaymentId: paymentResult.id,
+        asaasSubscriptionId: subscriptionId,
         timestamp: new Date().toISOString(),
       });
 
       // Attempt rollback in Asaas
       await refundAsaasPayment(
-        paymentResult.id,
         null,
-        paymentType,
+        subscriptionId,
+        'subscription',
         ASAAS_API_KEY,
         ASAAS_BASE_URL
       );
 
-      throw new Error('Falha ao processar pagamento. Nenhuma cobrança foi efetivada.');
+      throw new Error('Falha ao processar assinatura no banco de dados.');
     }
 
     // 5. Update user status if approved
