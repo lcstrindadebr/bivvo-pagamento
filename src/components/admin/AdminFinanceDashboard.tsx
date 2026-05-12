@@ -22,25 +22,33 @@ interface AdminFinanceDashboardProps {
 export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps) {
   const [stats, setStats] = useState<FinanceStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<'today' | '7days' | '30days'>('30days');
+  const [period, setPeriod] = useState<'today' | '7days' | '30days' | 'month' | 'custom'>('month');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
 
-  const loadStats = async (selectedPeriod: string) => {
+  const loadStats = async (selectedPeriod: string, start?: string, end?: string) => {
     setLoading(true);
     try {
       const now = new Date();
-      let start = new Date();
+      let startDate = new Date();
+      let endDate = new Date();
       
       if (selectedPeriod === 'today') {
-        start.setHours(0, 0, 0, 0);
+        startDate.setHours(0, 0, 0, 0);
       } else if (selectedPeriod === '7days') {
-        start.setDate(now.getDate() - 7);
+        startDate.setDate(now.getDate() - 7);
       } else if (selectedPeriod === '30days') {
-        start.setDate(now.getDate() - 30);
+        startDate.setDate(now.getDate() - 30);
+      } else if (selectedPeriod === 'month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (selectedPeriod === 'custom' && start && end) {
+        startDate = new Date(start + 'T00:00:00');
+        endDate = new Date(end + 'T23:59:59');
       }
 
-      const params = {
-        'dateCreated[ge]': start.toISOString().split('T')[0],
-        'dateCreated[le]': now.toISOString().split('T')[0]
+      const params: Record<string, string> = {
+        'dateCreated[ge]': startDate.toISOString().split('T')[0],
+        'dateCreated[le]': endDate.toISOString().split('T')[0]
       };
 
       const data = await adminFetch('finance-stats', params);
@@ -53,8 +61,16 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
   };
 
   useEffect(() => {
-    loadStats(period);
+    if (period !== 'custom') {
+      loadStats(period);
+    }
   }, [period]);
+
+  const handleCustomSearch = () => {
+    if (customStart && customEnd) {
+      loadStats('custom', customStart, customEnd);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
