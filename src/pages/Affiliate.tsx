@@ -73,6 +73,25 @@ export default function Affiliate() {
     catch (err) { toast({ title: 'Erro', description: err instanceof Error ? err.message : '', variant: 'destructive' }); }
   };
 
+  const handleCancelSale = async () => {
+    if (!cancellingSale || !cancelReason.trim()) return;
+    setIsSubmittingCancel(true);
+    try {
+      await call('cancel-sale', { method: 'POST', body: { saleId: cancellingSale, reason: cancelReason } });
+      toast({ title: 'Venda cancelada com sucesso' });
+      setCancellingSale(null);
+      setCancelReason('');
+      // Reload data
+      const [s, c] = await Promise.all([call('sales'), call('commissions')]);
+      setSales(s.data || []);
+      setCommissions(c.data || []);
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao cancelar', variant: 'destructive' });
+    } finally {
+      setIsSubmittingCancel(false);
+    }
+  };
+
   const logout = async () => { await supabase.auth.signOut(); navigate('/afiliado/login'); };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>;
