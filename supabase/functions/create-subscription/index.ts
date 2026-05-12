@@ -332,7 +332,7 @@ serve(async (req) => {
           dueDateLimitDays: 0
         } : undefined,
         cycle: 'MONTHLY',
-        description: `Assinatura Plano ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
+        description: `Assinatura ${planLabel}`,
         externalReference: `${userId}_${plan}_subscription`,
       };
 
