@@ -72,8 +72,8 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   className={`text-left p-3 rounded-lg border transition ${active ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/40'}`}>
                   <div className="font-mono text-xs font-semibold">{p.name}</div>
                   <div className="text-[10px] text-muted-foreground">{p.users} usuários</div>
-                  <div className="text-base font-bold mt-1">{fmtBRL(p.promo)}</div>
-                  <div className="text-[10px] text-muted-foreground">cheio {fmtBRL(p.full)}</div>
+                  <div className="text-base font-bold mt-1">1º mês: {fmtBRL(p.promo)}</div>
+                  <div className="text-[10px] text-muted-foreground">2º mês: {fmtBRL(p.full)}</div>
                 </button>
               );
             })}
