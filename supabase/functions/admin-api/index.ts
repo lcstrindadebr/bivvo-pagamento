@@ -45,11 +45,13 @@ serve(async (req) => {
       const status = url.searchParams.get('status') || '';
       const customer = url.searchParams.get('customer') || '';
       const billingType = url.searchParams.get('billingType') || '';
+      const externalReference = url.searchParams.get('externalReference') || '';
       
       let asaasUrl = `${ASAAS_BASE_URL}/subscriptions?offset=${offset}&limit=${limit}`;
       if (status) asaasUrl += `&status=${status}`;
       if (customer) asaasUrl += `&customer=${customer}`;
       if (billingType) asaasUrl += `&billingType=${billingType}`;
+      if (externalReference) asaasUrl += `&externalReference=${externalReference}`;
       
       const response = await fetch(asaasUrl, { headers: { 'access_token': ASAAS_API_KEY } });
       const result = await response.json();
