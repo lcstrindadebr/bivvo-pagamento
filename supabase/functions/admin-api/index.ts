@@ -146,8 +146,9 @@ serve(async (req) => {
       const subsRes = await fetch(subsUrl, { headers: { 'access_token': ASAAS_API_KEY } });
       const subsData = await subsRes.json();
 
-      // Enrich payments with customer names
-      let payments = paymentsData.data || [];
+      // Enrich payments with customer names AND FILTER ONLY SUBSCRIPTION PAYMENTS
+      let payments = (paymentsData.data || []).filter((p: any) => !!p.subscription);
+      
       if (payments.length > 0) {
         const customerIds = [...new Set(payments.map((p: any) => p.customer))];
         const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
@@ -160,14 +161,15 @@ serve(async (req) => {
       }
       
       const stats = {
-        totalPayments: paymentsData.totalCount || 0,
-        paidCount: (paymentsData.data || []).filter((p: any) => ['RECEIVED', 'CONFIRMED'].includes(p.status)).length,
-        totalValue: (paymentsData.data || []).reduce((acc: number, p: any) => acc + (p.value || 0), 0),
-        paidValue: (paymentsData.data || []).filter((p: any) => ['RECEIVED', 'CONFIRMED'].includes(p.status))
+        totalPayments: payments.length,
+        paidCount: payments.filter((p: any) => ['RECEIVED', 'CONFIRMED'].includes(p.status)).length,
+        totalValue: payments.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
+        paidValue: payments.filter((p: any) => ['RECEIVED', 'CONFIRMED'].includes(p.status))
           .reduce((acc: number, p: any) => acc + (p.value || 0), 0),
         activeSubscriptions: subsData.totalCount || 0,
         payments
       };
+
       
       return new Response(JSON.stringify(stats), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
