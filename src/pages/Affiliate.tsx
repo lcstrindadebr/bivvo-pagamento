@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { LogOut, Loader2, Calculator, ListChecks, DollarSign, User } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { LogOut, Loader2, Calculator, ListChecks, DollarSign, User, XCircle, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
 import { formatCurrency } from '@/lib/validators';
@@ -26,6 +27,9 @@ export default function Affiliate() {
   const [commissions, setCommissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState({ name: '', whatsapp: '', document: '', pix_key: '', pix_key_type: 'CPF' });
+  const [cancellingSale, setCancellingSale] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
 
   const call = useCallback(async (action: string, opts: { method?: 'GET'|'POST'; body?: unknown } = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -69,6 +73,25 @@ export default function Affiliate() {
     catch (err) { toast({ title: 'Erro', description: err instanceof Error ? err.message : '', variant: 'destructive' }); }
   };
 
+  const handleCancelSale = async () => {
+    if (!cancellingSale || !cancelReason.trim()) return;
+    setIsSubmittingCancel(true);
+    try {
+      await call('cancel-sale', { method: 'POST', body: { saleId: cancellingSale, reason: cancelReason } });
+      toast({ title: 'Venda cancelada com sucesso' });
+      setCancellingSale(null);
+      setCancelReason('');
+      // Reload data
+      const [s, c] = await Promise.all([call('sales'), call('commissions')]);
+      setSales(s.data || []);
+      setCommissions(c.data || []);
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao cancelar', variant: 'destructive' });
+    } finally {
+      setIsSubmittingCancel(false);
+    }
+  };
+
   const logout = async () => { await supabase.auth.signOut(); navigate('/afiliado/login'); };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>;
@@ -110,7 +133,7 @@ export default function Affiliate() {
           <TabsContent value="sales" className="mt-4">
             <div className="card-glass rounded-xl overflow-hidden">
               <Table>
-                <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Plano</TableHead><TableHead>1º mês</TableHead><TableHead>Recorrente</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Plano</TableHead><TableHead>1º mês</TableHead><TableHead>Recorrente</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {sales.map(s => (
                     <TableRow key={s.id}>
@@ -118,10 +141,21 @@ export default function Affiliate() {
                       <TableCell>{s.plan_label}</TableCell>
                       <TableCell>{formatCurrency(Number(s.amount_first))}</TableCell>
                       <TableCell>{formatCurrency(Number(s.amount_recurring))}</TableCell>
-                      <TableCell><Badge variant="outline">{s.status}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={s.status === 'cancelled' ? 'text-destructive border-destructive' : ''}>
+                          {s.status === 'cancelled' ? 'Cancelada' : s.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {s.status !== 'cancelled' && (
+                          <Button variant="ghost" size="sm" onClick={() => setCancellingSale(s.id)}>
+                            <XCircle className="h-4 w-4 text-destructive mr-1" /> Cancelar
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
-                  {sales.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Sem vendas ainda</TableCell></TableRow>}
+                  {sales.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Sem vendas ainda</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </div>
@@ -130,7 +164,7 @@ export default function Affiliate() {
           <TabsContent value="comm" className="mt-4">
             <div className="card-glass rounded-xl overflow-hidden">
               <Table>
-                <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Venda</TableHead><TableHead>%</TableHead><TableHead>Comissão</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Venda</TableHead><TableHead>%</TableHead><TableHead>Comissão</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Comprovante</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {commissions.map(c => (
                     <TableRow key={c.id}>
@@ -139,10 +173,23 @@ export default function Affiliate() {
                       <TableCell>{formatCurrency(Number(c.sale_amount))}</TableCell>
                       <TableCell>{c.commission_percent}%</TableCell>
                       <TableCell className="font-medium">{formatCurrency(Number(c.commission_amount))}</TableCell>
-                      <TableCell><Badge variant="outline">{c.status}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={c.status === 'cancelled' ? 'text-destructive border-destructive' : ''}>
+                          {c.status === 'cancelled' ? 'Cancelada' : c.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {c.payment_proof_url && (
+                          <Button variant="ghost" size="sm" asChild>
+                            <a href={c.payment_proof_url} target="_blank" rel="noopener noreferrer">
+                              <Eye className="h-4 w-4 mr-1" /> Ver
+                            </a>
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
-                  {commissions.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Sem comissões</TableCell></TableRow>}
+                  {commissions.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Sem comissões</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </div>
@@ -167,6 +214,34 @@ export default function Affiliate() {
             </div>
           </TabsContent>
         </Tabs>
+
+        <Dialog open={!!cancellingSale} onOpenChange={v => !v && setCancellingSale(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Cancelar Venda</DialogTitle></DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Motivo do cancelamento</Label>
+                <textarea 
+                  className="w-full min-h-[100px] p-3 rounded-md border border-input bg-background"
+                  placeholder="Ex: Cliente desistiu, erro no cadastro..."
+                  value={cancelReason}
+                  onChange={e => setCancelReason(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCancellingSale(null)}>Voltar</Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleCancelSale} 
+                disabled={!cancelReason.trim() || isSubmittingCancel}
+              >
+                {isSubmittingCancel ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
+                Confirmar Cancelamento
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

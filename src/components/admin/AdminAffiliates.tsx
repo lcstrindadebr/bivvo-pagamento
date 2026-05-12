@@ -4,13 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Loader2, Copy, DollarSign } from 'lucide-react';
+import { Plus, Loader2, Copy, DollarSign, Upload, Eye, Link } from 'lucide-react';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/validators';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Affiliate {
   id: string;
@@ -45,6 +46,9 @@ export default function AdminAffiliates() {
     name: '', email: '', password: '', whatsapp: '', document: '',
     commission_percent: '20', commission_recurring: true, slug: '',
   });
+  const [payingComm, setPayingComm] = useState<any | null>(null);
+  const [payoutProofFile, setPayoutProofFile] = useState<File | null>(null);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -113,9 +117,41 @@ export default function AdminAffiliates() {
     load();
   };
 
-  const markPaid = async (id: string) => {
-    await adminPost('mark-commission-paid', { id });
-    load();
+  const handleMarkPaid = async () => {
+    if (!payingComm) return;
+    setIsUploadingProof(true);
+    try {
+      let proofUrl = null;
+      if (payoutProofFile) {
+        const fileExt = payoutProofFile.name.split('.').pop();
+        const fileName = `${payingComm.id}-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('payout-proofs')
+          .upload(fileName, payoutProofFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('payout-proofs')
+          .getPublicUrl(fileName);
+        
+        proofUrl = publicUrl;
+      }
+
+      await adminPost('mark-commission-paid', { 
+        id: payingComm.id,
+        payment_proof_url: proofUrl
+      });
+
+      toast({ title: 'Pagamento registrado com sucesso' });
+      setPayingComm(null);
+      setPayoutProofFile(null);
+      load();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao registrar pagamento', variant: 'destructive' });
+    } finally {
+      setIsUploadingProof(false);
+    }
   };
 
   const copyLink = (slug: string) => {
@@ -204,7 +240,9 @@ export default function AdminAffiliates() {
                   <TableCell>{formatCurrency(Number(s.amount_first))}</TableCell>
                   <TableCell>{formatCurrency(Number(s.amount_recurring))}</TableCell>
                   <TableCell>{s.commission_percent}%</TableCell>
-                  <TableCell><Badge variant="outline">{s.status}</Badge></TableCell>
+                  <TableCell><Badge variant="outline" className={s.status === 'cancelled' ? 'text-destructive border-destructive' : ''}>
+                    {s.status}
+                  </Badge></TableCell>
                 </TableRow>
               ))}
               {sales.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Sem vendas</TableCell></TableRow>}
@@ -216,29 +254,84 @@ export default function AdminAffiliates() {
       <TabsContent value="commissions">
         <div className="card-glass rounded-xl overflow-hidden">
           <Table>
-            <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Afiliado</TableHead><TableHead>Tipo</TableHead><TableHead>Venda</TableHead><TableHead>%</TableHead><TableHead>Comissão</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Afiliado</TableHead><TableHead>Tipo</TableHead><TableHead>Chave PIX</TableHead><TableHead>Comissão</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader>
             <TableBody>
               {commissions.map(c => (
                 <TableRow key={c.id}>
                   <TableCell className="text-xs">{new Date(c.created_at).toLocaleString('pt-BR')}</TableCell>
                   <TableCell>{c.affiliates?.name}</TableCell>
                   <TableCell><Badge variant="outline" className="text-xs">{c.kind}</Badge></TableCell>
-                  <TableCell>{formatCurrency(Number(c.sale_amount))}</TableCell>
-                  <TableCell>{c.commission_percent}%</TableCell>
+                  <TableCell>
+                    {c.affiliates?.pix_key ? (
+                      <div className="text-xs">
+                        <Badge variant="outline" className="mr-1">{c.affiliates.pix_key_type}</Badge>
+                        <span className="font-mono">{c.affiliates.pix_key}</span>
+                      </div>
+                    ) : <span className="text-muted-foreground text-xs">Não cadastrada</span>}
+                  </TableCell>
                   <TableCell className="font-medium">{formatCurrency(Number(c.commission_amount))}</TableCell>
-                  <TableCell><Badge variant="outline">{c.status}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={c.status === 'paid' ? 'text-green-600 border-green-600' : c.status === 'cancelled' ? 'text-destructive border-destructive' : ''}>
+                      {c.status}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-right">
-                    {c.status !== 'paid' && c.status !== 'cancelled' && (
-                      <Button size="sm" variant="ghost" onClick={() => markPaid(c.id)}><DollarSign className="h-3 w-3 mr-1" />Pagar</Button>
-                    )}
+                    {c.status !== 'paid' && c.status !== 'cancelled' ? (
+                      <Button size="sm" variant="ghost" onClick={() => setPayingComm(c)}><DollarSign className="h-3 w-3 mr-1" />Pagar</Button>
+                    ) : c.payment_proof_url ? (
+                      <Button size="sm" variant="ghost" asChild>
+                        <a href={c.payment_proof_url} target="_blank" rel="noopener noreferrer">
+                          <Eye className="h-3 w-3 mr-1" /> Comprovante
+                        </a>
+                      </Button>
+                    ) : null}
                   </TableCell>
                 </TableRow>
               ))}
-              {commissions.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Sem comissões</TableCell></TableRow>}
+              {commissions.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Sem comissões</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>
       </TabsContent>
+
+      <Dialog open={!!payingComm} onOpenChange={v => !v && setPayingComm(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Registrar Pagamento</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="p-4 bg-muted rounded-lg space-y-2">
+              <div className="text-sm font-semibold">Dados para Pagamento:</div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-muted-foreground">Afiliado:</span>
+                <span className="font-medium">{payingComm?.affiliates?.name}</span>
+                <span className="text-muted-foreground">Tipo PIX:</span>
+                <span className="font-medium">{payingComm?.affiliates?.pix_key_type}</span>
+                <span className="text-muted-foreground">Chave PIX:</span>
+                <span className="font-medium font-mono">{payingComm?.affiliates?.pix_key}</span>
+                <span className="text-muted-foreground">Valor:</span>
+                <span className="font-bold text-accent">{formatCurrency(payingComm?.commission_amount || 0)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Anexar Comprovante (opcional)</Label>
+              <div className="flex items-center gap-2">
+                <Input 
+                  type="file" 
+                  accept="image/*,application/pdf"
+                  onChange={e => setPayoutProofFile(e.target.files?.[0] || null)}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayingComm(null)}>Cancelar</Button>
+            <Button onClick={handleMarkPaid} disabled={isUploadingProof}>
+              {isUploadingProof ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <DollarSign className="h-4 w-4 mr-2" />}
+              Confirmar Pagamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Tabs>
   );
 }
