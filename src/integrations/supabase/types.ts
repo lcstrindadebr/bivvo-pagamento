@@ -260,6 +260,33 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -351,6 +378,59 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          account_created: boolean
+          channels_config: Json
+          channels_discount: number
+          created_at: string
+          customer_id: string
+          has_telefonia: boolean
+          id: string
+          is_protagonista: boolean
+          plan_slug: string
+          status: string
+          updated_at: string
+          users_count: number
+        }
+        Insert: {
+          account_created?: boolean
+          channels_config?: Json
+          channels_discount?: number
+          created_at?: string
+          customer_id: string
+          has_telefonia?: boolean
+          id?: string
+          is_protagonista?: boolean
+          plan_slug: string
+          status?: string
+          updated_at?: string
+          users_count?: number
+        }
+        Update: {
+          account_created?: boolean
+          channels_config?: Json
+          channels_discount?: number
+          created_at?: string
+          customer_id?: string
+          has_telefonia?: boolean
+          id?: string
+          is_protagonista?: boolean
+          plan_slug?: string
+          status?: string
+          updated_at?: string
+          users_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
