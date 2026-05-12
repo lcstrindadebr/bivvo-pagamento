@@ -280,13 +280,19 @@ const Admin = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <Tabs defaultValue="plans">
+        <Tabs defaultValue="dashboard">
           <TabsList className="mb-6">
+            <TabsTrigger value="dashboard" className="gap-2"><LayoutDashboard className="h-4 w-4" /> Dashboard</TabsTrigger>
             <TabsTrigger value="plans" className="gap-2"><Package className="h-4 w-4" /> Planos</TabsTrigger>
             <TabsTrigger value="coupons" className="gap-2"><Ticket className="h-4 w-4" /> Cupons</TabsTrigger>
             <TabsTrigger value="subscriptions" className="gap-2"><Users className="h-4 w-4" /> Assinaturas</TabsTrigger>
             <TabsTrigger value="affiliates" className="gap-2"><Handshake className="h-4 w-4" /> Afiliados</TabsTrigger>
           </TabsList>
+
+          {/* DASHBOARD TAB */}
+          <TabsContent value="dashboard">
+            <AdminFinanceDashboard adminFetch={adminFetch} />
+          </TabsContent>
 
           {/* PLANS TAB */}
           <TabsContent value="plans">
