@@ -31,30 +31,39 @@ async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_
 
   // 2. Fetch missing from Asaas
   if (missingIds.length > 0) {
-    console.log(`Fetching ${missingIds.length} missing customers from Asaas:`, missingIds);
+    console.log(`Buscando ${missingIds.length} clientes no Asaas:`, missingIds);
     const fetched = await Promise.all(missingIds.map(async (id) => {
       try {
-        const url = `${ASAAS_BASE_URL}/customers/${id}`;
-        console.log(`Requesting customer from Asaas: ${url}`);
+        const cleanId = id.trim();
+        const url = `${ASAAS_BASE_URL}/customers/${cleanId}`;
+        console.log(`Chamada Asaas: ${url}`);
+        
         const res = await fetch(url, {
+          method: 'GET',
           headers: { 
             'access_token': ASAAS_API_KEY,
-            'User-Agent': 'Bivvo/1.0'
+            'Content-Type': 'application/json',
+            'User-Agent': 'BivvoAdmin/1.0'
           }
         });
         
         if (res.ok) {
           const c = await res.json();
-          console.log(`Customer found in Asaas: ${id} -> ${c.name}`);
+          console.log(`Cliente encontrado: ${id} -> ${c.name}`);
           return { asaas_customer_id: id, name: c.name, email: c.email };
         } else {
-          const errText = await res.text();
-          console.error(`Asaas API error for customer ${id}: ${res.status} - ${errText}`);
+          const status = res.status;
+          const text = await res.text();
+          console.error(`Erro Asaas (Status ${status}) para ${id}: ${text}`);
+          
+          if (status === 404) {
+            return { asaas_customer_id: id, name: 'Cliente não encontrado', email: '' };
+          }
         }
       } catch (e) {
-        console.error(`Fetch exception for customer ${id}:`, e);
+        console.error(`Exceção ao buscar cliente ${id}:`, e);
       }
-      return { asaas_customer_id: id, name: 'Desconhecido (Erro API)', email: '' };
+      return { asaas_customer_id: id, name: 'Erro na API Asaas', email: '' };
     }));
 
     fetched.forEach((u: any) => {
