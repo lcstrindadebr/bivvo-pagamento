@@ -114,26 +114,29 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
           <div className="text-sm font-semibold">🔌 Canais adicionais</div>
           <div className="text-xs text-muted-foreground mb-2">Apenas o excedente do incluso é cobrado.</div>
           
-          <div className="bg-muted/30 p-3 rounded-lg border border-dashed my-4">
-            <div className="flex items-center justify-between mb-2">
-              <Label className="text-xs font-semibold">Desconto nos Canais Adicionais</Label>
-              <Badge variant="secondary" className="text-xs">{channelsDiscount}%</Badge>
+          {mode === 'affiliate' && (
+            <div className="bg-muted/30 p-3 rounded-lg border border-dashed my-4">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-xs font-semibold">Desconto nos Canais Adicionais</Label>
+                <Badge variant="secondary" className="text-xs">{channelsDiscount}%</Badge>
+              </div>
+              <input 
+                type="range" 
+                min="0" 
+                max="30" 
+                step="5"
+                value={channelsDiscount} 
+                onChange={e => setChannelsDiscount(parseInt(e.target.value))}
+                className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-accent"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                <span>0%</span>
+                <span>15%</span>
+                <span>30%</span>
+              </div>
             </div>
-            <input 
-              type="range" 
-              min="0" 
-              max="30" 
-              step="5"
-              value={channelsDiscount} 
-              onChange={e => setChannelsDiscount(parseInt(e.target.value))}
-              className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-accent"
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-              <span>0%</span>
-              <span>15%</span>
-              <span>30%</span>
-            </div>
-          </div>
+          )}
+
 
           <div className="grid sm:grid-cols-2 gap-2">
             {CANAIS_DEF.map(c => {
