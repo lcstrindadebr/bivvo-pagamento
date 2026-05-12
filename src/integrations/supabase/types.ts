@@ -17,10 +17,12 @@ export type Database = {
       affiliate_commissions: {
         Row: {
           affiliate_id: string
+          asaas_payment_id: string | null
           commission_amount: number
           commission_percent: number
           created_at: string
           id: string
+          is_recurring: boolean | null
           kind: string
           paid_at: string | null
           payment_proof_url: string | null
@@ -32,10 +34,12 @@ export type Database = {
         }
         Insert: {
           affiliate_id: string
+          asaas_payment_id?: string | null
           commission_amount: number
           commission_percent: number
           created_at?: string
           id?: string
+          is_recurring?: boolean | null
           kind?: string
           paid_at?: string | null
           payment_proof_url?: string | null
@@ -47,10 +51,12 @@ export type Database = {
         }
         Update: {
           affiliate_id?: string
+          asaas_payment_id?: string | null
           commission_amount?: number
           commission_percent?: number
           created_at?: string
           id?: string
+          is_recurring?: boolean | null
           kind?: string
           paid_at?: string | null
           payment_proof_url?: string | null
@@ -82,6 +88,7 @@ export type Database = {
           affiliate_id: string
           amount_first: number
           amount_recurring: number
+          asaas_customer_id: string | null
           asaas_payment_id: string | null
           asaas_subscription_id: string | null
           cancellation_reason: string | null
@@ -100,6 +107,7 @@ export type Database = {
           affiliate_id: string
           amount_first: number
           amount_recurring: number
+          asaas_customer_id?: string | null
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
           cancellation_reason?: string | null
@@ -118,6 +126,7 @@ export type Database = {
           affiliate_id?: string
           amount_first?: number
           amount_recurring?: number
+          asaas_customer_id?: string | null
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
           cancellation_reason?: string | null
