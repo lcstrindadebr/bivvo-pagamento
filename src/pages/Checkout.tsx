@@ -573,12 +573,15 @@ const Checkout = () => {
             </div>
             <div>
               <p className="text-xs opacity-80">Assinatura</p>
-              <p className="font-semibold">Plano {plan.name}</p>
+              <p className="font-semibold">{plan.name}</p>
             </div>
           </div>
           <div className="text-right">
             <p className="text-xs opacity-80">Total</p>
             <p className="text-2xl font-bold">{formatCurrency(plan.price)}</p>
+            {quote && quote.total1m !== quote.totalRec && (
+              <p className="text-[10px] opacity-70">Depois {formatCurrency(quote.totalRec)}/mês</p>
+            )}
           </div>
         </div>
       </div>
