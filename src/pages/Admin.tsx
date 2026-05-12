@@ -51,6 +51,7 @@ interface Subscription {
   cycle: string;
   customerName?: string;
   customerEmail?: string;
+  externalReference?: string;
 }
 
 const Admin = () => {
