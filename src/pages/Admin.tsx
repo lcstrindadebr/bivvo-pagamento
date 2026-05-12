@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info } from 'lucide-react';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check } from 'lucide-react';
 
 import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
@@ -57,7 +57,7 @@ interface Subscription {
 }
 
 const Admin = () => {
-  const { isAdmin, loading: authLoading, adminFetch } = useAdmin();
+  const { isAdmin, loading: authLoading, adminFetch, adminPost } = useAdmin();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -86,6 +86,15 @@ const Admin = () => {
   const [creatingAccount, setCreatingAccount] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
   const [subDetailsDialog, setSubDetailsDialog] = useState(false);
+  const [isUpdatingSub, setIsUpdatingSub] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    value: '',
+    status: '',
+    billingType: '',
+    nextDueDate: '',
+    description: ''
+  });
+
 
 
   const [subsFilter, setSubsFilter] = useState('');
@@ -157,7 +166,48 @@ const Admin = () => {
   };
 
 
+  const handleUpdateSubscription = async () => {
+    if (!selectedSub) return;
+    if (!confirm('Tem certeza que deseja atualizar esta assinatura?')) return;
+
+    setIsUpdatingSub(true);
+    try {
+      const payload = {
+        id: selectedSub.id,
+        value: parseFloat(editFormData.value),
+        status: editFormData.status,
+        billingType: editFormData.billingType,
+        nextDueDate: editFormData.nextDueDate || undefined,
+        description: editFormData.description,
+        updatePendingPayments: true
+      };
+
+      await adminPost('update-subscription', payload);
+      toast({ title: 'Sucesso', description: 'Assinatura atualizada no Asaas!' });
+      loadSubscriptions();
+      setSubDetailsDialog(false);
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao atualizar', variant: 'destructive' });
+    } finally {
+      setIsUpdatingSub(false);
+    }
+  };
+
+
+  useEffect(() => {
+    if (selectedSub) {
+      setEditFormData({
+        value: String(selectedSub.value),
+        status: selectedSub.status,
+        billingType: selectedSub.billingType,
+        nextDueDate: selectedSub.nextDueDate || '',
+        description: selectedSub.description || ''
+      });
+    }
+  }, [selectedSub]);
+
   const loadPlans = async () => {
+
     const { data } = await supabase.from('plans').select('*').order('sort_order');
     if (data) setPlans(data as any);
   };
@@ -712,7 +762,7 @@ const Admin = () => {
                   <DialogDescription>Informações detalhadas do cliente e configuração contratada.</DialogDescription>
                 </DialogHeader>
                 {selectedSub && (
-                  <div className="space-y-6 py-4">
+                  <div className="space-y-6 py-4 max-h-[80vh] overflow-y-auto px-1">
                     <div className="grid grid-cols-2 gap-8">
                       <div className="space-y-3">
                         <h3 className="text-sm font-semibold border-b pb-1">Dados do Cliente</h3>
@@ -723,19 +773,11 @@ const Admin = () => {
                         </div>
                       </div>
                       <div className="space-y-3">
-                        <h3 className="text-sm font-semibold border-b pb-1">Financeiro</h3>
+                        <h3 className="text-sm font-semibold border-b pb-1">Status Atual Asaas</h3>
                         <div className="space-y-1">
                           <div className="flex justify-between text-xs">
                             <span className="text-muted-foreground">Valor:</span>
                             <span className="font-bold text-accent">{formatCurrency(selectedSub.value)}</span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">Método:</span>
-                            <span>{selectedSub.billingType}</span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">Vencimento:</span>
-                            <span>{selectedSub.nextDueDate ? new Date(selectedSub.nextDueDate + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</span>
                           </div>
                           <div className="flex justify-between text-xs pt-1">
                             <span className="text-muted-foreground">Status:</span>
@@ -743,6 +785,79 @@ const Admin = () => {
                           </div>
                         </div>
                       </div>
+                    </div>
+
+                    {/* EDIT SECTION */}
+                    <div className="border rounded-lg p-4 bg-muted/20 space-y-4">
+                      <h3 className="text-sm font-bold flex items-center gap-2">
+                        <Pencil className="h-3 w-3" /> Editar Assinatura no Asaas
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-[10px] uppercase">Novo Valor da Mensalidade (R$)</Label>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            value={editFormData.value} 
+                            onChange={e => setEditFormData(prev => ({ ...prev, value: e.target.value }))}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] uppercase">Novo Status</Label>
+                          <select 
+                            className="w-full h-8 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                            value={editFormData.status}
+                            onChange={e => setEditFormData(prev => ({ ...prev, status: e.target.value }))}
+                          >
+                            <option value="ACTIVE">Ativa</option>
+                            <option value="INACTIVE">Inativa (Suspensa)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-[10px] uppercase">Forma de Pagamento</Label>
+                          <select 
+                            className="w-full h-8 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                            value={editFormData.billingType}
+                            onChange={e => setEditFormData(prev => ({ ...prev, billingType: e.target.value }))}
+                          >
+                            <option value="BOLETO">Boleto</option>
+                            <option value="CREDIT_CARD">Cartão de Crédito</option>
+                            <option value="PIX">PIX</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] uppercase">Próximo Vencimento</Label>
+                          <Input 
+                            type="date" 
+                            value={editFormData.nextDueDate} 
+                            onChange={e => setEditFormData(prev => ({ ...prev, nextDueDate: e.target.value }))}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase">Descrição</Label>
+                        <Input 
+                          value={editFormData.description} 
+                          onChange={e => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <Button 
+                        size="sm" 
+                        className="w-full mt-2" 
+                        onClick={handleUpdateSubscription}
+                        disabled={isUpdatingSub}
+                      >
+                        {isUpdatingSub ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                        Salvar Alterações no Asaas
+                      </Button>
+                      <p className="text-[9px] text-muted-foreground text-center">
+                        * Ao atualizar o valor ou pagamento, as cobranças pendentes também serão atualizadas.
+                      </p>
                     </div>
 
                     {/* Internal Config Data (if available) */}
@@ -754,11 +869,10 @@ const Admin = () => {
                       return (
                         <div className="bg-muted/30 rounded-lg p-4 space-y-4">
                           <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Configuração do Ecossistema</h3>
-                            <Badge variant={internalSub.account_created ? "outline" : "secondary"} className={`text-[10px] ${internalSub.account_created ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"}`}>
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Ecossistema Bivvo contratado</h3>
+                            <Badge variant="outline" className={`text-[10px] ${internalSub.account_created ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"}`}>
                               {internalSub.account_created ? "Conta Ativa" : "Aguardando Ativação"}
                             </Badge>
-
                           </div>
                           
                           <div className="grid grid-cols-3 gap-4">
@@ -796,7 +910,7 @@ const Admin = () => {
                                 disabled={creatingAccount === internalCustomer.id}
                               >
                                 {creatingAccount === internalCustomer.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserCheck className="h-4 w-4 mr-2" />}
-                                Efetuar Ativação de Conta (Webhook)
+                                Ativar Conta (Enviar Webhook)
                               </Button>
                             </div>
                           )}
@@ -811,6 +925,7 @@ const Admin = () => {
                       </Button>
                     </div>
                   </div>
+
                 )}
               </DialogContent>
             </Dialog>
