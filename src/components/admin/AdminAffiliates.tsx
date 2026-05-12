@@ -117,9 +117,41 @@ export default function AdminAffiliates() {
     load();
   };
 
-  const markPaid = async (id: string) => {
-    await adminPost('mark-commission-paid', { id });
-    load();
+  const handleMarkPaid = async () => {
+    if (!payingComm) return;
+    setIsUploadingProof(true);
+    try {
+      let proofUrl = null;
+      if (payoutProofFile) {
+        const fileExt = payoutProofFile.name.split('.').pop();
+        const fileName = `${payingComm.id}-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('payout-proofs')
+          .upload(fileName, payoutProofFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('payout-proofs')
+          .getPublicUrl(fileName);
+        
+        proofUrl = publicUrl;
+      }
+
+      await adminPost('mark-commission-paid', { 
+        id: payingComm.id,
+        payment_proof_url: proofUrl
+      });
+
+      toast({ title: 'Pagamento registrado com sucesso' });
+      setPayingComm(null);
+      setPayoutProofFile(null);
+      load();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao registrar pagamento', variant: 'destructive' });
+    } finally {
+      setIsUploadingProof(false);
+    }
   };
 
   const copyLink = (slug: string) => {
