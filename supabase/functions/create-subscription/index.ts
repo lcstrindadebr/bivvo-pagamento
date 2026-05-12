@@ -508,6 +508,7 @@ serve(async (req) => {
         commission_percent: affiliate.commission_percent,
         status: 'pending',
         asaas_payment_id: paymentId,
+        asaas_subscription_id: subscriptionId,
       }).select('id').single();
 
       if (sale) {
