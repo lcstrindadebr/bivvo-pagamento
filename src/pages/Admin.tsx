@@ -493,6 +493,13 @@ const Admin = () => {
                     onChange={(e) => setSubsCustomerSearch(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && loadSubscriptions({ offset: '0' })}
                   />
+                  <Input 
+                    placeholder="Ref. Externa (User ID)" 
+                    className="w-full md:w-48 h-8 text-xs"
+                    value={subsExtRefSearch}
+                    onChange={(e) => setSubsExtRefSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && loadSubscriptions({ offset: '0' })}
+                  />
                   <select 
                     className="h-8 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm"
                     value={subsBillingFilter}
