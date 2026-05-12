@@ -193,18 +193,27 @@ serve(async (req) => {
       const { data, error } = await supabase
         .from('affiliates').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      // Aggregate sales/commissions per affiliate
+      
       const ids = (data ?? []).map((a: any) => a.id);
+      
       const { data: sales } = await supabase.from('affiliate_sales')
-        .select('affiliate_id, amount_first, status').in('affiliate_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
+        .select('affiliate_id, amount_first, status, asaas_subscription_id')
+        .in('affiliate_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
+        
       const { data: comms } = await supabase.from('affiliate_commissions')
-        .select('affiliate_id, commission_amount, status').in('affiliate_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
+        .select('affiliate_id, commission_amount, status')
+        .in('affiliate_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
+        
       const stats = new Map<string, any>();
-      for (const a of data ?? []) stats.set(a.id, { totalSold: 0, salesCount: 0, commGenerated: 0, commPaid: 0, commPending: 0 });
+      for (const a of data ?? []) stats.set(a.id, { totalSold: 0, salesCount: 0, commGenerated: 0, commPaid: 0, commPending: 0, activeSubscriptions: 0 });
+      
       for (const s of sales ?? []) {
         const st = stats.get(s.affiliate_id); if (!st) continue;
         st.salesCount++;
-        if (s.status === 'paid') st.totalSold += Number(s.amount_first);
+        if (s.status === 'paid') {
+          st.totalSold += Number(s.amount_first);
+          if (s.asaas_subscription_id) st.activeSubscriptions++;
+        }
       }
       for (const c of comms ?? []) {
         const st = stats.get(c.affiliate_id); if (!st) continue;
