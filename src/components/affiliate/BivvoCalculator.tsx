@@ -20,14 +20,15 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
   const [users, setUsers] = useState(6);
   const [protagonista, setProtagonista] = useState(false);
   const [telefonia, setTelefonia] = useState(false);
+  const [channelsDiscount, setChannelsDiscount] = useState(0);
   const [channels, setChannels] = useState<Record<string, number>>(
     Object.fromEntries(CANAIS_DEF.map(c => [c.id, c.included]))
   );
 
-  const config: BivvoConfig = { plan, users, protagonista, telefonia, channels };
+  const config: BivvoConfig = { plan, users, protagonista, telefonia, channels, channelsDiscount };
   const quote = useMemo(() => {
     try { return quoteBivvo(config); } catch { return null; }
-  }, [plan, users, protagonista, telefonia, channels]);
+  }, [plan, users, protagonista, telefonia, channels, channelsDiscount]);
 
   const checkoutUrl = useMemo(() => {
     if (!affiliateSlug) return '';
