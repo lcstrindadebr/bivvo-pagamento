@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard } from 'lucide-react';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck } from 'lucide-react';
 import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
 import bivvoLogo from '@/assets/bivvo-logo.png';
@@ -80,7 +80,12 @@ const Admin = () => {
     code: '', discount_percent: '', max_uses: '', valid_until: '',
   });
 
+  const [customerData, setCustomerData] = useState<any[]>([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [creatingAccount, setCreatingAccount] = useState<string | null>(null);
+
   const [subsFilter, setSubsFilter] = useState('');
+
   const [subsBillingFilter, setSubsBillingFilter] = useState('');
   const [subsCustomerSearch, setSubsCustomerSearch] = useState('');
   const [subsExtRefSearch, setSubsExtRefSearch] = useState('');
@@ -92,8 +97,61 @@ const Admin = () => {
       loadPlans();
       loadCoupons();
       loadSubscriptions();
+      loadCustomers();
     }
   }, [isAdmin]);
+
+  const loadCustomers = async () => {
+    setLoadingCustomers(true);
+    const { data } = await supabase
+      .from('customers')
+      .select('*, subscriptions(*)');
+    if (data) setCustomerData(data);
+    setLoadingCustomers(false);
+  };
+
+  const handleCreateAccount = async (customer: any) => {
+    if (!confirm(`Deseja criar a conta para ${customer.name}?`)) return;
+    
+    setCreatingAccount(customer.id);
+    try {
+      const sub = customer.subscriptions?.[0];
+      const payload = {
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        plan: sub?.plan_slug,
+        users: sub?.users_count,
+        channels: sub?.channels_config,
+        is_protagonista: sub?.is_protagonista,
+        has_telefonia: sub?.has_telefonia
+      };
+
+      const response = await fetch('https://wbn.araise.com.br/webhook/105cb20e-0aa3-4800-a1ca-3ec7795bfe79', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error('Falha ao enviar webhook');
+
+      // Update in DB
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ account_created: true })
+        .eq('customer_id', customer.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Sucesso', description: 'Conta criada e webhook enviado!' });
+      loadCustomers();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao criar conta', variant: 'destructive' });
+    } finally {
+      setCreatingAccount(null);
+    }
+  };
+
 
   const loadPlans = async () => {
     const { data } = await supabase.from('plans').select('*').order('sort_order');
@@ -285,7 +343,9 @@ const Admin = () => {
             <TabsTrigger value="dashboard" className="gap-2"><LayoutDashboard className="h-4 w-4" /> Dashboard</TabsTrigger>
             <TabsTrigger value="plans" className="gap-2"><Package className="h-4 w-4" /> Planos</TabsTrigger>
             <TabsTrigger value="coupons" className="gap-2"><Ticket className="h-4 w-4" /> Cupons</TabsTrigger>
-            <TabsTrigger value="subscriptions" className="gap-2"><Users className="h-4 w-4" /> Assinaturas</TabsTrigger>
+            <TabsTrigger value="subscriptions" className="gap-2"><Users className="h-4 w-4" /> Assinaturas Asaas</TabsTrigger>
+            <TabsTrigger value="customers" className="gap-2"><UserCheck className="h-4 w-4" /> Gestão de Contas</TabsTrigger>
+
             <TabsTrigger value="affiliates" className="gap-2"><Handshake className="h-4 w-4" /> Afiliados</TabsTrigger>
           </TabsList>
 
@@ -627,7 +687,86 @@ const Admin = () => {
             </div>
           </TabsContent>
 
-          {/* AFFILIATES TAB */}
+          {/* CUSTOMERS / ACCOUNTS TAB */}
+          <TabsContent value="customers">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Gestão de Contas e Ativação</h2>
+            </div>
+            <div className="card-glass rounded-xl overflow-hidden">
+              {loadingCustomers ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-accent" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Plano</TableHead>
+                      <TableHead>Usuários</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {customerData.map(customer => {
+                      const sub = customer.subscriptions?.[0];
+                      return (
+                        <TableRow key={customer.id}>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{customer.name}</span>
+                              <span className="text-xs text-muted-foreground">{customer.email}</span>
+                              <span className="text-[10px] text-muted-foreground">{customer.phone}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="capitalize">
+                              {sub?.plan_slug || '—'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {sub?.users_count || 0} usuários
+                          </TableCell>
+                          <TableCell>
+                            {sub?.account_created ? (
+                              <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
+                                Conta Criada
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+                                Pendente
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {!sub?.account_created && (
+                              <Button 
+                                size="sm" 
+                                className="bg-accent hover:bg-accent/90"
+                                onClick={() => handleCreateAccount(customer)}
+                                disabled={creatingAccount === customer.id}
+                              >
+                                {creatingAccount === customer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Criar Conta'}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {customerData.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Nenhum cliente encontrado
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </TabsContent>
+
           <TabsContent value="affiliates">
             <AdminAffiliates />
           </TabsContent>
