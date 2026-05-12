@@ -24,12 +24,15 @@ interface Affiliate {
   commission_recurring: boolean;
   slug: string;
   created_at: string;
+  pix_key: string | null;
+  pix_key_type: string | null;
   stats?: {
     totalSold: number;
     salesCount: number;
     commGenerated: number;
     commPaid: number;
     commPending: number;
+    activeSubscriptions: number;
   };
 }
 
