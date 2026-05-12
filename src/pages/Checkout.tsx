@@ -322,6 +322,8 @@ const Checkout = () => {
         body: {
           plan: plan.slug,
           billingType: paymentMethod,
+          bivvoConfig,
+          affiliateSlug: affiliateSlug || undefined,
           customerData: {
             name: formData.name,
             email: formData.email,
