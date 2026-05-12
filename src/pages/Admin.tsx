@@ -49,6 +49,9 @@ interface Subscription {
   nextDueDate: string;
   description: string;
   cycle: string;
+  customerName?: string;
+  customerEmail?: string;
+  externalReference?: string;
 }
 
 const Admin = () => {
@@ -77,6 +80,11 @@ const Admin = () => {
   });
 
   const [subsFilter, setSubsFilter] = useState('');
+  const [subsBillingFilter, setSubsBillingFilter] = useState('');
+  const [subsCustomerSearch, setSubsCustomerSearch] = useState('');
+  const [subsExtRefSearch, setSubsExtRefSearch] = useState('');
+  const [subsOffset, setSubsOffset] = useState(0);
+  const limit = 20;
 
   useEffect(() => {
     if (isAdmin) {
@@ -96,11 +104,20 @@ const Admin = () => {
     if (data) setCoupons(data as any);
   };
 
-  const loadSubscriptions = async (status?: string) => {
+  const loadSubscriptions = async (paramsOverride: Record<string, string> = {}) => {
     setLoadingData(true);
     try {
-      const params: Record<string, string> = { limit: '50' };
-      if (status) params.status = status;
+      const params: Record<string, string> = { 
+        limit: String(limit),
+        offset: String(subsOffset),
+        ...paramsOverride 
+      };
+      
+      if (subsFilter && !params.status) params.status = subsFilter;
+      if (subsBillingFilter && !params.billingType) params.billingType = subsBillingFilter;
+      if (subsCustomerSearch && !params.customer) params.customer = subsCustomerSearch;
+      if (subsExtRefSearch && !params.externalReference) params.externalReference = subsExtRefSearch;
+
       const result = await adminFetch('list-subscriptions', params);
       setSubscriptions(result.data || []);
       setSubsTotal(result.totalCount || 0);
@@ -110,6 +127,12 @@ const Admin = () => {
       setLoadingData(false);
     }
   };
+
+  useEffect(() => {
+    if (isAdmin) {
+      loadSubscriptions();
+    }
+  }, [isAdmin, subsOffset]);
 
   const handleSavePlan = async () => {
     try {
@@ -460,17 +483,54 @@ const Admin = () => {
 
           {/* SUBSCRIPTIONS TAB */}
           <TabsContent value="subscriptions">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Assinaturas Asaas ({subsTotal})</h2>
-              <div className="flex gap-2">
+            <div className="space-y-4 mb-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <h2 className="text-lg font-semibold">Assinaturas Asaas ({subsTotal})</h2>
+                <div className="flex flex-wrap gap-2">
+                  <Input 
+                    placeholder="ID do Cliente" 
+                    className="w-full md:w-48 h-8 text-xs"
+                    value={subsCustomerSearch}
+                    onChange={(e) => setSubsCustomerSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && loadSubscriptions({ offset: '0' })}
+                  />
+                  <Input 
+                    placeholder="Ref. Externa (User ID)" 
+                    className="w-full md:w-48 h-8 text-xs"
+                    value={subsExtRefSearch}
+                    onChange={(e) => setSubsExtRefSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && loadSubscriptions({ offset: '0' })}
+                  />
+                  <select 
+                    className="h-8 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm"
+                    value={subsBillingFilter}
+                    onChange={(e) => {
+                      setSubsBillingFilter(e.target.value);
+                      loadSubscriptions({ billingType: e.target.value, offset: '0' });
+                    }}
+                  >
+                    <option value="">Todos Tipos</option>
+                    <option value="PIX">PIX</option>
+                    <option value="BOLETO">Boleto</option>
+                    <option value="CREDIT_CARD">Cartão</option>
+                  </select>
+                  <Button size="sm" variant="secondary" onClick={() => loadSubscriptions({ offset: '0' })}>Filtrar</Button>
+                </div>
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 {['', 'ACTIVE', 'INACTIVE', 'EXPIRED'].map(s => (
                   <Button
                     key={s}
                     variant={subsFilter === s ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => { setSubsFilter(s); loadSubscriptions(s || undefined); }}
+                    className="h-7 px-2 text-[10px]"
+                    onClick={() => { 
+                      setSubsFilter(s); 
+                      loadSubscriptions({ status: s, offset: '0' }); 
+                    }}
                   >
-                    {s || 'Todas'}
+                    {s || 'Todos Status'}
                   </Button>
                 ))}
               </div>
@@ -482,39 +542,77 @@ const Admin = () => {
                   <Loader2 className="h-6 w-6 animate-spin text-accent" />
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Ciclo</TableHead>
-                      <TableHead>Próx. Venc.</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {subscriptions.map(sub => (
-                      <TableRow key={sub.id}>
-                        <TableCell className="font-mono text-xs">{sub.id}</TableCell>
-                        <TableCell>{sub.description || '—'}</TableCell>
-                        <TableCell>{formatCurrency(sub.value)}</TableCell>
-                        <TableCell>{sub.billingType}</TableCell>
-                        <TableCell>{sub.cycle}</TableCell>
-                        <TableCell>{sub.nextDueDate ? new Date(sub.nextDueDate + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={statusColor(sub.status)}>{sub.status}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {subscriptions.length === 0 && (
+                <>
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma assinatura encontrada</TableCell>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Ciclo</TableHead>
+                        <TableHead>Próx. Venc.</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {subscriptions.map(sub => (
+                        <TableRow key={sub.id}>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm">{sub.customerName}</span>
+                              <div className="flex gap-2">
+                                <span className="text-[10px] text-muted-foreground font-mono">Cus: {sub.customer}</span>
+                                {sub.externalReference && (
+                                  <span className="text-[10px] text-accent font-mono">Ref: {sub.externalReference.split('_')[0]}</span>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-[150px] truncate text-xs">{sub.description || '—'}</TableCell>
+                          <TableCell className="text-sm">{formatCurrency(sub.value)}</TableCell>
+                          <TableCell className="text-xs">{sub.billingType}</TableCell>
+                          <TableCell className="text-xs">{sub.cycle}</TableCell>
+                          <TableCell className="text-xs">{sub.nextDueDate ? new Date(sub.nextDueDate + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`text-[10px] h-5 ${statusColor(sub.status)}`}>{sub.status}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {subscriptions.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma assinatura encontrada</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                  
+                  {subsTotal > limit && (
+                    <div className="flex items-center justify-between px-4 py-4 border-t border-border/50">
+                      <span className="text-xs text-muted-foreground">
+                        Mostrando {subsOffset + 1} a {Math.min(subsOffset + subscriptions.length, subsTotal)} de {subsTotal}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          disabled={subsOffset === 0}
+                          onClick={() => setSubsOffset(prev => Math.max(0, prev - limit))}
+                        >
+                          Anterior
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          disabled={subsOffset + limit >= subsTotal}
+                          onClick={() => setSubsOffset(prev => prev + limit)}
+                        >
+                          Próximo
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </TabsContent>
