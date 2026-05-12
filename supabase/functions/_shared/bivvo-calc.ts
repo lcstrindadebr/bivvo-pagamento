@@ -69,13 +69,15 @@ export function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
   const channels = cfg.channels || {};
   let channelsTotal = 0;
   const channelLines: BivvoQuote['channelLines'] = [];
+  const discountFactor = 1 - (Math.min(30, Math.max(0, cfg.channelsDiscount || 0)) / 100);
+
   for (const c of CANAIS_DEF) {
     const qty = Math.max(0, Math.floor(channels[c.id] || 0));
     const extra = Math.max(0, qty - c.included);
     if (extra > 0) {
-      const amount = extra * c.unit;
+      const amount = extra * c.unit * discountFactor;
       channelsTotal += amount;
-      channelLines.push({ id: c.id, label: c.label, qty: extra, amount });
+      channelLines.push({ id: c.id, label: c.label, qty: extra, amount: round2(amount) });
     }
   }
 
