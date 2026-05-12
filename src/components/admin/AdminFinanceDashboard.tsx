@@ -22,25 +22,33 @@ interface AdminFinanceDashboardProps {
 export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps) {
   const [stats, setStats] = useState<FinanceStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<'today' | '7days' | '30days'>('30days');
+  const [period, setPeriod] = useState<'today' | '7days' | '30days' | 'month' | 'custom'>('month');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
 
-  const loadStats = async (selectedPeriod: string) => {
+  const loadStats = async (selectedPeriod: string, start?: string, end?: string) => {
     setLoading(true);
     try {
       const now = new Date();
-      let start = new Date();
+      let startDate = new Date();
+      let endDate = new Date();
       
       if (selectedPeriod === 'today') {
-        start.setHours(0, 0, 0, 0);
+        startDate.setHours(0, 0, 0, 0);
       } else if (selectedPeriod === '7days') {
-        start.setDate(now.getDate() - 7);
+        startDate.setDate(now.getDate() - 7);
       } else if (selectedPeriod === '30days') {
-        start.setDate(now.getDate() - 30);
+        startDate.setDate(now.getDate() - 30);
+      } else if (selectedPeriod === 'month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (selectedPeriod === 'custom' && start && end) {
+        startDate = new Date(start + 'T00:00:00');
+        endDate = new Date(end + 'T23:59:59');
       }
 
-      const params = {
-        'dateCreated[ge]': start.toISOString().split('T')[0],
-        'dateCreated[le]': now.toISOString().split('T')[0]
+      const params: Record<string, string> = {
+        'dateCreated[ge]': startDate.toISOString().split('T')[0],
+        'dateCreated[le]': endDate.toISOString().split('T')[0]
       };
 
       const data = await adminFetch('finance-stats', params);
@@ -53,8 +61,16 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
   };
 
   useEffect(() => {
-    loadStats(period);
+    if (period !== 'custom') {
+      loadStats(period);
+    }
   }, [period]);
+
+  const handleCustomSearch = () => {
+    if (customStart && customEnd) {
+      loadStats('custom', customStart, customEnd);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -72,31 +88,73 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-xl font-bold">Dashboard Financeiro</h2>
-        <div className="flex gap-2">
-          <Button 
-            variant={period === 'today' ? 'default' : 'outline'} 
-            size="sm" 
-            onClick={() => setPeriod('today')}
-          >
-            Hoje
-          </Button>
-          <Button 
-            variant={period === '7days' ? 'default' : 'outline'} 
-            size="sm" 
-            onClick={() => setPeriod('7days')}
-          >
-            Últimos 7 dias
-          </Button>
-          <Button 
-            variant={period === '30days' ? 'default' : 'outline'} 
-            size="sm" 
-            onClick={() => setPeriod('30days')}
-          >
-            Últimos 30 dias
-          </Button>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <h2 className="text-xl font-bold">Dashboard Financeiro</h2>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant={period === 'today' ? 'default' : 'outline'} 
+              size="sm" 
+              onClick={() => setPeriod('today')}
+            >
+              Hoje
+            </Button>
+            <Button 
+              variant={period === '7days' ? 'default' : 'outline'} 
+              size="sm" 
+              onClick={() => setPeriod('7days')}
+            >
+              7 dias
+            </Button>
+            <Button 
+              variant={period === '30days' ? 'default' : 'outline'} 
+              size="sm" 
+              onClick={() => setPeriod('30days')}
+            >
+              30 dias
+            </Button>
+            <Button 
+              variant={period === 'month' ? 'default' : 'outline'} 
+              size="sm" 
+              onClick={() => setPeriod('month')}
+            >
+              Mês Atual
+            </Button>
+            <Button 
+              variant={period === 'custom' ? 'default' : 'outline'} 
+              size="sm" 
+              onClick={() => setPeriod('custom')}
+            >
+              Personalizado
+            </Button>
+          </div>
         </div>
+
+        {period === 'custom' && (
+          <div className="flex flex-wrap items-end gap-3 p-4 rounded-lg bg-accent/5 border border-accent/10">
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground">Início</label>
+              <input 
+                type="date" 
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
+                value={customStart}
+                onChange={e => setCustomStart(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground">Fim</label>
+              <input 
+                type="date" 
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
+                value={customEnd}
+                onChange={e => setCustomEnd(e.target.value)}
+              />
+            </div>
+            <Button size="sm" onClick={handleCustomSearch} disabled={!customStart || !customEnd}>
+              Buscar
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
