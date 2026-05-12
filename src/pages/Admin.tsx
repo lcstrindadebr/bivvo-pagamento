@@ -11,8 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake } from 'lucide-react';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard } from 'lucide-react';
 import AdminAffiliates from '@/components/admin/AdminAffiliates';
+import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import { formatCurrency } from '@/lib/validators';
 
