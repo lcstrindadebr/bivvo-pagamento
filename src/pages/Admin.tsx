@@ -182,7 +182,7 @@ const Admin = () => {
         updatePendingPayments: true
       };
 
-      await adminFetch('update-subscription', {}, { method: 'POST', body: JSON.stringify(payload) });
+      await adminPost('update-subscription', payload);
       toast({ title: 'Sucesso', description: 'Assinatura atualizada no Asaas!' });
       loadSubscriptions();
       setSubDetailsDialog(false);
@@ -192,6 +192,7 @@ const Admin = () => {
       setIsUpdatingSub(false);
     }
   };
+
 
   useEffect(() => {
     if (selectedSub) {
