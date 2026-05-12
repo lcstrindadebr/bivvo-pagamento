@@ -72,31 +72,73 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-xl font-bold">Dashboard Financeiro</h2>
-        <div className="flex gap-2">
-          <Button 
-            variant={period === 'today' ? 'default' : 'outline'} 
-            size="sm" 
-            onClick={() => setPeriod('today')}
-          >
-            Hoje
-          </Button>
-          <Button 
-            variant={period === '7days' ? 'default' : 'outline'} 
-            size="sm" 
-            onClick={() => setPeriod('7days')}
-          >
-            Últimos 7 dias
-          </Button>
-          <Button 
-            variant={period === '30days' ? 'default' : 'outline'} 
-            size="sm" 
-            onClick={() => setPeriod('30days')}
-          >
-            Últimos 30 dias
-          </Button>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <h2 className="text-xl font-bold">Dashboard Financeiro</h2>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant={period === 'today' ? 'default' : 'outline'} 
+              size="sm" 
+              onClick={() => setPeriod('today')}
+            >
+              Hoje
+            </Button>
+            <Button 
+              variant={period === '7days' ? 'default' : 'outline'} 
+              size="sm" 
+              onClick={() => setPeriod('7days')}
+            >
+              7 dias
+            </Button>
+            <Button 
+              variant={period === '30days' ? 'default' : 'outline'} 
+              size="sm" 
+              onClick={() => setPeriod('30days')}
+            >
+              30 dias
+            </Button>
+            <Button 
+              variant={period === 'month' ? 'default' : 'outline'} 
+              size="sm" 
+              onClick={() => setPeriod('month')}
+            >
+              Mês Atual
+            </Button>
+            <Button 
+              variant={period === 'custom' ? 'default' : 'outline'} 
+              size="sm" 
+              onClick={() => setPeriod('custom')}
+            >
+              Personalizado
+            </Button>
+          </div>
         </div>
+
+        {period === 'custom' && (
+          <div className="flex flex-wrap items-end gap-3 p-4 rounded-lg bg-accent/5 border border-accent/10">
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground">Início</label>
+              <input 
+                type="date" 
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
+                value={customStart}
+                onChange={e => setCustomStart(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase font-bold text-muted-foreground">Fim</label>
+              <input 
+                type="date" 
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
+                value={customEnd}
+                onChange={e => setCustomEnd(e.target.value)}
+              />
+            </div>
+            <Button size="sm" onClick={handleCustomSearch} disabled={!customStart || !customEnd}>
+              Buscar
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
