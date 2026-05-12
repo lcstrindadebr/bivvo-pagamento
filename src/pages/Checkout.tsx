@@ -57,7 +57,22 @@ const Checkout = () => {
   const affiliateSlug = searchParams.get('aff');
   const cfgParam = searchParams.get('cfg');
   
-  const bivvoConfig = useMemo(() => (cfgParam ? decodeBivvoConfig(cfgParam) : null), [cfgParam]);
+  const bivvoConfig = useMemo(() => {
+    if (cfgParam) return decodeBivvoConfig(cfgParam);
+    
+    // Default config for standard slugs
+    if (planId === 'standard' || planId === 'silver' || planId === 'pro') {
+      return {
+        plan: planId as any,
+        users: planId === 'standard' ? 3 : planId === 'silver' ? 6 : 12,
+        channels: { waof: 1, wano: 1, ig: 1, fb: 1, email: 1 },
+        telefonia: false,
+        protagonista: false
+      };
+    }
+    return null;
+  }, [cfgParam, planId]);
+
   const quote = useMemo(() => (bivvoConfig ? quoteBivvo(bivvoConfig) : null), [bivvoConfig]);
 
   useEffect(() => {
