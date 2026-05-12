@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Shield, Lock, CreditCard, Loader2, CheckCircle2, XCircle, Sparkles, QrCode, Barcode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import {
   maskPhone,
   formatCurrency,
 } from '@/lib/validators';
+import { quoteBivvo, decodeBivvoConfig, type BivvoConfig } from '@/lib/bivvo-calc';
 
 type Step = 'personal' | 'address' | 'payment' | 'processing' | 'success' | 'error' | 'awaiting_payment';
 
@@ -44,6 +45,7 @@ const STEPS: { id: Step; label: string }[] = [
 
 const Checkout = () => {
   const { planId } = useParams<{ planId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { fetchAddress, loading: cepLoading } = useViaCep();
@@ -52,9 +54,30 @@ const Checkout = () => {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
 
+  const affiliateSlug = searchParams.get('aff');
+  const cfgParam = searchParams.get('cfg');
+  
+  const bivvoConfig = useMemo(() => (cfgParam ? decodeBivvoConfig(cfgParam) : null), [cfgParam]);
+  const quote = useMemo(() => (bivvoConfig ? quoteBivvo(bivvoConfig) : null), [bivvoConfig]);
+
   useEffect(() => {
     const fetchPlan = async () => {
-      if (!planId) { setPlanLoading(false); return; }
+      // If we have a Bivvo quote, we don't strictly need to fetch from plans table
+      // but let's do it for consistency if planId is provided
+      if (!planId && !quote) { setPlanLoading(false); return; }
+      
+      if (quote) {
+        setPlan({
+          id: 'bivvo-custom',
+          slug: quote.planSlug,
+          name: quote.planLabel,
+          price: quote.total1m,
+          description: quote.planLabel
+        });
+        setPlanLoading(false);
+        return;
+      }
+
       const { data } = await supabase
         .from('plans')
         .select('id, slug, name, price, description')
@@ -65,7 +88,7 @@ const Checkout = () => {
       setPlanLoading(false);
     };
     fetchPlan();
-  }, [planId]);
+  }, [planId, quote]);
 
   const [currentStep, setCurrentStep] = useState<Step>('personal');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CREDIT_CARD');
