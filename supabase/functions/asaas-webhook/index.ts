@@ -18,7 +18,6 @@ const EVENTS = [
   'SUBSCRIPTION_CANCELLED',
 ];
 
-
 // Map Asaas events to our status
 function mapAsaasEventToStatus(event: string): string | null {
   switch (event) {
@@ -33,6 +32,9 @@ function mapAsaasEventToStatus(event: string): string | null {
       return 'refunded';
     case 'PAYMENT_CHARGEBACK_REQUESTED':
       return 'chargeback';
+    case 'SUBSCRIPTION_DELETED':
+    case 'SUBSCRIPTION_CANCELLED':
+      return 'cancelled';
     default:
       return null;
   }
@@ -59,247 +61,132 @@ interface AsaasWebhookPayload {
   };
 }
 
-
 serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const ASAAS_WEBHOOK_TOKEN = Deno.env.get('ASAAS_WEBHOOK_TOKEN');
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('Missing Supabase configuration');
-    }
-
-    // Optional: Validate webhook token if configured
     if (ASAAS_WEBHOOK_TOKEN) {
       const receivedToken = req.headers.get('asaas-access-token');
       if (receivedToken !== ASAAS_WEBHOOK_TOKEN) {
-        console.error('Invalid webhook token');
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
       }
     }
 
     const payload: AsaasWebhookPayload = await req.json();
-    console.log('Received Asaas webhook:', JSON.stringify(payload));
+    const { event, payment, subscription } = payload;
 
-    const { event, payment } = payload;
-
-    // Only process relevant events
-    if (!EVENTS.includes(event) || (!payment && !subscription)) {
-      console.log('Ignoring event:', event);
-      return new Response(JSON.stringify({ success: true, message: 'Event ignored' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (!EVENTS.includes(event)) {
+      return new Response(JSON.stringify({ success: true, message: 'Event ignored' }), { headers: corsHeaders });
     }
-
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const newStatus = mapAsaasEventToStatus(event);
 
-    if (!newStatus) {
-      console.log('No status mapping for event:', event);
-      return new Response(JSON.stringify({ success: true, message: 'Event not mapped' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    console.log(`Processing ${event} for ${payment ? 'payment ' + payment.id : 'subscription ' + subscription?.id}, new status: ${newStatus}`);
-
-    // Handle Subscription Deletion specifically
+    // Handle Subscription events
     if (event === 'SUBSCRIPTION_DELETED' || event === 'SUBSCRIPTION_CANCELLED') {
       const subId = subscription?.id;
       if (subId) {
         await supabase.from('users').update({ status: 'inactive' }).eq('asaas_subscription_id', subId);
         await supabase.from('payments').update({ status: 'cancelled' }).eq('asaas_subscription_id', subId);
         await supabase.from('affiliate_sales').update({ status: 'cancelled' }).eq('asaas_subscription_id', subId);
+        await supabase.from('affiliate_commissions').update({ status: 'cancelled' }).eq('status', 'pending').match({ asaas_subscription_id: subId });
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
+    if (!payment) return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+
     // Find payment in our database
-    const { data: existingPayment, error: findError } = await supabase
+    const { data: paymentRecord } = await supabase
       .from('payments')
-      .select('id, user_id, plan, status')
-      .eq('asaas_payment_id', payment?.id)
+      .select('id, user_id, plan, status, asaas_subscription_id')
+      .eq('asaas_payment_id', payment.id)
       .maybeSingle();
 
-
-    if (findError) {
-      console.error('Error finding payment:', findError);
-      throw new Error('Database error finding payment');
-    }
-
-    if (!existingPayment) {
-      // Try to find by subscription ID
-      if (payment.subscription) {
-        const { data: subPayment, error: subError } = await supabase
-          .from('payments')
-          .select('id, user_id, plan, status')
-          .eq('asaas_subscription_id', payment.subscription)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (subError || !subPayment) {
-          console.log('Payment not found in database:', payment.id);
-          return new Response(JSON.stringify({ success: true, message: 'Payment not found' }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-
-        // Update the payment with the Asaas payment ID
-        await supabase
-          .from('payments')
-          .update({ asaas_payment_id: payment.id })
-          .eq('id', subPayment.id);
-
-        Object.assign(existingPayment || {}, subPayment);
-      } else {
-        console.log('Payment not found in database:', payment.id);
-        return new Response(JSON.stringify({ success: true, message: 'Payment not found' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (!paymentRecord && payment.subscription) {
+      // If payment not found, it might be a recurring one. Let's check if we have the subscription.
+      const { data: sub } = await supabase.from('payments').select('user_id, plan').eq('asaas_subscription_id', payment.subscription).limit(1).maybeSingle();
+      if (sub && newStatus === 'paid') {
+        // Create the recurring payment record
+        await supabase.from('payments').insert({
+          user_id: sub.user_id,
+          plan: sub.plan,
+          amount: payment.value,
+          status: 'paid',
+          paid_at: payment.confirmedDate || payment.paymentDate || new Date().toISOString(),
+          asaas_payment_id: payment.id,
+          asaas_subscription_id: payment.subscription
         });
       }
+    } else if (paymentRecord) {
+      const updateData: any = { status: newStatus };
+      if (newStatus === 'paid') updateData.paid_at = payment.confirmedDate || payment.paymentDate || new Date().toISOString();
+      await supabase.from('payments').update(updateData).eq('id', paymentRecord.id);
     }
 
-    const paymentRecord = existingPayment!;
-
-    // Update payment status
-    const updateData: Record<string, unknown> = { status: newStatus };
-    
-    if (newStatus === 'paid') {
-      updateData.paid_at = payment.confirmedDate || payment.paymentDate || new Date().toISOString();
-    }
-
-    const { error: updateError } = await supabase
-      .from('payments')
-      .update(updateData)
-      .eq('id', paymentRecord.id);
-
-    if (updateError) {
-      console.error('Error updating payment:', updateError);
-      throw new Error('Failed to update payment status');
-    }
-
-    console.log(`Payment ${paymentRecord.id} updated to status: ${newStatus}`);
-
-    // If payment is confirmed, update user's subscription status
-    if (newStatus === 'paid' && paymentRecord.user_id) {
-      // Calculate expiration date (30 days from now for monthly)
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + 30);
-
-      const { error: userError } = await supabase
-        .from('users')
-        .update({
-          plano_ativo: paymentRecord.plan,
-          status: 'active',
-          data_expiracao: expirationDate.toISOString(),
-        })
-        .eq('id', paymentRecord.user_id);
-
-      if (userError) {
-        console.error('Error updating user subscription:', userError);
-        // Don't throw - payment was already updated
-      } else {
-        console.log(`User ${paymentRecord.user_id} subscription activated: ${paymentRecord.plan}`);
-      }
-    }
-
-    // If payment failed/overdue, update user status
-    if (['overdue', 'cancelled', 'refunded', 'chargeback'].includes(newStatus) && paymentRecord.user_id) {
-      const { error: userError } = await supabase
-        .from('users')
-        .update({ status: newStatus === 'overdue' ? 'overdue' : 'inactive' })
-        .eq('id', paymentRecord.user_id);
-
-      if (userError) {
-        console.error('Error updating user status:', userError);
-      }
-    }
-
-    // Affiliate commission updates
-    // Try to find the sale by asaas_subscription_id first, then by payment_id
-    let saleQuery = supabase.from('affiliate_sales').select('id, affiliate_id, amount_recurring, commission_percent, asaas_payment_id');
-    
-    if (payment.subscription) {
-      saleQuery = saleQuery.eq('asaas_subscription_id', payment.subscription);
-    } else {
-      saleQuery = saleQuery.eq('payment_id', paymentRecord.id);
-    }
-    
-    const { data: sale } = await saleQuery.maybeSingle();
-
-    if (sale) {
-      // Update sale status
-      const saleStatus = newStatus === 'paid' ? 'paid'
-        : newStatus === 'refunded' ? 'refunded'
-        : newStatus === 'cancelled' ? 'cancelled'
-        : 'pending';
-      await supabase.from('affiliate_sales').update({ status: saleStatus }).eq('id', sale.id);
-
-      // Approve first commission when paid
+    // Update User
+    if (payment.customer && (newStatus === 'paid' || ['overdue', 'cancelled', 'refunded'].includes(newStatus || ''))) {
+      const userStatus = newStatus === 'paid' ? 'active' : (newStatus === 'overdue' ? 'overdue' : 'inactive');
+      const updateObj: any = { status: userStatus };
       if (newStatus === 'paid') {
-        await supabase.from('affiliate_commissions')
-          .update({ status: 'approved' })
-          .eq('sale_id', sale.id)
-          .eq('kind', 'first')
-          .eq('status', 'pending');
+        const exp = new Date(); exp.setDate(exp.getDate() + 32); // buffer
+        updateObj.data_expiracao = exp.toISOString();
       }
-      if (['cancelled','refunded','chargeback'].includes(newStatus)) {
-        await supabase.from('affiliate_commissions')
-          .update({ status: 'cancelled' })
-          .eq('sale_id', sale.id)
-          .neq('status', 'paid');
-      }
+      await supabase.from('users').update(updateObj).eq('asaas_customer_id', payment.customer);
+    }
 
-      // Recurring commission: when subscription generates a NEW paid payment (not the first)
-      if (newStatus === 'paid' && payment.subscription && payment.id !== sale.asaas_payment_id) {
-        const { data: aff } = await supabase
-          .from('affiliates')
-          .select('commission_recurring')
-          .eq('id', sale.affiliate_id)
-          .maybeSingle();
+    // --- Affiliate Logic ---
+    if (payment.subscription) {
+      const { data: sale } = await supabase.from('affiliate_sales')
+        .select('*')
+        .eq('asaas_subscription_id', payment.subscription)
+        .maybeSingle();
 
-        if (aff?.commission_recurring) {
-          const recAmt = Math.round(Number(sale.amount_recurring) * Number(sale.commission_percent)) / 100;
-          await supabase.from('affiliate_commissions').insert({
-            affiliate_id: sale.affiliate_id,
-            sale_id: sale.id,
-            sale_amount: sale.amount_recurring,
-            commission_percent: sale.commission_percent,
-            commission_amount: recAmt,
-            kind: 'recurring',
-            status: 'approved',
-          });
+      if (sale) {
+        if (newStatus === 'paid') {
+          // Check if this is a recurring payment or the first one
+          const isFirst = payment.id === sale.asaas_payment_id;
+          
+          if (isFirst) {
+            await supabase.from('affiliate_sales').update({ status: 'paid' }).eq('id', sale.id);
+            await supabase.from('affiliate_commissions').update({ status: 'approved' }).match({ sale_id: sale.id, kind: 'first', status: 'pending' });
+          } else {
+            // Check if recurring commission already exists for this specific payment
+            const { data: exists } = await supabase.from('affiliate_commissions')
+              .select('id').match({ sale_id: sale.id, asaas_payment_id: payment.id }).maybeSingle();
+            
+            if (!exists) {
+              const { data: aff } = await supabase.from('affiliates').select('commission_recurring').eq('id', sale.affiliate_id).maybeSingle();
+              if (aff?.commission_recurring) {
+                const commission = Math.round(Number(sale.amount_recurring) * Number(sale.commission_percent)) / 100;
+                await supabase.from('affiliate_commissions').insert({
+                  affiliate_id: sale.affiliate_id,
+                  sale_id: sale.id,
+                  sale_amount: sale.amount_recurring,
+                  commission_percent: sale.commission_percent,
+                  commission_amount: commission,
+                  kind: 'recurring',
+                  status: 'approved',
+                  is_recurring: true,
+                  asaas_payment_id: payment.id
+                });
+              }
+            }
+          }
+        } else if (['cancelled', 'refunded', 'chargeback'].includes(newStatus || '')) {
+          await supabase.from('affiliate_sales').update({ status: 'cancelled' }).eq('id', sale.id);
+          await supabase.from('affiliate_commissions').update({ status: 'cancelled' }).match({ sale_id: sale.id, status: 'pending' });
         }
       }
     }
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      paymentId: paymentRecord.id,
-      status: newStatus 
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
+    return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
   } catch (error) {
     console.error('Webhook error:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: error instanceof Error ? error.message : 'Webhook processing failed',
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify({ success: false, error: error.message }), { status: 500, headers: corsHeaders });
   }
 });

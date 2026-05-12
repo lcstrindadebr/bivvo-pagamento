@@ -24,12 +24,15 @@ interface Affiliate {
   commission_recurring: boolean;
   slug: string;
   created_at: string;
+  pix_key: string | null;
+  pix_key_type: string | null;
   stats?: {
     totalSold: number;
     salesCount: number;
     commGenerated: number;
     commPaid: number;
     commPending: number;
+    activeSubscriptions: number;
   };
 }
 
@@ -202,7 +205,7 @@ export default function AdminAffiliates() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead><TableHead>Slug</TableHead><TableHead>Comissão</TableHead>
-                <TableHead>Vendas</TableHead><TableHead>Total</TableHead><TableHead>Comissão gerada</TableHead>
+                <TableHead>Assinaturas</TableHead><TableHead>Vendas</TableHead><TableHead>Total</TableHead><TableHead>Comissão gerada</TableHead>
                 <TableHead>Pendente</TableHead><TableHead>Pago</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -212,6 +215,7 @@ export default function AdminAffiliates() {
                   <TableCell className="font-medium"><div>{a.name}</div><div className="text-xs text-muted-foreground">{a.email}</div></TableCell>
                   <TableCell><button className="font-mono text-xs hover:text-accent flex items-center gap-1" onClick={() => copyLink(a.slug)}>{a.slug}<Copy className="h-3 w-3" /></button></TableCell>
                   <TableCell>{a.commission_percent}%{a.commission_recurring && <Badge variant="outline" className="ml-1 text-xs">recorrente</Badge>}</TableCell>
+                  <TableCell>{a.stats?.activeSubscriptions ?? 0}</TableCell>
                   <TableCell>{a.stats?.salesCount ?? 0}</TableCell>
                   <TableCell>{formatCurrency(a.stats?.totalSold ?? 0)}</TableCell>
                   <TableCell>{formatCurrency(a.stats?.commGenerated ?? 0)}</TableCell>
@@ -221,7 +225,7 @@ export default function AdminAffiliates() {
                   <TableCell className="text-right"><Button size="sm" variant="ghost" onClick={() => openEdit(a)}>Editar</Button></TableCell>
                 </TableRow>
               ))}
-              {affiliates.length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum afiliado</TableCell></TableRow>}
+              {affiliates.length === 0 && <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum afiliado</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>
@@ -240,9 +244,18 @@ export default function AdminAffiliates() {
                   <TableCell>{formatCurrency(Number(s.amount_first))}</TableCell>
                   <TableCell>{formatCurrency(Number(s.amount_recurring))}</TableCell>
                   <TableCell>{s.commission_percent}%</TableCell>
-                  <TableCell><Badge variant="outline" className={s.status === 'cancelled' ? 'text-destructive border-destructive' : ''}>
-                    {s.status}
-                  </Badge></TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <Badge variant="outline" className={s.status === 'cancelled' ? 'text-destructive border-destructive' : ''}>
+                        {s.status}
+                      </Badge>
+                      {s.status === 'cancelled' && s.cancellation_reason && (
+                        <span className="text-[10px] text-destructive mt-1 max-w-[150px] truncate" title={s.cancellation_reason}>
+                          Motivo: {s.cancellation_reason}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               {sales.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Sem vendas</TableCell></TableRow>}

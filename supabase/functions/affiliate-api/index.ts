@@ -36,7 +36,17 @@ serve(async (req) => {
     const aff = await getAffiliate(supabase, authHeader);
 
     if (action === 'me') {
-      return new Response(JSON.stringify({ data: aff }), {
+      const { data: sales } = await supabase.from('affiliate_sales')
+        .select('id')
+        .eq('affiliate_id', aff.id)
+        .eq('status', 'paid')
+        .not('asaas_subscription_id', 'is', null);
+      
+      const stats = {
+        activeSubscriptions: sales?.length || 0
+      };
+
+      return new Response(JSON.stringify({ data: { ...aff, stats } }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
