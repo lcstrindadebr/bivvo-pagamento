@@ -48,40 +48,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features/Trust Section */}
-      <section id="features" className="relative py-20 px-4 border-t border-border/50 bg-background/50">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
-                <Zap className="h-6 w-6 text-accent" />
-              </div>
-              <h3 className="text-xl font-bold">Performance Extrema</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Nossa infraestrutura garante 99.9% de uptime para que você nunca perca uma venda ou atendimento.
-              </p>
-            </div>
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-success/10 flex items-center justify-center">
-                <Shield className="h-6 w-6 text-success" />
-              </div>
-              <h3 className="text-xl font-bold">Segurança de Dados</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Criptografia de ponta a ponta e conformidade total com a LGPD em todos os seus canais.
-              </p>
-            </div>
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center">
-                <Crown className="h-6 w-6 text-amber-500" />
-              </div>
-              <h3 className="text-xl font-bold">Suporte Premium</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Time técnico especializado pronto para te ajudar a configurar sua operação em minutos.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="relative py-12 px-4 border-t border-border/50 text-center text-sm text-muted-foreground">
