@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check } from 'lucide-react';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp } from 'lucide-react';
 
 import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
@@ -86,7 +86,10 @@ const Admin = () => {
   const [creatingAccount, setCreatingAccount] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
   const [subDetailsDialog, setSubDetailsDialog] = useState(false);
+  const [selectedSubPayments, setSelectedSubPayments] = useState<any[]>([]);
+  const [loadingSubPayments, setLoadingSubPayments] = useState(false);
   const [isUpdatingSub, setIsUpdatingSub] = useState(false);
+
   const [editFormData, setEditFormData] = useState({
     value: '',
     status: '',
@@ -203,10 +206,41 @@ const Admin = () => {
         nextDueDate: selectedSub.nextDueDate || '',
         description: selectedSub.description || ''
       });
+      loadSubPayments(selectedSub.id);
+    } else {
+      setSelectedSubPayments([]);
     }
   }, [selectedSub]);
 
+  const loadSubPayments = async (id: string) => {
+    setLoadingSubPayments(true);
+    try {
+      const res = await adminFetch('list-subscription-payments', { id });
+      setSelectedSubPayments(res.data || []);
+    } catch (err) {
+      console.error('Error loading sub payments:', err);
+    } finally {
+      setLoadingSubPayments(false);
+    }
+  };
+
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'RECEIVED':
+      case 'CONFIRMED':
+        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[9px] h-4">Pago</Badge>;
+      case 'PENDING':
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-500/20 text-[9px] h-4">Pendente</Badge>;
+      case 'OVERDUE':
+        return <Badge variant="outline" className="text-red-600 border-red-500/20 text-[9px] h-4">Atrasado</Badge>;
+      default:
+        return <Badge variant="outline" className="text-[9px] h-4">{status}</Badge>;
+    }
+  };
+
   const loadPlans = async () => {
+
 
     const { data } = await supabase.from('plans').select('*').order('sort_order');
     if (data) setPlans(data as any);
@@ -918,7 +952,61 @@ const Admin = () => {
                       );
                     })()}
 
+                    {/* SUBSCRIPTION PAYMENT HISTORY */}
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-semibold border-b pb-1 flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4" /> Histórico de Cobranças da Assinatura
+                      </h3>
+                      <div className="border rounded-md overflow-hidden">
+                        <Table>
+                          <TableHeader className="bg-muted/50">
+                            <TableRow>
+                              <TableHead className="text-[10px] h-8">Vencimento</TableHead>
+                              <TableHead className="text-[10px] h-8">Valor</TableHead>
+                              <TableHead className="text-[10px] h-8">Status</TableHead>
+                              <TableHead className="text-[10px] h-8">Link</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {loadingSubPayments ? (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center py-4">
+                                  <Loader2 className="h-4 w-4 animate-spin mx-auto text-accent" />
+                                </TableCell>
+                              </TableRow>
+                            ) : selectedSubPayments.length > 0 ? (
+                              selectedSubPayments.map((p: any) => (
+                                <TableRow key={p.id}>
+                                  <TableCell className="text-[10px]">
+                                    {new Date(p.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                                  </TableCell>
+                                  <TableCell className="text-[10px] font-bold">
+                                    {formatCurrency(p.value)}
+                                  </TableCell>
+                                  <TableCell className="py-1">
+                                    {getStatusBadge(p.status)}
+                                  </TableCell>
+                                  <TableCell className="py-1">
+                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => window.open(p.invoiceUrl, '_blank')}>
+                                      <ExternalLink className="h-3 w-3" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center py-4 text-[10px] text-muted-foreground">
+                                  Nenhuma cobrança encontrada.
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+
                     <div className="flex justify-end gap-2 pt-2">
+
                       <Button variant="outline" size="sm" onClick={() => setSubDetailsDialog(false)}>Fechar</Button>
                       <Button size="sm" variant="secondary" onClick={() => window.open(`https://app.asaas.com/subscription/show/${selectedSub.id}`, '_blank')}>
                         <ExternalLink className="h-3 w-3 mr-2" /> Ver no Asaas
