@@ -176,9 +176,9 @@ serve(async (req) => {
       
       const stats = {
         totalPayments: payments.length,
-        paidCount: payments.filter((p: any) => ['RECEIVED', 'CONFIRMED'].includes(p.status)).length,
+        paidCount: payments.filter((p: any) => ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(p.status)).length,
         totalValue: payments.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
-        paidValue: payments.filter((p: any) => ['RECEIVED', 'CONFIRMED'].includes(p.status))
+        paidValue: payments.filter((p: any) => ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(p.status))
           .reduce((acc: number, p: any) => acc + (p.value || 0), 0),
         activeSubscriptions: subsData.totalCount || 0,
         mrr: (subsData.data || [])
