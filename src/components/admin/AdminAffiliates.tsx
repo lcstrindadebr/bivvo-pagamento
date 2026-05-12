@@ -46,6 +46,9 @@ export default function AdminAffiliates() {
     name: '', email: '', password: '', whatsapp: '', document: '',
     commission_percent: '20', commission_recurring: true, slug: '',
   });
+  const [payingComm, setPayingComm] = useState<any | null>(null);
+  const [payoutProofFile, setPayoutProofFile] = useState<File | null>(null);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
 
   const load = async () => {
     setLoading(true);
