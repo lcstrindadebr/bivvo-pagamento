@@ -222,6 +222,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
             <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
+                <TableHead>Cliente</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Forma</TableHead>
                 <TableHead>Status</TableHead>
@@ -239,6 +240,12 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                   <TableRow key={p.id}>
                     <TableCell className="text-xs">
                       {new Date(p.dateCreated).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-[11px]">{p.customerName}</span>
+                        <span className="text-[9px] text-muted-foreground">{p.customerEmail}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="font-medium text-sm">
                       {formatCurrency(p.value)}
