@@ -5,6 +5,8 @@ interface PaymentData {
   plan: string;
   amount: number;
   installments?: number;
+  bivvoConfig?: any;
+  affiliateSlug?: string;
   customerData: {
     name: string;
     email: string;

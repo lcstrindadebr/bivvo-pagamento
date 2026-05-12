@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Shield, Lock, CreditCard, Loader2, CheckCircle2, XCircle, Sparkles, QrCode, Barcode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import {
   maskPhone,
   formatCurrency,
 } from '@/lib/validators';
+import { quoteBivvo, decodeBivvoConfig, type BivvoConfig } from '@/lib/bivvo-calc';
 
 type Step = 'personal' | 'address' | 'payment' | 'processing' | 'success' | 'error' | 'awaiting_payment';
 
@@ -44,6 +45,7 @@ const STEPS: { id: Step; label: string }[] = [
 
 const Checkout = () => {
   const { planId } = useParams<{ planId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { fetchAddress, loading: cepLoading } = useViaCep();
@@ -52,9 +54,45 @@ const Checkout = () => {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
 
+  const affiliateSlug = searchParams.get('aff');
+  const cfgParam = searchParams.get('cfg');
+  
+  const bivvoConfig = useMemo(() => {
+    if (cfgParam) return decodeBivvoConfig(cfgParam);
+    
+    // Default config for standard slugs
+    if (planId === 'standard' || planId === 'silver' || planId === 'pro') {
+      return {
+        plan: planId as any,
+        users: planId === 'standard' ? 3 : planId === 'silver' ? 6 : 12,
+        channels: { waof: 1, wano: 1, ig: 1, fb: 1, email: 1 },
+        telefonia: false,
+        protagonista: false
+      };
+    }
+    return null;
+  }, [cfgParam, planId]);
+
+  const quote = useMemo(() => (bivvoConfig ? quoteBivvo(bivvoConfig) : null), [bivvoConfig]);
+
   useEffect(() => {
     const fetchPlan = async () => {
-      if (!planId) { setPlanLoading(false); return; }
+      // If we have a Bivvo quote, we don't strictly need to fetch from plans table
+      // but let's do it for consistency if planId is provided
+      if (!planId && !quote) { setPlanLoading(false); return; }
+      
+      if (quote) {
+        setPlan({
+          id: 'bivvo-custom',
+          slug: quote.planSlug,
+          name: quote.planLabel,
+          price: quote.total1m,
+          description: quote.planLabel
+        });
+        setPlanLoading(false);
+        return;
+      }
+
       const { data } = await supabase
         .from('plans')
         .select('id, slug, name, price, description')
@@ -65,7 +103,7 @@ const Checkout = () => {
       setPlanLoading(false);
     };
     fetchPlan();
-  }, [planId]);
+  }, [planId, quote]);
 
   const [currentStep, setCurrentStep] = useState<Step>('personal');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CREDIT_CARD');
@@ -255,6 +293,8 @@ const Checkout = () => {
     const result = await processPayment({
       plan: plan.slug,
       amount: plan.price,
+      bivvoConfig,
+      affiliateSlug: affiliateSlug || undefined,
       customerData: {
         name: formData.name,
         email: formData.email,
@@ -297,6 +337,8 @@ const Checkout = () => {
         body: {
           plan: plan.slug,
           billingType: paymentMethod,
+          bivvoConfig,
+          affiliateSlug: affiliateSlug || undefined,
           customerData: {
             name: formData.name,
             email: formData.email,
@@ -403,7 +445,7 @@ const Checkout = () => {
               {paymentMethod === 'PIX' ? 'Pague com PIX' : 'Pague com Boleto'}
             </h2>
             <p className="text-muted-foreground text-sm">
-              Plano {plan.name} - {formatCurrency(plan.price)}/mês
+              {plan.name} - {formatCurrency(plan.price)} {quote && quote.total1m !== quote.totalRec ? `(1º mês, depois ${formatCurrency(quote.totalRec)}/mês)` : '/mês'}
             </p>
           </div>
 
@@ -531,12 +573,15 @@ const Checkout = () => {
             </div>
             <div>
               <p className="text-xs opacity-80">Assinatura</p>
-              <p className="font-semibold">Plano {plan.name}</p>
+              <p className="font-semibold">{plan.name}</p>
             </div>
           </div>
           <div className="text-right">
             <p className="text-xs opacity-80">Total</p>
             <p className="text-2xl font-bold">{formatCurrency(plan.price)}</p>
+            {quote && quote.total1m !== quote.totalRec && (
+              <p className="text-[10px] opacity-70">Depois {formatCurrency(quote.totalRec)}/mês</p>
+            )}
           </div>
         </div>
       </div>
@@ -795,8 +840,12 @@ const Checkout = () => {
                     <CreditCard className="h-5 w-5 text-accent" />
                   </div>
                   <div>
-                    <span className="text-muted-foreground text-sm">Plano {plan.name}</span>
-                    <p className="text-xs text-muted-foreground">Assinatura mensal</p>
+                    <span className="text-muted-foreground text-sm">{plan.name}</span>
+                    <p className="text-xs text-muted-foreground">
+                      {quote && quote.total1m !== quote.totalRec 
+                        ? `Primeiro mês promocional (Depois ${formatCurrency(quote.totalRec)}/mês)`
+                        : 'Assinatura mensal'}
+                    </p>
                   </div>
                 </div>
                 <span className="text-2xl font-bold text-accent">{formatCurrency(plan.price)}</span>
