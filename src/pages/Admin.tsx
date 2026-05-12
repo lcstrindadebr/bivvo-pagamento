@@ -561,7 +561,12 @@ const Admin = () => {
                           <TableCell>
                             <div className="flex flex-col">
                               <span className="font-medium text-sm">{sub.customerName}</span>
-                              <span className="text-[10px] text-muted-foreground font-mono">{sub.customer}</span>
+                              <div className="flex gap-2">
+                                <span className="text-[10px] text-muted-foreground font-mono">Cus: {sub.customer}</span>
+                                {sub.externalReference && (
+                                  <span className="text-[10px] text-accent font-mono">Ref: {sub.externalReference.split('_')[0]}</span>
+                                )}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className="max-w-[150px] truncate text-xs">{sub.description || '—'}</TableCell>
