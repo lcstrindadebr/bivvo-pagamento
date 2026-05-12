@@ -408,6 +408,10 @@ serve(async (req) => {
     }
 
     const subscriptionId = subscriptionResult.id;
+    
+    // Save asaas_subscription_id to user
+    await supabase.from('users').update({ asaas_subscription_id: subscriptionId }).eq('id', userId);
+
 
     // 4. Get the first payment created by the subscription
     console.log('Fetching first payment from subscription...');

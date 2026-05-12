@@ -6,15 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, asaas-access-token',
 };
 
-// Asaas payment events we care about
-const PAYMENT_EVENTS = [
-  'PAYMENT_RECEIVED',      // Payment confirmed
-  'PAYMENT_CONFIRMED',     // Payment confirmed (alternative)
-  'PAYMENT_OVERDUE',       // Payment overdue
-  'PAYMENT_DELETED',       // Payment deleted
-  'PAYMENT_REFUNDED',      // Payment refunded
-  'PAYMENT_CHARGEBACK_REQUESTED', // Chargeback requested
+// Asaas events we care about
+const EVENTS = [
+  'PAYMENT_RECEIVED',
+  'PAYMENT_CONFIRMED',
+  'PAYMENT_OVERDUE',
+  'PAYMENT_DELETED',
+  'PAYMENT_REFUNDED',
+  'PAYMENT_CHARGEBACK_REQUESTED',
+  'SUBSCRIPTION_DELETED',
+  'SUBSCRIPTION_CANCELLED',
 ];
+
 
 // Map Asaas events to our status
 function mapAsaasEventToStatus(event: string): string | null {
@@ -48,7 +51,14 @@ interface AsaasWebhookPayload {
     paymentDate?: string;
     confirmedDate?: string;
   };
+  subscription?: {
+    id: string;
+    customer: string;
+    status: string;
+    externalReference?: string;
+  };
 }
+
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -82,13 +92,14 @@ serve(async (req) => {
 
     const { event, payment } = payload;
 
-    // Only process payment events
-    if (!PAYMENT_EVENTS.includes(event) || !payment) {
-      console.log('Ignoring non-payment event:', event);
+    // Only process relevant events
+    if (!EVENTS.includes(event) || (!payment && !subscription)) {
+      console.log('Ignoring event:', event);
       return new Response(JSON.stringify({ success: true, message: 'Event ignored' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const newStatus = mapAsaasEventToStatus(event);
@@ -100,14 +111,26 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Processing ${event} for payment ${payment.id}, new status: ${newStatus}`);
+    console.log(`Processing ${event} for ${payment ? 'payment ' + payment.id : 'subscription ' + subscription?.id}, new status: ${newStatus}`);
+
+    // Handle Subscription Deletion specifically
+    if (event === 'SUBSCRIPTION_DELETED' || event === 'SUBSCRIPTION_CANCELLED') {
+      const subId = subscription?.id;
+      if (subId) {
+        await supabase.from('users').update({ status: 'inactive' }).eq('asaas_subscription_id', subId);
+        await supabase.from('payments').update({ status: 'cancelled' }).eq('asaas_subscription_id', subId);
+        await supabase.from('affiliate_sales').update({ status: 'cancelled' }).eq('asaas_subscription_id', subId);
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    }
 
     // Find payment in our database
     const { data: existingPayment, error: findError } = await supabase
       .from('payments')
       .select('id, user_id, plan, status')
-      .eq('asaas_payment_id', payment.id)
+      .eq('asaas_payment_id', payment?.id)
       .maybeSingle();
+
 
     if (findError) {
       console.error('Error finding payment:', findError);
