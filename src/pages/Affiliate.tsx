@@ -17,6 +17,9 @@ interface Affiliate {
   id: string; name: string; email: string; whatsapp: string | null; document: string | null;
   status: string; commission_percent: number; slug: string; commission_recurring: boolean;
   pix_key: string | null; pix_key_type: string | null;
+  stats?: {
+    activeSubscriptions: number;
+  };
 }
 
 export default function Affiliate() {
