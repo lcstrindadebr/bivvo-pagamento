@@ -181,6 +181,9 @@ serve(async (req) => {
         paidValue: payments.filter((p: any) => ['RECEIVED', 'CONFIRMED'].includes(p.status))
           .reduce((acc: number, p: any) => acc + (p.value || 0), 0),
         activeSubscriptions: subsData.totalCount || 0,
+        mrr: (subsData.data || [])
+          .filter((s: any) => s.status === 'ACTIVE')
+          .reduce((acc: number, s: any) => acc + (s.value || 0), 0),
         payments
       };
 
