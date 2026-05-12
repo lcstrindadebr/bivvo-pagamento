@@ -325,7 +325,12 @@ serve(async (req) => {
         customer: customerId,
         billingType: billingType,
         nextDueDate: nextDueDate.toISOString().split('T')[0],
-        value: amount,
+        value: recurringAmount,
+        discount: amount < recurringAmount ? {
+          value: recurringAmount - amount,
+          type: 'FIXED',
+          dueDateLimitDays: 0
+        } : undefined,
         cycle: 'MONTHLY',
         description: `Assinatura Plano ${plan.charAt(0).toUpperCase() + plan.slice(1)}`,
         externalReference: `${userId}_${plan}_subscription`,
