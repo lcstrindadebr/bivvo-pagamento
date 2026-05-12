@@ -561,7 +561,8 @@ serve(async (req) => {
         amount_recurring: recurringAmount,
         commission_percent: affiliate.commission_percent,
         status: paymentData.status === 'approved' ? 'paid' : 'pending',
-        asaas_payment_id: paymentResult.id,
+        asaas_payment_id: asaasPaymentId,
+        asaas_subscription_id: subscriptionId,
       }).select('id').single();
 
       if (sale) {
