@@ -75,7 +75,6 @@ serve(async (req) => {
       const { saleId, reason } = await req.json();
       if (!saleId || !reason) throw new Error('ID da venda e motivo são obrigatórios');
 
-      // Verify the sale belongs to the affiliate
       const { data: sale, error: saleErr } = await supabase
         .from('affiliate_sales')
         .select('*')
@@ -86,7 +85,6 @@ serve(async (req) => {
       if (saleErr || !sale) throw new Error('Venda não encontrada ou não pertence a você');
       if (sale.status === 'cancelled') throw new Error('Venda já cancelada');
 
-      // Update status in local DB
       const { error: updateErr } = await supabase
         .from('affiliate_sales')
         .update({ 
@@ -98,7 +96,6 @@ serve(async (req) => {
 
       if (updateErr) throw updateErr;
 
-      // Update related commissions to cancelled
       await supabase
         .from('affiliate_commissions')
         .update({ status: 'cancelled' })
@@ -110,6 +107,7 @@ serve(async (req) => {
       });
     }
 
+    return new Response(JSON.stringify({ error: 'Ação inválida' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
