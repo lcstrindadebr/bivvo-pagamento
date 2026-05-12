@@ -278,6 +278,8 @@ const Checkout = () => {
     const result = await processPayment({
       plan: plan.slug,
       amount: plan.price,
+      bivvoConfig,
+      affiliateSlug: affiliateSlug || undefined,
       customerData: {
         name: formData.name,
         email: formData.email,
