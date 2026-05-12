@@ -204,11 +204,16 @@ serve(async (req) => {
     }
 
     // Affiliate commission updates
-    const { data: sale } = await supabase
-      .from('affiliate_sales')
-      .select('id, affiliate_id, amount_recurring, commission_percent, asaas_payment_id')
-      .eq('payment_id', paymentRecord.id)
-      .maybeSingle();
+    // Try to find the sale by asaas_subscription_id first, then by payment_id
+    let saleQuery = supabase.from('affiliate_sales').select('id, affiliate_id, amount_recurring, commission_percent, asaas_payment_id');
+    
+    if (payment.subscription) {
+      saleQuery = saleQuery.eq('asaas_subscription_id', payment.subscription);
+    } else {
+      saleQuery = saleQuery.eq('payment_id', paymentRecord.id);
+    }
+    
+    const { data: sale } = await saleQuery.maybeSingle();
 
     if (sale) {
       // Update sale status
