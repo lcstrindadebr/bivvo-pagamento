@@ -69,7 +69,19 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
       <div className="space-y-4">
         {/* PLAN */}
         <div className="card-glass rounded-xl p-4 space-y-3">
-          <div className="text-sm font-semibold">📦 Plano base</div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-semibold">📦 Plano base</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">O 1º mês é a oferta inicial e do 2º mês em diante passa a valor cheio recorrente mensal.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             {(Object.keys(PLANS) as PlanSlug[]).map(k => {
               const p = PLANS[k];
@@ -79,13 +91,14 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   className={`text-left p-3 rounded-lg border transition ${active ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/40'}`}>
                   <div className="font-mono text-xs font-semibold">{p.name}</div>
                   <div className="text-[10px] text-muted-foreground">{p.users} usuários</div>
-                  <div className="text-base font-bold mt-1">1º mês: {fmtBRL(p.promo)}</div>
+                  <div className="text-base font-bold mt-1 text-xs">1º mês: {fmtBRL(p.promo)}</div>
                   <div className="text-[10px] text-muted-foreground">2º mês: {fmtBRL(p.full)}</div>
                 </button>
               );
             })}
           </div>
         </div>
+
 
         {/* USERS + PROT */}
         <div className="card-glass rounded-xl p-4 space-y-3">
