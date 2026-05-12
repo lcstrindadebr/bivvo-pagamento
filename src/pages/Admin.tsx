@@ -10,8 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info } from 'lucide-react';
+
 import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
 import bivvoLogo from '@/assets/bivvo-logo.png';
@@ -83,6 +84,9 @@ const Admin = () => {
   const [customerData, setCustomerData] = useState<any[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [creatingAccount, setCreatingAccount] = useState<string | null>(null);
+  const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
+  const [subDetailsDialog, setSubDetailsDialog] = useState(false);
+
 
   const [subsFilter, setSubsFilter] = useState('');
 
@@ -343,8 +347,8 @@ const Admin = () => {
             <TabsTrigger value="dashboard" className="gap-2"><LayoutDashboard className="h-4 w-4" /> Dashboard</TabsTrigger>
             <TabsTrigger value="plans" className="gap-2"><Package className="h-4 w-4" /> Planos</TabsTrigger>
             <TabsTrigger value="coupons" className="gap-2"><Ticket className="h-4 w-4" /> Cupons</TabsTrigger>
-            <TabsTrigger value="subscriptions" className="gap-2"><Users className="h-4 w-4" /> Assinaturas Asaas</TabsTrigger>
-            <TabsTrigger value="customers" className="gap-2"><UserCheck className="h-4 w-4" /> Gestão de Contas</TabsTrigger>
+            <TabsTrigger value="subscriptions" className="gap-2"><Users className="h-4 w-4" /> Gestão de Assinaturas</TabsTrigger>
+
 
             <TabsTrigger value="affiliates" className="gap-2"><Handshake className="h-4 w-4" /> Afiliados</TabsTrigger>
           </TabsList>
@@ -548,24 +552,17 @@ const Admin = () => {
             </div>
           </TabsContent>
 
-          {/* SUBSCRIPTIONS TAB */}
+          {/* SUBSCRIPTIONS TAB - INTEGRATED VIEW */}
           <TabsContent value="subscriptions">
             <div className="space-y-4 mb-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold">Assinaturas Asaas ({subsTotal})</h2>
+                <h2 className="text-lg font-semibold">Assinaturas e Clientes ({subsTotal})</h2>
                 <div className="flex flex-wrap gap-2">
                   <Input 
-                    placeholder="ID do Cliente" 
-                    className="w-full md:w-48 h-8 text-xs"
+                    placeholder="Filtrar por nome ou email..." 
+                    className="w-full md:w-64 h-8 text-xs"
                     value={subsCustomerSearch}
                     onChange={(e) => setSubsCustomerSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && loadSubscriptions({ offset: '0' })}
-                  />
-                  <Input 
-                    placeholder="Ref. Externa (User ID)" 
-                    className="w-full md:w-48 h-8 text-xs"
-                    value={subsExtRefSearch}
-                    onChange={(e) => setSubsExtRefSearch(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && loadSubscriptions({ offset: '0' })}
                   />
                   <select 
@@ -614,158 +611,210 @@ const Admin = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Cliente</TableHead>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead>Valor</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Ciclo</TableHead>
-                        <TableHead>Próx. Venc.</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>Plano / Valor</TableHead>
+                        <TableHead>Pagamento</TableHead>
+                        <TableHead>Status Asaas</TableHead>
+                        <TableHead>Conta Bivvo</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {subscriptions.map(sub => (
-                        <TableRow key={sub.id}>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-sm">{sub.customerName || 'Desconhecido'}</span>
-                              {sub.customerEmail && (
+                      {subscriptions.map(sub => {
+                        // Find matching internal customer/subscription for account creation state
+                        const internalCustomer = customerData.find(c => c.email === sub.customerEmail);
+                        const internalSub = internalCustomer?.subscriptions?.[0];
+
+                        return (
+                          <TableRow key={sub.id} className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => {
+                            setSelectedSub(sub);
+                            setSubDetailsDialog(true);
+                          }}>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="font-medium text-sm">{sub.customerName || 'Desconhecido'}</span>
                                 <span className="text-[10px] text-muted-foreground">{sub.customerEmail}</span>
-                              )}
-                              <div className="flex gap-2">
-                                <span className="text-[10px] text-muted-foreground font-mono">Cus: {sub.customer}</span>
-                                {sub.externalReference && (
-                                  <span className="text-[10px] text-accent font-mono">Ref: {sub.externalReference.split('_')[0]}</span>
-                                )}
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="max-w-[150px] truncate text-xs">{sub.description || '—'}</TableCell>
-                          <TableCell className="text-sm">{formatCurrency(sub.value)}</TableCell>
-                          <TableCell className="text-xs">{sub.billingType}</TableCell>
-                          <TableCell className="text-xs">{sub.cycle}</TableCell>
-                          <TableCell className="text-xs">{sub.nextDueDate ? new Date(sub.nextDueDate + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={`text-[10px] h-5 ${statusColor(sub.status)}`}>{sub.status}</Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-semibold">{sub.description || 'Assinatura'}</span>
+                                <span className="text-sm font-bold text-accent">{formatCurrency(sub.value)}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <Badge variant="outline" className="text-[10px] w-fit">{sub.billingType}</Badge>
+                                <span className="text-[10px] text-muted-foreground mt-1">{sub.cycle}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={`text-[10px] h-5 ${statusColor(sub.status)}`}>{sub.status}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              {internalSub?.account_created ? (
+                                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">Ativa</Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">Pendente</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex justify-end gap-2">
+                                {!internalSub?.account_created && internalCustomer && (
+                                  <Button 
+                                    size="sm" 
+                                    className="h-8 bg-accent hover:bg-accent/90 text-[10px] px-2"
+                                    onClick={() => handleCreateAccount(internalCustomer)}
+                                    disabled={creatingAccount === internalCustomer.id}
+                                  >
+                                    {creatingAccount === internalCustomer.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Ativar Conta'}
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
+                                  setSelectedSub(sub);
+                                  setSubDetailsDialog(true);
+                                }}>
+                                  <Info className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                       {subscriptions.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma assinatura encontrada</TableCell>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhuma assinatura encontrada</TableCell>
                         </TableRow>
                       )}
                     </TableBody>
                   </Table>
                   
+                  {/* ... pagination (kept same) */}
                   {subsTotal > limit && (
                     <div className="flex items-center justify-between px-4 py-4 border-t border-border/50">
                       <span className="text-xs text-muted-foreground">
                         Mostrando {subsOffset + 1} a {Math.min(subsOffset + subscriptions.length, subsTotal)} de {subsTotal}
                       </span>
                       <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          disabled={subsOffset === 0}
-                          onClick={() => setSubsOffset(prev => Math.max(0, prev - limit))}
-                        >
-                          Anterior
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          disabled={subsOffset + limit >= subsTotal}
-                          onClick={() => setSubsOffset(prev => prev + limit)}
-                        >
-                          Próximo
-                        </Button>
+                        <Button variant="outline" size="sm" disabled={subsOffset === 0} onClick={() => setSubsOffset(prev => Math.max(0, prev - limit))}>Anterior</Button>
+                        <Button variant="outline" size="sm" disabled={subsOffset + limit >= subsTotal} onClick={() => setSubsOffset(prev => prev + limit)}>Próximo</Button>
                       </div>
                     </div>
                   )}
                 </>
               )}
             </div>
+
+            {/* SUBSCRIPTION DETAILS DIALOG */}
+            <Dialog open={subDetailsDialog} onOpenChange={setSubDetailsDialog}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Detalhes da Assinatura</DialogTitle>
+                  <DialogDescription>Informações detalhadas do cliente e configuração contratada.</DialogDescription>
+                </DialogHeader>
+                {selectedSub && (
+                  <div className="space-y-6 py-4">
+                    <div className="grid grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-semibold border-b pb-1">Dados do Cliente</h3>
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">{selectedSub.customerName}</p>
+                          <p className="text-xs text-muted-foreground">{selectedSub.customerEmail}</p>
+                          <p className="text-xs text-muted-foreground font-mono">ID Asaas: {selectedSub.customer}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-semibold border-b pb-1">Financeiro</h3>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Valor:</span>
+                            <span className="font-bold text-accent">{formatCurrency(selectedSub.value)}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Método:</span>
+                            <span>{selectedSub.billingType}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Vencimento:</span>
+                            <span>{selectedSub.nextDueDate ? new Date(selectedSub.nextDueDate + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</span>
+                          </div>
+                          <div className="flex justify-between text-xs pt-1">
+                            <span className="text-muted-foreground">Status:</span>
+                            <Badge variant="outline" className={`text-[9px] h-4 ${statusColor(selectedSub.status)}`}>{selectedSub.status}</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Internal Config Data (if available) */}
+                    {(() => {
+                      const internalCustomer = customerData.find(c => c.email === selectedSub.customerEmail);
+                      const internalSub = internalCustomer?.subscriptions?.[0];
+                      if (!internalSub) return null;
+
+                      return (
+                        <div className="bg-muted/30 rounded-lg p-4 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Configuração do Ecossistema</h3>
+                            <Badge variant={internalSub.account_created ? "success" : "warning"} className="text-[10px]">
+                              {internalSub.account_created ? "Conta Ativa" : "Aguardando Ativação"}
+                            </Badge>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-1">
+                              <p className="text-[10px] text-muted-foreground uppercase">Plano</p>
+                              <p className="text-sm font-bold capitalize">{internalSub.plan_slug}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] text-muted-foreground uppercase">Usuários</p>
+                              <p className="text-sm font-bold">{internalSub.users_count}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] text-muted-foreground uppercase">Protagonista</p>
+                              <p className="text-sm font-bold">{internalSub.is_protagonista ? 'Sim' : 'Não'}</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <p className="text-[10px] text-muted-foreground uppercase">Canais Contratados</p>
+                            <div className="flex flex-wrap gap-2">
+                              {Object.entries(internalSub.channels_config || {}).map(([key, val]: [string, any]) => (
+                                <Badge key={key} variant="secondary" className="text-[10px] py-0 px-2">
+                                  {key}: {val}
+                                </Badge>
+                              ))}
+                              {internalSub.has_telefonia && <Badge variant="secondary" className="text-[10px] py-0 px-2">Telefonia: Sim</Badge>}
+                            </div>
+                          </div>
+
+                          {!internalSub.account_created && (
+                            <div className="pt-2">
+                              <Button 
+                                className="w-full bg-accent" 
+                                onClick={() => handleCreateAccount(internalCustomer)}
+                                disabled={creatingAccount === internalCustomer.id}
+                              >
+                                {creatingAccount === internalCustomer.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserCheck className="h-4 w-4 mr-2" />}
+                                Efetuar Ativação de Conta (Webhook)
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button variant="outline" size="sm" onClick={() => setSubDetailsDialog(false)}>Fechar</Button>
+                      <Button size="sm" variant="secondary" onClick={() => window.open(`https://app.asaas.com/subscription/show/${selectedSub.id}`, '_blank')}>
+                        <ExternalLink className="h-3 w-3 mr-2" /> Ver no Asaas
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
-          {/* CUSTOMERS / ACCOUNTS TAB */}
-          <TabsContent value="customers">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Gestão de Contas e Ativação</h2>
-            </div>
-            <div className="card-glass rounded-xl overflow-hidden">
-              {loadingCustomers ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-accent" />
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Plano</TableHead>
-                      <TableHead>Usuários</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Ação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {customerData.map(customer => {
-                      const sub = customer.subscriptions?.[0];
-                      return (
-                        <TableRow key={customer.id}>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{customer.name}</span>
-                              <span className="text-xs text-muted-foreground">{customer.email}</span>
-                              <span className="text-[10px] text-muted-foreground">{customer.phone}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="capitalize">
-                              {sub?.plan_slug || '—'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {sub?.users_count || 0} usuários
-                          </TableCell>
-                          <TableCell>
-                            {sub?.account_created ? (
-                              <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
-                                Conta Criada
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
-                                Pendente
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {!sub?.account_created && (
-                              <Button 
-                                size="sm" 
-                                className="bg-accent hover:bg-accent/90"
-                                onClick={() => handleCreateAccount(customer)}
-                                disabled={creatingAccount === customer.id}
-                              >
-                                {creatingAccount === customer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Criar Conta'}
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    {customerData.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                          Nenhum cliente encontrado
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
-          </TabsContent>
 
           <TabsContent value="affiliates">
             <AdminAffiliates />
