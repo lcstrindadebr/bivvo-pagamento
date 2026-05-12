@@ -166,7 +166,47 @@ const Admin = () => {
   };
 
 
+  const handleUpdateSubscription = async () => {
+    if (!selectedSub) return;
+    if (!confirm('Tem certeza que deseja atualizar esta assinatura?')) return;
+
+    setIsUpdatingSub(true);
+    try {
+      const payload = {
+        id: selectedSub.id,
+        value: parseFloat(editFormData.value),
+        status: editFormData.status,
+        billingType: editFormData.billingType,
+        nextDueDate: editFormData.nextDueDate || undefined,
+        description: editFormData.description,
+        updatePendingPayments: true
+      };
+
+      await adminFetch('update-subscription', {}, { method: 'POST', body: JSON.stringify(payload) });
+      toast({ title: 'Sucesso', description: 'Assinatura atualizada no Asaas!' });
+      loadSubscriptions();
+      setSubDetailsDialog(false);
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao atualizar', variant: 'destructive' });
+    } finally {
+      setIsUpdatingSub(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedSub) {
+      setEditFormData({
+        value: String(selectedSub.value),
+        status: selectedSub.status,
+        billingType: selectedSub.billingType,
+        nextDueDate: selectedSub.nextDueDate || '',
+        description: selectedSub.description || ''
+      });
+    }
+  }, [selectedSub]);
+
   const loadPlans = async () => {
+
     const { data } = await supabase.from('plans').select('*').order('sort_order');
     if (data) setPlans(data as any);
   };
