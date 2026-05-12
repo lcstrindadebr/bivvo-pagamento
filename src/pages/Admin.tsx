@@ -808,7 +808,8 @@ const Admin = () => {
                         <div className="space-y-1">
                           <p className="text-sm font-medium">{selectedSub.customerName}</p>
                           <p className="text-xs text-muted-foreground">{selectedSub.customerEmail}</p>
-                          <p className="text-xs text-muted-foreground font-mono">ID Asaas: {selectedSub.customer}</p>
+                          <p className="text-xs text-muted-foreground font-mono">ID Asaas Cliente: {selectedSub.customer}</p>
+                          <p className="text-xs text-muted-foreground font-mono">ID Assinatura: {selectedSub.id}</p>
                         </div>
                       </div>
                       <div className="space-y-3">
