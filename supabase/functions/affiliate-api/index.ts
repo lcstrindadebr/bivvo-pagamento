@@ -71,7 +71,45 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: 'Ação inválida' }), {
+    if (action === 'cancel-sale' && req.method === 'POST') {
+      const { saleId, reason } = await req.json();
+      if (!saleId || !reason) throw new Error('ID da venda e motivo são obrigatórios');
+
+      // Verify the sale belongs to the affiliate
+      const { data: sale, error: saleErr } = await supabase
+        .from('affiliate_sales')
+        .select('*')
+        .eq('id', saleId)
+        .eq('affiliate_id', aff.id)
+        .maybeSingle();
+
+      if (saleErr || !sale) throw new Error('Venda não encontrada ou não pertence a você');
+      if (sale.status === 'cancelled') throw new Error('Venda já cancelada');
+
+      // Update status in local DB
+      const { error: updateErr } = await supabase
+        .from('affiliate_sales')
+        .update({ 
+          status: 'cancelled',
+          cancellation_reason: reason,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', saleId);
+
+      if (updateErr) throw updateErr;
+
+      // Update related commissions to cancelled
+      await supabase
+        .from('affiliate_commissions')
+        .update({ status: 'cancelled' })
+        .eq('sale_id', saleId)
+        .eq('status', 'pending');
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
