@@ -49,6 +49,8 @@ interface Subscription {
   nextDueDate: string;
   description: string;
   cycle: string;
+  customerName?: string;
+  customerEmail?: string;
 }
 
 const Admin = () => {
