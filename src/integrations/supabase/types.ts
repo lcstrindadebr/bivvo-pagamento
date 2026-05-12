@@ -361,6 +361,7 @@ export type Database = {
       users: {
         Row: {
           asaas_customer_id: string | null
+          asaas_subscription_id: string | null
           bairro: string | null
           billing_name: string | null
           cep: string | null
@@ -382,6 +383,7 @@ export type Database = {
         }
         Insert: {
           asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
           bairro?: string | null
           billing_name?: string | null
           cep?: string | null
@@ -403,6 +405,7 @@ export type Database = {
         }
         Update: {
           asaas_customer_id?: string | null
+          asaas_subscription_id?: string | null
           bairro?: string | null
           billing_name?: string | null
           cep?: string | null
