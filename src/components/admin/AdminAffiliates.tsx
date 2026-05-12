@@ -205,7 +205,7 @@ export default function AdminAffiliates() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead><TableHead>Slug</TableHead><TableHead>Comissão</TableHead>
-                <TableHead>Vendas</TableHead><TableHead>Total</TableHead><TableHead>Comissão gerada</TableHead>
+                <TableHead>Assinaturas</TableHead><TableHead>Vendas</TableHead><TableHead>Total</TableHead><TableHead>Comissão gerada</TableHead>
                 <TableHead>Pendente</TableHead><TableHead>Pago</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
