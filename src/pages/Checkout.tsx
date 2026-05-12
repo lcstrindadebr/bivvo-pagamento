@@ -840,8 +840,12 @@ const Checkout = () => {
                     <CreditCard className="h-5 w-5 text-accent" />
                   </div>
                   <div>
-                    <span className="text-muted-foreground text-sm">Plano {plan.name}</span>
-                    <p className="text-xs text-muted-foreground">Assinatura mensal</p>
+                    <span className="text-muted-foreground text-sm">{plan.name}</span>
+                    <p className="text-xs text-muted-foreground">
+                      {quote && quote.total1m !== quote.totalRec 
+                        ? `Primeiro mês promocional (Depois ${formatCurrency(quote.totalRec)}/mês)`
+                        : 'Assinatura mensal'}
+                    </p>
                   </div>
                 </div>
                 <span className="text-2xl font-bold text-accent">{formatCurrency(plan.price)}</span>
