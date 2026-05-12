@@ -545,7 +545,9 @@ serve(async (req) => {
         status: 'ativo',
         plano_ativo: plan,
         data_expiracao: expirationDate.toISOString(),
+        asaas_subscription_id: subscriptionId,
       }).eq('id', userId);
+
     }
 
     // 6. Register affiliate sale + first commission
