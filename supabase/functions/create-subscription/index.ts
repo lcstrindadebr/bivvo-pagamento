@@ -156,28 +156,60 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     const { plan, billingType, customerData }: SubscriptionRequest = rawData;
+    const bivvoConfig: BivvoConfig | undefined = rawData.bivvoConfig;
+    const affiliateSlug: string | undefined = rawData.affiliateSlug;
 
-    // Fetch plan price from database
-    const { data: planData, error: planError } = await supabase
-      .from('plans')
-      .select('price')
-      .eq('slug', plan)
-      .eq('active', true)
-      .maybeSingle();
+    let amount: number;
+    let recurringAmount: number;
+    let planLabel = plan;
+    let quote: ReturnType<typeof quoteBivvo> | null = null;
 
-    if (planError || !planData) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Plano não encontrado ou inativo.',
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (bivvoConfig) {
+      try {
+        quote = quoteBivvo(bivvoConfig);
+        amount = quote.total1m;
+        recurringAmount = quote.totalRec;
+        planLabel = quote.planLabel;
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: 'Configuração inválida' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      const { data: planData, error: planError } = await supabase
+        .from('plans')
+        .select('price')
+        .eq('slug', plan)
+        .eq('active', true)
+        .maybeSingle();
+
+      if (planError || !planData) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Plano não encontrado ou inativo.',
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      amount = Number(planData.price);
+      recurringAmount = amount;
     }
 
-    const amount = Number(planData.price);
+    // Lookup affiliate
+    let affiliate: { id: string; commission_percent: number; commission_recurring: boolean } | null = null;
+    if (affiliateSlug) {
+      const { data: aff } = await supabase
+        .from('affiliates')
+        .select('id, commission_percent, commission_recurring, status')
+        .eq('slug', affiliateSlug)
+        .eq('status', 'active')
+        .maybeSingle();
+      if (aff) affiliate = aff as any;
+    }
 
-    console.log('Processing subscription for plan:', plan, 'billingType:', billingType, 'amount:', amount);
+    console.log('Processing subscription for plan:', plan, 'billingType:', billingType, 'amount:', amount, 'recurring:', recurringAmount);
 
     // Sanitize data
     const cleanCpf = customerData.cpf.replace(/\D/g, '');
