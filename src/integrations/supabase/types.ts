@@ -23,6 +23,7 @@ export type Database = {
           id: string
           kind: string
           paid_at: string | null
+          payment_proof_url: string | null
           reference_date: string
           sale_amount: number
           sale_id: string
@@ -37,6 +38,7 @@ export type Database = {
           id?: string
           kind?: string
           paid_at?: string | null
+          payment_proof_url?: string | null
           reference_date?: string
           sale_amount: number
           sale_id: string
@@ -51,6 +53,7 @@ export type Database = {
           id?: string
           kind?: string
           paid_at?: string | null
+          payment_proof_url?: string | null
           reference_date?: string
           sale_amount?: number
           sale_id?: string
@@ -81,6 +84,7 @@ export type Database = {
           amount_recurring: number
           asaas_payment_id: string | null
           asaas_subscription_id: string | null
+          cancellation_reason: string | null
           commission_percent: number
           config: Json
           created_at: string
@@ -98,6 +102,7 @@ export type Database = {
           amount_recurring: number
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
+          cancellation_reason?: string | null
           commission_percent: number
           config?: Json
           created_at?: string
@@ -115,6 +120,7 @@ export type Database = {
           amount_recurring?: number
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
+          cancellation_reason?: string | null
           commission_percent?: number
           config?: Json
           created_at?: string
