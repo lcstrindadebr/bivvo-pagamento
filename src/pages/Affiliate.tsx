@@ -27,6 +27,9 @@ export default function Affiliate() {
   const [commissions, setCommissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState({ name: '', whatsapp: '', document: '', pix_key: '', pix_key_type: 'CPF' });
+  const [cancellingSale, setCancellingSale] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
 
   const call = useCallback(async (action: string, opts: { method?: 'GET'|'POST'; body?: unknown } = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
