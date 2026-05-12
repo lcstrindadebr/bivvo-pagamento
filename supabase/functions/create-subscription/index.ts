@@ -494,6 +494,36 @@ serve(async (req) => {
 
     console.log('Subscription created successfully');
 
+    // 7. Register affiliate sale + first commission
+    if (affiliate && payment) {
+      const { data: sale } = await supabase.from('affiliate_sales').insert({
+        affiliate_id: affiliate.id,
+        payment_id: payment.id,
+        user_id: userId,
+        plan_slug: plan,
+        plan_label: planLabel,
+        config: bivvoConfig ?? {},
+        amount_first: amount,
+        amount_recurring: recurringAmount,
+        commission_percent: affiliate.commission_percent,
+        status: 'pending',
+        asaas_payment_id: paymentId,
+      }).select('id').single();
+
+      if (sale) {
+        const commission = Math.round(amount * affiliate.commission_percent) / 100;
+        await supabase.from('affiliate_commissions').insert({
+          affiliate_id: affiliate.id,
+          sale_id: sale.id,
+          sale_amount: amount,
+          commission_percent: affiliate.commission_percent,
+          commission_amount: commission,
+          kind: 'first',
+          status: 'pending',
+        });
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
       paymentId: payment.id,
