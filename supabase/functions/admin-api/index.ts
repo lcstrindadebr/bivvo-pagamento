@@ -188,7 +188,38 @@ serve(async (req) => {
       return new Response(JSON.stringify({ data }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    if (action === 'update-subscription' && req.method === 'POST') {
+      const { id, ...payload } = await req.json();
+      if (!id) throw new Error('ID da assinatura é obrigatório');
+
+      const asaasUrl = `${ASAAS_BASE_URL}/subscriptions/${id}`;
+      console.log(`Atualizando assinatura ${id} no Asaas...`);
+      
+      const response = await fetch(asaasUrl, {
+        method: 'PUT',
+        headers: { 
+          'access_token': ASAAS_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...payload,
+          updatePendingPayments: payload.updatePendingPayments ?? true
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        console.error('Erro Asaas update:', JSON.stringify(result));
+        throw new Error(result.errors?.[0]?.description || `Asaas Error ${response.status}`);
+      }
+
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── AFFILIATES ──────────────────────────────────────────
+
     if (action === 'list-affiliates') {
       const { data, error } = await supabase
         .from('affiliates').select('*').order('created_at', { ascending: false });
