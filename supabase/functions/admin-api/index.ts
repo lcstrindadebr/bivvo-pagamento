@@ -129,7 +129,20 @@ serve(async (req) => {
       });
     }
 
-    if (action === 'finance-stats') {
+    if (action === 'list-subscription-payments') {
+      const id = url.searchParams.get('id');
+      if (!id) throw new Error('ID da assinatura é obrigatório');
+      
+      const asaasUrl = `${ASAAS_BASE_URL}/subscriptions/${id}/payments`;
+      const response = await fetch(asaasUrl, { headers: { 'access_token': ASAAS_API_KEY } });
+      const result = await response.json();
+      
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+
       const dateStart = url.searchParams.get('dateCreated[ge]');
       const dateEnd = url.searchParams.get('dateCreated[le]');
       
