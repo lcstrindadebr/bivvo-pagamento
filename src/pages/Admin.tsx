@@ -755,9 +755,10 @@ const Admin = () => {
                         <div className="bg-muted/30 rounded-lg p-4 space-y-4">
                           <div className="flex items-center justify-between">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Configuração do Ecossistema</h3>
-                            <Badge variant={internalSub.account_created ? "success" : "warning"} className="text-[10px]">
+                            <Badge variant={internalSub.account_created ? "outline" : "secondary"} className={`text-[10px] ${internalSub.account_created ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"}`}>
                               {internalSub.account_created ? "Conta Ativa" : "Aguardando Ativação"}
                             </Badge>
+
                           </div>
                           
                           <div className="grid grid-cols-3 gap-4">
