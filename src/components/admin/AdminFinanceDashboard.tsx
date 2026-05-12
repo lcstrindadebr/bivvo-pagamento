@@ -12,6 +12,7 @@ interface FinanceStats {
   totalValue: number;
   paidValue: number;
   activeSubscriptions: number;
+  mrr: number;
   payments: any[];
 }
 
