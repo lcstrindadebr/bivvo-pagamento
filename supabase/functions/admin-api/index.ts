@@ -17,9 +17,41 @@ async function verifyAdmin(supabase: any, authHeader: string) {
   return user;
 }
 
-function slugify(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_URL: string, ASAAS_API_KEY: string) {
+  if (customerIds.length === 0) return new Map();
+
+  // 1. Try local DB first
+  const { data: localUsers } = await supabase
+    .from('users')
+    .select('name, email, asaas_customer_id')
+    .in('asaas_customer_id', customerIds);
+
+  const userMap = new Map(localUsers?.map((u: any) => [u.asaas_customer_id, u]) || []);
+  const missingIds = customerIds.filter(id => !userMap.has(id));
+
+  // 2. Fetch missing from Asaas
+  if (missingIds.length > 0) {
+    const fetched = await Promise.all(missingIds.map(async (id) => {
+      try {
+        const res = await fetch(`${ASAAS_BASE_URL}/customers/${id}`, {
+          headers: { 'access_token': ASAAS_API_KEY }
+        });
+        if (res.ok) {
+          const c = await res.json();
+          return { asaas_customer_id: id, name: c.name, email: c.email };
+        }
+      } catch (e) {
+        console.error(`Error fetching customer ${id}:`, e);
+      }
+      return null;
+    }));
+
+    fetched.filter(Boolean).forEach((u: any) => {
+      userMap.set(u.asaas_customer_id, u);
+    });
+  }
+
+  return userMap;
 }
 
 serve(async (req) => {
@@ -56,15 +88,11 @@ serve(async (req) => {
       const response = await fetch(asaasUrl, { headers: { 'access_token': ASAAS_API_KEY } });
       const result = await response.json();
       
-      // Try to enrich with customer names from our DB
+      // Enrich with customer names
       if (result.data && result.data.length > 0) {
         const customerIds = [...new Set(result.data.map((s: any) => s.customer))];
-        const { data: users } = await supabase
-          .from('users')
-          .select('name, email, asaas_customer_id')
-          .in('asaas_customer_id', customerIds);
+        const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
         
-        const userMap = new Map(users?.map((u: any) => [u.asaas_customer_id, u]) || []);
         result.data = result.data.map((s: any) => ({
           ...s,
           customerName: userMap.get(s.customer)?.name || 'Desconhecido',
@@ -93,6 +121,19 @@ serve(async (req) => {
       const subsUrl = `${ASAAS_BASE_URL}/subscriptions?limit=100`;
       const subsRes = await fetch(subsUrl, { headers: { 'access_token': ASAAS_API_KEY } });
       const subsData = await subsRes.json();
+
+      // Enrich payments with customer names
+      let payments = paymentsData.data || [];
+      if (payments.length > 0) {
+        const customerIds = [...new Set(payments.map((p: any) => p.customer))];
+        const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
+        
+        payments = payments.map((p: any) => ({
+          ...p,
+          customerName: userMap.get(p.customer)?.name || 'Desconhecido',
+          customerEmail: userMap.get(p.customer)?.email || '',
+        }));
+      }
       
       const stats = {
         totalPayments: paymentsData.totalCount || 0,
@@ -101,7 +142,7 @@ serve(async (req) => {
         paidValue: (paymentsData.data || []).filter((p: any) => ['RECEIVED', 'CONFIRMED'].includes(p.status))
           .reduce((acc: number, p: any) => acc + (p.value || 0), 0),
         activeSubscriptions: subsData.totalCount || 0,
-        payments: paymentsData.data || []
+        payments
       };
       
       return new Response(JSON.stringify(stats), {
