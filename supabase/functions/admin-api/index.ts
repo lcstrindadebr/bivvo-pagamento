@@ -43,7 +43,7 @@ async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_
       } catch (e) {
         console.error(`Error fetching customer ${id}:`, e);
       }
-      return null;
+      return { asaas_customer_id: id, name: 'Erro na busca', email: '' };
     }));
 
     fetched.filter(Boolean).forEach((u: any) => {
