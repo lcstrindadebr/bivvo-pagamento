@@ -86,6 +86,15 @@ const Admin = () => {
   const [creatingAccount, setCreatingAccount] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
   const [subDetailsDialog, setSubDetailsDialog] = useState(false);
+  const [isUpdatingSub, setIsUpdatingSub] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    value: '',
+    status: '',
+    billingType: '',
+    nextDueDate: '',
+    description: ''
+  });
+
 
 
   const [subsFilter, setSubsFilter] = useState('');
