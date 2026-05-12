@@ -20,20 +20,21 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
   const [users, setUsers] = useState(6);
   const [protagonista, setProtagonista] = useState(false);
   const [telefonia, setTelefonia] = useState(false);
+  const [channelsDiscount, setChannelsDiscount] = useState(0);
   const [channels, setChannels] = useState<Record<string, number>>(
     Object.fromEntries(CANAIS_DEF.map(c => [c.id, c.included]))
   );
 
-  const config: BivvoConfig = { plan, users, protagonista, telefonia, channels };
+  const config: BivvoConfig = { plan, users, protagonista, telefonia, channels, channelsDiscount };
   const quote = useMemo(() => {
     try { return quoteBivvo(config); } catch { return null; }
-  }, [plan, users, protagonista, telefonia, channels]);
+  }, [plan, users, protagonista, telefonia, channels, channelsDiscount]);
 
   const checkoutUrl = useMemo(() => {
     if (!affiliateSlug) return '';
     const cfg = encodeBivvoConfig(config);
     return `${window.location.origin}/checkout/${plan}?aff=${affiliateSlug}&cfg=${cfg}`;
-  }, [affiliateSlug, plan, users, protagonista, telefonia, channels]);
+  }, [affiliateSlug, plan, users, protagonista, telefonia, channels, channelsDiscount]);
 
   const proposalText = useMemo(() => {
     if (!quote) return '';
@@ -42,7 +43,7 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
       ? `✅ *Modo Preço Protagonista* — cliente paga *${fmtBRL(quote.total1m)}* todos os meses`
       : `💰 1º mês: *${fmtBRL(quote.total1m)}*\n↻ A partir do 2º mês: *${fmtBRL(quote.totalRec)}*/mês`;
     const extras = (quote.channelLines.length || quote.telCost)
-      ? `\n📡 *Adicionais:*\n${lines}${quote.telCost ? '\n  • 📞 Telefonia → R$ 100,00' : ''}` : '';
+      ? `\n📡 *Adicionais:*\n${lines}${quote.channelsDiscountPercent > 0 ? `\n  • 📉 Desconto adicional → ${quote.channelsDiscountPercent}%` : ''}${quote.telCost ? '\n  • 📞 Telefonia → R$ 100,00' : ''}` : '';
     return `📋 *Proposta Comercial — Bivvo*
 ━━━━━━━━━━━━━━━━━━━━━━━
 📦 *${quote.planLabel}*
@@ -71,8 +72,8 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   className={`text-left p-3 rounded-lg border transition ${active ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/40'}`}>
                   <div className="font-mono text-xs font-semibold">{p.name}</div>
                   <div className="text-[10px] text-muted-foreground">{p.users} usuários</div>
-                  <div className="text-base font-bold mt-1">R$ {p.promo.toFixed(2).replace('.', ',')}</div>
-                  <div className="text-[10px] text-muted-foreground">cheio R$ {p.full.toFixed(2).replace('.', ',')}</div>
+                  <div className="text-base font-bold mt-1">{fmtBRL(p.promo)}</div>
+                  <div className="text-[10px] text-muted-foreground">cheio {fmtBRL(p.full)}</div>
                 </button>
               );
             })}
@@ -100,7 +101,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
           </div>
           {users > 12 && (
             <div className="text-xs p-2 rounded bg-amber-500/10 text-amber-700">
-              PRO + {users - 12} extras × R$ 35 = R$ {((users - 12) * 35).toFixed(2)}
+              PRO + {users - 12} extras × R$ 35 = {fmtBRL((users - 12) * 35)}
             </div>
           )}
         </div>
@@ -109,6 +110,28 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         <div className="card-glass rounded-xl p-4 space-y-2">
           <div className="text-sm font-semibold">🔌 Canais adicionais</div>
           <div className="text-xs text-muted-foreground mb-2">Apenas o excedente do incluso é cobrado.</div>
+          
+          <div className="bg-muted/30 p-3 rounded-lg border border-dashed my-4">
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-xs font-semibold">Desconto nos Canais Adicionais</Label>
+              <Badge variant="secondary" className="text-xs">{channelsDiscount}%</Badge>
+            </div>
+            <input 
+              type="range" 
+              min="0" 
+              max="30" 
+              step="5"
+              value={channelsDiscount} 
+              onChange={e => setChannelsDiscount(parseInt(e.target.value))}
+              className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-accent"
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+              <span>0%</span>
+              <span>15%</span>
+              <span>30%</span>
+            </div>
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-2">
             {CANAIS_DEF.map(c => {
               const qty = channels[c.id] ?? 0;
@@ -117,14 +140,19 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 <div key={c.id} className="border rounded-lg p-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-medium">{c.emoji} {c.label}</span>
-                    <span className="text-muted-foreground">{c.included ? `${c.included} incl.` : 'extra'} · R$ {c.unit}</span>
+                    <span className="text-muted-foreground">{c.included ? `${c.included} incl.` : 'extra'} · {fmtBRL(c.unit)}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     <button onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))} className="w-6 h-6 border rounded hover:bg-muted">−</button>
                     <Input type="number" value={qty} onChange={e => setChannels(s => ({ ...s, [c.id]: Math.max(0, parseInt(e.target.value) || 0) }))}
                       className="w-12 h-7 text-center text-xs" />
                     <button onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))} className="w-6 h-6 border rounded hover:bg-muted">+</button>
-                    {extra > 0 && <span className="text-xs ml-auto font-medium">{fmtBRL(extra * c.unit)}</span>}
+                    {extra > 0 && (
+                      <div className="ml-auto text-right">
+                        {channelsDiscount > 0 && <div className="text-[10px] text-muted-foreground line-through decoration-destructive/50">{fmtBRL(extra * c.unit)}</div>}
+                        <div className="text-xs font-medium">{fmtBRL(round2(extra * c.unit * (1 - channelsDiscount / 100)))}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -154,7 +182,10 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <div className="space-y-1 text-sm border-y py-2 my-2">
                 <div className="flex justify-between"><span>Plano</span><span>{fmtBRL(quote.base1m)}</span></div>
                 {quote.channelLines.map(l => (
-                  <div key={l.id} className="flex justify-between text-xs text-muted-foreground"><span>{l.emoji} {l.label} ×{l.qty}</span><span>{fmtBRL(l.amount)}</span></div>
+                  <div key={l.id} className="flex justify-between text-xs text-muted-foreground">
+                    <span>{l.emoji} {l.label} ×{l.qty} {quote.channelsDiscountPercent > 0 && <span className="text-[10px] text-accent">(-{quote.channelsDiscountPercent}%)</span>}</span>
+                    <span>{fmtBRL(l.amount)}</span>
+                  </div>
                 ))}
                 {quote.telCost > 0 && <div className="flex justify-between text-xs text-muted-foreground"><span>📞 Telefonia</span><span>{fmtBRL(quote.telCost)}</span></div>}
               </div>
@@ -195,3 +226,5 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
     </div>
   );
 }
+
+function round2(n: number) { return Math.round(n * 100) / 100; }
