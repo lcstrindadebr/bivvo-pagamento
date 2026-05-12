@@ -513,8 +513,8 @@ const Admin = () => {
                   <Button
                     key={s}
                     variant={subsFilter === s ? 'default' : 'outline'}
-                    size="xs"
-                    className="h-7 text-[10px]"
+                    size="sm"
+                    className="h-7 px-2 text-[10px]"
                     onClick={() => { 
                       setSubsFilter(s); 
                       loadSubscriptions({ status: s, offset: '0' }); 
