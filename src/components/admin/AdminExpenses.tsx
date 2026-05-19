@@ -343,11 +343,23 @@ export default function AdminExpenses({ adminFetch, adminPost }: AdminExpensesPr
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-medium text-sm">{e.description}</span>
-                      {e.is_automatic && (
-                        <Badge variant="outline" className="w-fit text-[9px] h-3 px-1 mt-0.5 bg-accent/5 text-accent border-accent/20">
-                          Automático
-                        </Badge>
-                      )}
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {e.is_automatic && (
+                          <Badge variant="outline" className="w-fit text-[9px] h-3 px-1 bg-accent/5 text-accent border-accent/20">
+                            Automático
+                          </Badge>
+                        )}
+                        {e.payment_method === 'installments' && (
+                          <Badge variant="outline" className="w-fit text-[9px] h-3 px-1 bg-blue-500/5 text-blue-500 border-blue-500/20">
+                            Parcela {e.installment_number}/{e.installments_total}
+                          </Badge>
+                        )}
+                        {e.payment_method === 'recurring' && (
+                          <Badge variant="outline" className="w-fit text-[9px] h-3 px-1 bg-purple-500/5 text-purple-500 border-purple-500/20">
+                            Recorrente ({e.recurring_interval === 'monthly' ? 'Mensal' : e.recurring_interval === 'weekly' ? 'Semanal' : 'Anual'})
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
