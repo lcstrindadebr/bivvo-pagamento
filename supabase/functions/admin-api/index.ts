@@ -193,7 +193,7 @@ serve(async (req) => {
         payments
       };
 
-      // Calcular comissões retidas e repasses pendentes
+      // Calcular comissões retidas e repasses pendentes (TOTAL ATUAL - passivo)
       const { data: comms } = await supabase
         .from('affiliate_commissions')
         .select('commission_amount, created_at, status')
@@ -213,16 +213,23 @@ serve(async (req) => {
         });
       }
 
-      // Buscar despesas no período
-      let expensesQuery = supabase.from('expenses').select('amount');
+      // Buscar despesas no período (incluindo as automáticas de comissão)
+      let expensesQuery = supabase.from('expenses').select('amount, category');
       if (dateStart) expensesQuery = expensesQuery.gte('date', dateStart);
       if (dateEnd) expensesQuery = expensesQuery.lte('date', dateEnd);
       
       const { data: expenses } = await expensesQuery;
-      stats.totalExpenses = (expenses || []).reduce((acc: number, e: any) => acc + Number(e.amount), 0);
+      
+      // Separamos "Outras Despesas" das comissões para o dashboard não confundir
+      const otherExpenses = (expenses || []).filter((e: any) => e.category !== 'Comissões (Afiliados)');
+      const periodCommissions = (expenses || []).filter((e: any) => e.category === 'Comissões (Afiliados)');
 
-      // Caixa livre = Valor Pago - (Comissões Retidas + Repasses Pendentes + Outras Despesas do período)
-      stats.freeCash = stats.paidValue - (stats.retainedCommissions + stats.pendingAffiliatePayout + stats.totalExpenses);
+      stats.totalExpenses = otherExpenses.reduce((acc: number, e: any) => acc + Number(e.amount), 0);
+      const periodCommValue = periodCommissions.reduce((acc: number, e: any) => acc + Number(e.amount), 0);
+
+      // Caixa livre = Valor Pago no período - Todas as despesas do período (incluindo as comissões geradas no período)
+      stats.freeCash = stats.paidValue - (stats.totalExpenses + periodCommValue);
+
 
       return new Response(JSON.stringify(stats), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
