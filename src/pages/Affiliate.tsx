@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { LogOut, Loader2, Calculator, ListChecks, DollarSign, User, XCircle, Eye } from 'lucide-react';
+import { LogOut, Loader2, Calculator, ListChecks, DollarSign, User, XCircle, Eye, MousePointerClick, Share2, Copy, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
 import { formatCurrency } from '@/lib/validators';
@@ -135,10 +135,18 @@ export default function Affiliate() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
           <div className="card-glass rounded-xl p-4">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Assinaturas Ativas</div>
             <div className="text-xl font-bold text-accent">{me.stats?.activeSubscriptions ?? 0}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Cliques</div>
+            <div className="text-xl font-bold text-purple-500">{(me.stats as any)?.totalClicks ?? 0}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Conversão</div>
+            <div className="text-xl font-bold text-pink-500">{(me.stats as any)?.conversionRate ?? 0}%</div>
           </div>
           <div className="card-glass rounded-xl p-4">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">A Receber (Mês)</div>
@@ -165,6 +173,7 @@ export default function Affiliate() {
         <Tabs defaultValue="calc">
           <TabsList>
             <TabsTrigger value="calc"><Calculator className="h-4 w-4 mr-2" />Calculadora</TabsTrigger>
+            <TabsTrigger value="marketing"><Share2 className="h-4 w-4 mr-2" />Marketing</TabsTrigger>
             <TabsTrigger value="sales"><ListChecks className="h-4 w-4 mr-2" />Vendas</TabsTrigger>
             <TabsTrigger value="comm"><DollarSign className="h-4 w-4 mr-2" />Comissões</TabsTrigger>
             <TabsTrigger value="profile"><User className="h-4 w-4 mr-2" />Meus dados</TabsTrigger>
