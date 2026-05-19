@@ -335,33 +335,45 @@ export default function AdminAffiliates() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {c.status !== 'paid' && c.status !== 'cancelled' ? (
-                      (() => {
-                        const createdAt = new Date(c.created_at);
-                        const now = new Date();
-                        const diffDays = Math.ceil((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-                        const isLocked = diffDays <= 7;
-                        
-                        return (
-                          <div className="flex flex-col items-end gap-1">
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => setPayingComm(c)}
-                              disabled={isLocked}
-                              title={isLocked ? `Disponível em ${7 - diffDays + 1} dias` : ""}
-                            >
-                              <DollarSign className="h-3 w-3 mr-1" />Pagar
-                            </Button>
-                            {isLocked && (
-                              <span className="text-[9px] text-amber-600 font-medium">
-                                Retido ({diffDays}/7d)
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()
-                    ) : c.payment_proof_url ? (
+                    <div className="flex justify-end gap-1">
+                      {c.status !== 'paid' && c.status !== 'cancelled' ? (
+                        (() => {
+                          const createdAt = new Date(c.created_at);
+                          const now = new Date();
+                          const diffDays = Math.ceil((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+                          const isLocked = diffDays <= 7;
+                          
+                          return (
+                            <div className="flex flex-col items-end gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => setPayingComm(c)}
+                                disabled={isLocked}
+                                title={isLocked ? `Disponível em ${7 - diffDays + 1} dias` : ""}
+                              >
+                                <DollarSign className="h-3 w-3 mr-1" />Pagar
+                              </Button>
+                              {isLocked && (
+                                <span className="text-[9px] text-amber-600 font-medium">
+                                  Retido ({diffDays}/7d)
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()
+                      ) : c.payment_proof_url ? (
+                        <Button size="sm" variant="ghost" asChild>
+                          <a href={c.payment_proof_url} target="_blank" rel="noopener noreferrer">
+                            <Eye className="h-3 w-3 mr-1" /> Comprovante
+                          </a>
+                        </Button>
+                      ) : null}
+                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleDeleteCommission(c.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
 
                       <Button size="sm" variant="ghost" asChild>
                         <a href={c.payment_proof_url} target="_blank" rel="noopener noreferrer">
