@@ -452,16 +452,33 @@ serve(async (req) => {
       const { name, email, password, whatsapp, document, commission_percent, commission_recurring, slug } = body;
       if (!name || !email || !password) throw new Error('Nome, email e senha obrigatórios');
 
-      // Create auth user
+      // Create auth user (or reuse existing one with same email)
+      let uid: string;
       const { data: created, error: authErr } = await supabase.auth.admin.createUser({
         email, password, email_confirm: true,
         user_metadata: { name, role: 'affiliate' },
       });
-      if (authErr) throw new Error(authErr.message);
-      const uid = created.user!.id;
+      if (authErr) {
+        const msg = String(authErr.message || '');
+        const isDup = /already.*registered|already exists|duplicate/i.test(msg);
+        if (!isDup) throw new Error(msg);
 
-      // Add affiliate role
-      await supabase.from('user_roles').insert({ user_id: uid, role: 'affiliate' });
+        // Lookup existing user by email
+        const { data: list, error: listErr } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
+        if (listErr) throw new Error(listErr.message);
+        const existing = list.users.find((u: any) => (u.email || '').toLowerCase() === email.toLowerCase());
+        if (!existing) throw new Error('Email já cadastrado mas usuário não encontrado');
+
+        // Verify it's not already linked to another affiliate
+        const { data: existingAff } = await supabase.from('affiliates').select('id').eq('user_id', existing.id).maybeSingle();
+        if (existingAff) throw new Error('Este email já está vinculado a outro afiliado');
+        uid = existing.id;
+      } else {
+        uid = created.user!.id;
+      }
+
+      // Add affiliate role (ignore conflict)
+      await supabase.from('user_roles').upsert({ user_id: uid, role: 'affiliate' }, { onConflict: 'user_id,role' });
 
       // Build slug
       let finalSlug = (slug || slugify(name) || 'aff-' + uid.slice(0, 6));
@@ -479,7 +496,7 @@ serve(async (req) => {
         slug: finalSlug,
       }).select().single();
       if (affErr) {
-        await supabase.auth.admin.deleteUser(uid);
+        if (!authErr) await supabase.auth.admin.deleteUser(uid);
         throw new Error(affErr.message);
       }
       return new Response(JSON.stringify({ data: aff }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
