@@ -94,32 +94,57 @@ sudo n stable
 
 ---
 
-## 5. Configuração do Nginx
+## 5. Configuração do Domínio com Nginx
 
-Crie um arquivo de configuração: `/etc/nginx/sites-available/bivvo`
+O Nginx atuará como o servidor web principal, servindo os arquivos estáticos do frontend e garantindo que as rotas do React (SPA) funcionem corretamente sob o seu domínio.
+
+### Criar Configuração do Site
+Crie o arquivo: `/etc/nginx/sites-available/bivvo`
 
 ```nginx
 server {
     listen 80;
-    server_name seu-dominio.com;
+    server_name seu-dominio.com www.seu-dominio.com;
 
-    root /caminho/para/projeto/dist;
+    # Caminho onde você fez o build do projeto (item 4)
+    root /var/www/bivvo/dist;
     index index.html;
 
+    # Suporte a rotas do React (SPA)
     location / {
         try_files $uri $uri/ /index.html;
     }
+
+    # Logs de acesso
+    access_log /var/log/nginx/bivvo_access.log;
+    error_log /var/log/nginx/bivvo_error.log;
+
+    # Otimização de Gzip
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 }
 ```
 
-Ative o site e instale o SSL (Certbot):
-```bash
-sudo ln -s /etc/nginx/sites-available/bivvo /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d seu-dominio.com
-```
+### Ativar o Domínio e Configurar SSL
+Execute os comandos abaixo na VPS:
+
+1. **Habilitar o site:**
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/bivvo /etc/nginx/sites-enabled/
+   ```
+
+2. **Testar e reiniciar o Nginx:**
+   ```bash
+   sudo nginx -t
+   sudo systemctl restart nginx
+   ```
+
+3. **Instalar Certificado SSL (HTTPS Gratuito):**
+   ```bash
+   sudo apt install -y certbot python3-certbot-nginx
+   sudo certbot --nginx -d seu-dominio.com -d www.seu-dominio.com
+   ```
+   *Siga as instruções na tela para redirecionar todo o tráfego HTTP para HTTPS.*
 
 ---
 
@@ -127,6 +152,7 @@ sudo certbot --nginx -d seu-dominio.com
 
 1. Vá em **Minha Conta > Integrações > Webhooks**.
 2. Ative o Webhook de Cobranças.
-3. URL do Webhook: `https://<seu-projeto>.supabase.co/functions/v1/asaas-webhook`
-4. Token de Autenticação: O mesmo definido em `ASAAS_WEBHOOK_SECRET`.
-5. Eventos recomendados: `Pagamento confirmado`, `Pagamento recebido`, `Assinatura removida`.
+3. URL do Webhook: `https://<seu-projeto-supabase>.supabase.co/functions/v1/asaas-webhook`
+4. Token de Autenticação: Use o mesmo valor que você definiu em `ASAAS_WEBHOOK_SECRET` no Supabase.
+5. Selecione os eventos: `Pagamento confirmado`, `Pagamento recebido`, `Assinatura removida`.
+
