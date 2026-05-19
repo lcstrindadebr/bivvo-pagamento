@@ -295,8 +295,13 @@ export type Database = {
           date: string
           description: string
           id: string
+          installment_number: number | null
+          installments_total: number | null
           is_automatic: boolean | null
           metadata: Json | null
+          parent_id: string | null
+          payment_method: string | null
+          recurring_interval: string | null
           type: string
           updated_at: string
         }
@@ -307,8 +312,13 @@ export type Database = {
           date?: string
           description: string
           id?: string
+          installment_number?: number | null
+          installments_total?: number | null
           is_automatic?: boolean | null
           metadata?: Json | null
+          parent_id?: string | null
+          payment_method?: string | null
+          recurring_interval?: string | null
           type?: string
           updated_at?: string
         }
@@ -319,12 +329,25 @@ export type Database = {
           date?: string
           description?: string
           id?: string
+          installment_number?: number | null
+          installments_total?: number | null
           is_automatic?: boolean | null
           metadata?: Json | null
+          parent_id?: string | null
+          payment_method?: string | null
+          recurring_interval?: string | null
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "expenses_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
