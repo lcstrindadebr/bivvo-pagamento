@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Loader2, Copy, DollarSign, Upload, Eye, Link } from 'lucide-react';
+import { Plus, Loader2, Copy, DollarSign, Upload, Eye, Link, Trash2 } from 'lucide-react';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/validators';
@@ -163,6 +163,39 @@ export default function AdminAffiliates() {
     toast({ title: 'Link copiado', description: url });
   };
 
+  const handleDeleteAffiliate = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este afiliado? Todas as suas vendas e comissões serão removidas.')) return;
+    try {
+      await adminPost('delete-affiliate', { id });
+      toast({ title: 'Sucesso', description: 'Afiliado excluído' });
+      load();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteSale = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta venda? As comissões vinculadas também serão removidas.')) return;
+    try {
+      await adminPost('delete-affiliate-sale', { id });
+      toast({ title: 'Sucesso', description: 'Venda excluída' });
+      load();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteCommission = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta comissão?')) return;
+    try {
+      await adminPost('delete-affiliate-commission', { id });
+      toast({ title: 'Sucesso', description: 'Comissão excluída' });
+      load();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-accent" /></div>;
 
   return (
@@ -222,7 +255,14 @@ export default function AdminAffiliates() {
                   <TableCell className="text-amber-600">{formatCurrency(a.stats?.commPending ?? 0)}</TableCell>
                   <TableCell className="text-green-600">{formatCurrency(a.stats?.commPaid ?? 0)}</TableCell>
                   <TableCell><Switch checked={a.status === 'active'} onCheckedChange={() => toggleStatus(a)} /></TableCell>
-                  <TableCell className="text-right"><Button size="sm" variant="ghost" onClick={() => openEdit(a)}>Editar</Button></TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(a)}>Editar</Button>
+                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleDeleteAffiliate(a.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               {affiliates.length === 0 && <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum afiliado</TableCell></TableRow>}
@@ -234,7 +274,7 @@ export default function AdminAffiliates() {
       <TabsContent value="sales">
         <div className="card-glass rounded-xl overflow-hidden">
           <Table>
-            <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Afiliado</TableHead><TableHead>Plano</TableHead><TableHead>1º mês</TableHead><TableHead>Recorrente</TableHead><TableHead>%</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Afiliado</TableHead><TableHead>Plano</TableHead><TableHead>1º mês</TableHead><TableHead>Recorrente</TableHead><TableHead>%</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
             <TableBody>
               {sales.map(s => (
                 <TableRow key={s.id}>
@@ -256,9 +296,14 @@ export default function AdminAffiliates() {
                       )}
                     </div>
                   </TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleDeleteSale(s.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
-              {sales.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Sem vendas</TableCell></TableRow>}
+              {sales.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Sem vendas</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>
@@ -289,40 +334,44 @@ export default function AdminAffiliates() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {c.status !== 'paid' && c.status !== 'cancelled' ? (
-                      (() => {
-                        const createdAt = new Date(c.created_at);
-                        const now = new Date();
-                        const diffDays = Math.ceil((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-                        const isLocked = diffDays <= 7;
-                        
-                        return (
-                          <div className="flex flex-col items-end gap-1">
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => setPayingComm(c)}
-                              disabled={isLocked}
-                              title={isLocked ? `Disponível em ${7 - diffDays + 1} dias` : ""}
-                            >
-                              <DollarSign className="h-3 w-3 mr-1" />Pagar
-                            </Button>
-                            {isLocked && (
-                              <span className="text-[9px] text-amber-600 font-medium">
-                                Retido ({diffDays}/7d)
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()
-                    ) : c.payment_proof_url ? (
-
-                      <Button size="sm" variant="ghost" asChild>
-                        <a href={c.payment_proof_url} target="_blank" rel="noopener noreferrer">
-                          <Eye className="h-3 w-3 mr-1" /> Comprovante
-                        </a>
+                    <div className="flex justify-end gap-1">
+                      {c.status !== 'paid' && c.status !== 'cancelled' ? (
+                        (() => {
+                          const createdAt = new Date(c.created_at);
+                          const now = new Date();
+                          const diffDays = Math.ceil((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+                          const isLocked = diffDays <= 7;
+                          
+                          return (
+                            <div className="flex flex-col items-end gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => setPayingComm(c)}
+                                disabled={isLocked}
+                                title={isLocked ? `Disponível em ${7 - diffDays + 1} dias` : ""}
+                              >
+                                <DollarSign className="h-3 w-3 mr-1" />Pagar
+                              </Button>
+                              {isLocked && (
+                                <span className="text-[9px] text-amber-600 font-medium">
+                                  Retido ({diffDays}/7d)
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()
+                      ) : c.payment_proof_url ? (
+                        <Button size="sm" variant="ghost" asChild>
+                          <a href={c.payment_proof_url} target="_blank" rel="noopener noreferrer">
+                            <Eye className="h-3 w-3 mr-1" /> Comprovante
+                          </a>
+                        </Button>
+                      ) : null}
+                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleDeleteCommission(c.id)}>
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    ) : null}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

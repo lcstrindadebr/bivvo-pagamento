@@ -409,6 +409,41 @@ serve(async (req) => {
       return new Response(JSON.stringify({ data }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    if (action === 'delete-affiliate' && req.method === 'POST') {
+      const { id } = await req.json();
+      if (!id) throw new Error('id obrigatório');
+      
+      // Get the affiliate to find the user_id for auth deletion
+      const { data: aff } = await supabase.from('affiliates').select('user_id').eq('id', id).maybeSingle();
+      
+      const { error } = await supabase.from('affiliates').delete().eq('id', id);
+      if (error) throw error;
+      
+      // If found, delete the auth user as well
+      if (aff?.user_id) {
+        await supabase.auth.admin.deleteUser(aff.user_id);
+      }
+      
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'delete-affiliate-sale' && req.method === 'POST') {
+      const { id } = await req.json();
+      if (!id) throw new Error('id obrigatório');
+      const { error } = await supabase.from('affiliate_sales').delete().eq('id', id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'delete-affiliate-commission' && req.method === 'POST') {
+      const { id } = await req.json();
+      if (!id) throw new Error('id obrigatório');
+      const { error } = await supabase.from('affiliate_commissions').delete().eq('id', id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+
     if (action === 'mark-commission-paid' && req.method === 'POST') {
       const { id, payment_proof_url } = await req.json();
       if (!id) throw new Error('id obrigatório');
