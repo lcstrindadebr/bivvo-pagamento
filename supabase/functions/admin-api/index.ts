@@ -186,8 +186,36 @@ serve(async (req) => {
         mrr: (subsData.data || [])
           .filter((s: any) => s.status === 'ACTIVE')
           .reduce((acc: number, s: any) => acc + (s.value || 0), 0),
+        // Novos campos solicitados
+        retainedCommissions: 0,
+        pendingAffiliatePayout: 0,
+        freeCash: 0,
         payments
       };
+
+      // Calcular comissões retidas e repasses pendentes baseados na tabela affiliate_commissions
+      const { data: comms } = await supabase
+        .from('affiliate_commissions')
+        .select('commission_amount, created_at, status')
+        .eq('status', 'pending');
+
+      const now = new Date();
+      if (comms) {
+        comms.forEach((c: any) => {
+          const createdAt = new Date(c.created_at);
+          const diffDays = Math.ceil((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (diffDays <= 7) {
+            stats.retainedCommissions += Number(c.commission_amount);
+          } else {
+            stats.pendingAffiliatePayout += Number(c.commission_amount);
+          }
+        });
+      }
+
+      // Caixa livre = Valor Pago (líquido que entrou) - (Comissões Retidas + Repasses Pendentes)
+      stats.freeCash = stats.paidValue - (stats.retainedCommissions + stats.pendingAffiliatePayout);
+
 
       
       return new Response(JSON.stringify(stats), {

@@ -13,6 +13,9 @@ interface FinanceStats {
   paidValue: number;
   activeSubscriptions: number;
   mrr: number;
+  retainedCommissions: number;
+  pendingAffiliatePayout: number;
+  freeCash: number;
   payments: any[];
 }
 
@@ -211,7 +214,44 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-yellow-500" /> Valor Pendente
+              <Calendar className="h-4 w-4 text-amber-500" /> Repasse Afiliados
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <div className="flex flex-col">
+                <div className="text-xl font-bold text-amber-500">{formatCurrency(stats?.pendingAffiliatePayout || 0)}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {formatCurrency(stats?.retainedCommissions || 0)} retido (menos de 7 dias)
+                </div>
+
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="card-glass border-none shadow-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-blue-500" /> Caixa Livre
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <div className="flex flex-col">
+                <div className="text-2xl font-bold text-blue-500">{formatCurrency(stats?.freeCash || 0)}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  (Recebido - Comissões)
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="card-glass border-none shadow-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-yellow-500" /> Valor Pendente (Asaas)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -222,6 +262,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
             )}
           </CardContent>
         </Card>
+
       </div>
 
       <Card className="card-glass border-none shadow-xl overflow-hidden">
