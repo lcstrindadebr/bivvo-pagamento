@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Lock, Loader2 } from 'lucide-react';
+import { Lock, Loader2, ShieldCheck, ArrowRight } from 'lucide-react';
 import bivvoLogo from '@/assets/bivvo-logo.png';
 
 const AdminLogin = () => {
@@ -39,7 +39,7 @@ const AdminLogin = () => {
       navigate('/admin');
     } catch (err) {
       toast({
-        title: 'Erro',
+        title: 'Erro de Autenticação',
         description: err instanceof Error ? err.message : 'Erro ao fazer login',
         variant: 'destructive',
       });
@@ -49,44 +49,76 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center px-4">
-      <div className="fixed inset-0 gradient-mesh opacity-30 pointer-events-none" />
-      <div className="relative w-full max-w-sm space-y-8">
-        <div className="text-center space-y-4">
-          <img src={bivvoLogo} alt="Bivvo" className="h-8 mx-auto" />
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center">
-            <Lock className="h-8 w-8 text-accent" />
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+      {/* Decorative background elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full" />
+      </div>
+
+      <div className="relative w-full max-w-[440px]">
+        {/* Logo Section */}
+        <div className="mb-10 text-center">
+          <img src={bivvoLogo} alt="Bivvo" className="h-9 mx-auto mb-8" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-semibold uppercase tracking-wider text-primary mb-4">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Painel Administrativo
           </div>
-          <h1 className="text-2xl font-bold">Admin</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Acesse sua conta</h1>
+          <p className="mt-2 text-slate-500">Gerenciamento enterprise e controle total</p>
         </div>
 
-        <form onSubmit={handleLogin} className="card-glass rounded-2xl p-6 space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="input-glass"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="input-glass"
-              required
-            />
-          </div>
-          <Button type="submit" className="w-full h-12 bg-gradient-to-r from-accent to-primary" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Entrar'}
-          </Button>
-        </form>
+        {/* Login Form */}
+        <div className="bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-8 md:p-10">
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email corporativo</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="nome@empresa.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 border-slate-200 focus:border-accent focus:ring-accent/5 transition-all"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="password" text-sm font-medium text-slate-700>Senha</Label>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12 border-slate-200 focus:border-accent focus:ring-accent/5 transition-all"
+                required
+              />
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full h-12 bg-primary hover:bg-primary/95 text-white font-semibold rounded-xl shadow-lg shadow-primary/10 transition-all flex items-center justify-center gap-2 group"
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  Entrar no sistema
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </>
+              )}
+            </Button>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 text-center text-sm text-slate-400">
+          <p>© 2026 Bivvo Technology. Security protected.</p>
+        </div>
       </div>
     </div>
   );
