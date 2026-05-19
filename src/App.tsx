@@ -10,6 +10,7 @@ import AdminLogin from "./pages/AdminLogin";
 import Admin from "./pages/Admin";
 import AffiliateLogin from "./pages/AffiliateLogin";
 import Affiliate from "./pages/Affiliate";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/admin" element={<Admin />} />
           <Route path="/afiliado/login" element={<AffiliateLogin />} />
           <Route path="/afiliado" element={<Affiliate />} />
+          <Route path="/politica-de-privacidade" element={<PrivacyPolicy />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
