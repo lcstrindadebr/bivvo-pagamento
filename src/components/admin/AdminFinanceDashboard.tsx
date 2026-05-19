@@ -364,7 +364,21 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                 stats.payments.map((p: any) => (
                   <TableRow key={p.id}>
                     <TableCell className="text-xs">
-                      {new Date(p.dateCreated).toLocaleDateString('pt-BR')}
+                      <div className="flex items-center gap-1 group">
+                        {new Date(p.dateCreated).toLocaleDateString('pt-BR')}
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity" 
+                          onClick={() => {
+                            navigator.clipboard.writeText(p.id);
+                            toast({ title: "Copiado", description: "ID da cobrança copiado!" });
+                          }}
+                          title={`Copiar ID: ${p.id}`}
+                        >
+                          <Copy className="h-2 w-2" />
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
