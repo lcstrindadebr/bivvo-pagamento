@@ -67,9 +67,30 @@ export default function Affiliate() {
     })();
   }, []);
 
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
   const totalGen = commissions.reduce((s, c) => s + Number(c.commission_amount), 0);
   const totalPaid = commissions.filter(c => c.status === 'paid').reduce((s, c) => s + Number(c.commission_amount), 0);
-  const totalPending = commissions.filter(c => ['pending','approved'].includes(c.status)).reduce((s, c) => s + Number(c.commission_amount), 0);
+  
+  // Commission becomes available only after 7 days from creation
+  const totalAvailable = commissions.filter(c => 
+    (c.status === 'pending' || c.status === 'approved') && 
+    new Date(c.created_at) <= sevenDaysAgo
+  ).reduce((s, c) => s + Number(c.commission_amount), 0);
+
+  const totalHeld = commissions.filter(c => 
+    (c.status === 'pending' || c.status === 'approved') && 
+    new Date(c.created_at) > sevenDaysAgo
+  ).reduce((s, c) => s + Number(c.commission_amount), 0);
+
+  // Estimated next month: sum of recurring commissions from active sales
+  const nextMonthEstimate = sales
+    .filter(s => s.status === 'active')
+    .reduce((s, sale) => {
+      const commissionAmount = (Number(sale.amount_recurring) * (me.commission_percent / 100));
+      return s + commissionAmount;
+    }, 0);
 
   const saveProfile = async () => {
     try { await call('update-profile', { method: 'POST', body: profile }); toast({ title: 'Perfil atualizado' }); }
@@ -114,12 +135,31 @@ export default function Affiliate() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-4">
-        <div className="grid md:grid-cols-5 gap-3">
-          <div className="card-glass rounded-xl p-4"><div className="text-xs text-muted-foreground">Assinaturas Ativas</div><div className="text-xl font-bold text-accent">{me.stats?.activeSubscriptions ?? 0}</div></div>
-          <div className="card-glass rounded-xl p-4"><div className="text-xs text-muted-foreground">Comissão</div><div className="text-xl font-bold">{me.commission_percent}%</div></div>
-          <div className="card-glass rounded-xl p-4"><div className="text-xs text-muted-foreground">Total gerado</div><div className="text-xl font-bold">{formatCurrency(totalGen)}</div></div>
-          <div className="card-glass rounded-xl p-4"><div className="text-xs text-muted-foreground">Pendente</div><div className="text-xl font-bold text-amber-600">{formatCurrency(totalPending)}</div></div>
-          <div className="card-glass rounded-xl p-4"><div className="text-xs text-muted-foreground">Pago</div><div className="text-xl font-bold text-green-600">{formatCurrency(totalPaid)}</div></div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Assinaturas Ativas</div>
+            <div className="text-xl font-bold text-accent">{me.stats?.activeSubscriptions ?? 0}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">A Receber (Mês)</div>
+            <div className="text-xl font-bold text-blue-500">{formatCurrency(nextMonthEstimate)}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Disponível</div>
+            <div className="text-xl font-bold text-green-600">{formatCurrency(totalAvailable)}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Retido (7 dias)</div>
+            <div className="text-xl font-bold text-amber-600">{formatCurrency(totalHeld)}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Já Pagos</div>
+            <div className="text-xl font-bold text-slate-400">{formatCurrency(totalPaid)}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Total Gerado</div>
+            <div className="text-xl font-bold">{formatCurrency(totalGen)}</div>
+          </div>
         </div>
 
         <Tabs defaultValue="calc">
