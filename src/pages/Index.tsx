@@ -1,4 +1,4 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
 import { encodeBivvoConfig, type BivvoConfig } from '@/lib/bivvo-calc';
@@ -45,10 +45,10 @@ const Index = () => {
 
         <div className="max-w-6xl mx-auto space-y-4">
           <img src={bivvoLogo} alt="Bivvo" className="h-6 mx-auto opacity-50 grayscale" />
-          <p>© 2026 Bivvo. Todos os direitos reservados. CNPJ 00.000.000/0001-00</p>
+          <p>© 2026 Bivvo. Todos os direitos reservados. CNPJ 61.912.973/0001-91</p>
           <div className="flex justify-center gap-6 mt-4">
-            <a href="#" className="hover:text-foreground transition-colors">Termos de Uso</a>
-            <a href="#" className="hover:text-foreground transition-colors">Privacidade</a>
+            <Link to="#" className="hover:text-foreground transition-colors">Termos de Uso</Link>
+            <Link to="/politica-de-privacidade" className="hover:text-foreground transition-colors">Privacidade</Link>
           </div>
         </div>
       </footer>
