@@ -118,7 +118,7 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) throw new Error('Não autenticado');
-    await verifyAdmin(supabase, authHeader);
+    const user = await verifyAdmin(supabase, authHeader);
 
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
