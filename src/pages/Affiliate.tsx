@@ -245,7 +245,23 @@ export default function Affiliate() {
                 <TableBody>
                   {commissions.map(c => (
                     <TableRow key={c.id}>
-                      <TableCell className="text-xs">{new Date(c.created_at).toLocaleString('pt-BR')}</TableCell>
+                      <TableCell className="text-xs">
+                        <div className="flex items-center gap-1 group">
+                          {new Date(c.created_at).toLocaleString('pt-BR')}
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity" 
+                            onClick={() => {
+                              navigator.clipboard.writeText(c.id);
+                              toast({ title: "Copiado", description: "ID da comissão copiado!" });
+                            }}
+                            title={`Copiar ID: ${c.id}`}
+                          >
+                            <Copy className="h-2 w-2" />
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell><Badge variant="outline" className="text-xs">{c.kind}</Badge></TableCell>
                       <TableCell>{formatCurrency(Number(c.sale_amount))}</TableCell>
                       <TableCell>{c.commission_percent}%</TableCell>
