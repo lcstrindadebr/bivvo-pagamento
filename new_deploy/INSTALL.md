@@ -24,29 +24,45 @@ Este documento detalha o processo de migração do projeto Bivvo para uma infrae
 
 ## 3. Configuração das Edge Functions no Supabase Externo
 
-As funções precisam ser publicadas no seu novo projeto Supabase.
+Como a exportação é manual, os arquivos das funções já estão organizados na pasta `new_deploy/functions`.
 
-1. Instale o CLI do Supabase localmente:
+### Passo a Passo para Criar as Funções Manualmente:
+
+1. No painel do Supabase, vá em **Edge Functions**.
+2. Clique em **Create a New Function** para cada uma das seguintes:
+   - `admin-api`
+   - `affiliate-api`
+   - `asaas-webhook`
+   - `check-payment-status`
+   - `create-subscription`
+   - `process-payment`
+
+3. Para cada função criada:
+   - Copie o conteúdo do arquivo `index.ts` correspondente dentro de `new_deploy/functions/<nome-da-funcao>/`.
+   - **Importante:** Se a função importar arquivos de `_shared`, você precisará garantir que esses arquivos também existam no ambiente de execução ou ajustar os caminhos para URLs absolutas se necessário (o padrão CLI gerencia isso, mas na criação manual pelo painel, prefira usar o CLI conforme abaixo).
+
+### Recomendação: Deploy via CLI (Mais Seguro e Rápido)
+
+Mesmo sendo manual, a melhor forma é usar o CLI para evitar erros de importação:
+
+1. Na raiz da pasta `new_deploy`, certifique-se de que a estrutura `functions/` está presente.
+2. Inicialize o projeto Supabase localmente (se ainda não fez):
    ```bash
-   npm install supabase --save-dev
+   npx supabase init
    ```
-2. Faça login e vincule ao projeto:
+3. Vincule ao seu novo projeto:
    ```bash
-   npx supabase login
    npx supabase link --project-ref <seu-project-id>
    ```
-3. Configure as variáveis de ambiente no Supabase:
+4. Configure as variáveis de ambiente necessárias:
    ```bash
    npx supabase secrets set ASAAS_API_KEY="sua_chave"
    npx supabase secrets set ASAAS_BASE_URL="https://api.asaas.com/v3"
    npx supabase secrets set ASAAS_WEBHOOK_SECRET="seu_token_webhook"
    ```
-4. Faça o deploy:
+5. Faça o deploy de todas as funções de uma vez:
    ```bash
-   npx supabase functions deploy admin-api
-   npx supabase functions deploy create-subscription
-   npx supabase functions deploy process-payment
-   npx supabase functions deploy asaas-webhook
+   npx supabase functions deploy --all
    ```
 
 ---
