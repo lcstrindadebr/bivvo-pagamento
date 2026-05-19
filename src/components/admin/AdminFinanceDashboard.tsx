@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, DollarSign, Users, Calendar } from 'lucide-react';
+import { Loader2, TrendingUp, DollarSign, Users, Calendar, Receipt } from 'lucide-react';
 import { formatCurrency } from '@/lib/validators';
 
 interface FinanceStats {
