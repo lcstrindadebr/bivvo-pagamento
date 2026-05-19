@@ -28,12 +28,13 @@ interface AdminExpensesProps {
 }
 
 const CATEGORIES = [
-  'Servidor',
-  'Domínio',
-  'Contador',
-  'Marketing',
-  'Repasse Afiliado',
-  'Software/SaaS',
+  'Infraestrutura & Cloud',
+  'Marketing & Vendas',
+  'Operacional',
+  'Pessoal & RH',
+  'Impostos & Taxas',
+  'Comissões (Afiliados)',
+  'Softwares & Ferramentas',
   'Outros'
 ];
 
