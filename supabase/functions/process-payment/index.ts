@@ -326,17 +326,17 @@ serve(async (req) => {
     console.log('Processing credit card payment for plan:', plan, 'amount:', amount, 'affiliate:', affiliate?.id);
 
     // 1. Create/Update customer and subscription in our database
-    const cleanCpf = customerData.cpf.replace(/\D/g, '');
-    const cleanPhone = customerData.whatsapp.replace(/\D/g, '');
-    const cleanCardNumber = cardData.number.replace(/\s/g, '');
-    const cleanCep = customerData.cep.replace(/\D/g, '');
+    const cleanCpfVal = customerData.cpf.replace(/\D/g, '');
+    const cleanPhoneVal = customerData.whatsapp.replace(/\D/g, '');
+    const cleanCardNumberVal = cardData.number.replace(/\s/g, '');
+    const cleanCepVal = customerData.cep.replace(/\D/g, '');
 
     const { data: customer, error: customerUpsertError } = await supabase
       .from('customers')
       .upsert({
         name: customerData.name.trim(),
         email: customerData.email.toLowerCase().trim(),
-        phone: cleanPhone,
+        phone: cleanPhoneVal,
       }, { onConflict: 'email' })
       .select('id')
       .single();
@@ -376,10 +376,10 @@ serve(async (req) => {
       // Update user data
       await supabase.from('users').update({
         name: customerData.name.trim(),
-        whatsapp: cleanWhatsapp,
-        cpf: cleanCpf,
+        whatsapp: cleanPhoneVal,
+        cpf: cleanCpfVal,
         billing_name: customerData.billingName.trim(),
-        cep: cleanCep,
+        cep: cleanCepVal,
         endereco: customerData.endereco.trim(),
         numero: customerData.numero.trim(),
         complemento: customerData.complemento?.trim() || '',
@@ -394,10 +394,10 @@ serve(async (req) => {
         .insert({
           name: customerData.name.trim(),
           email: customerData.email.toLowerCase().trim(),
-          whatsapp: cleanWhatsapp,
-          cpf: cleanCpf,
+          whatsapp: cleanPhoneVal,
+          cpf: cleanCpfVal,
           billing_name: customerData.billingName.trim(),
-          cep: cleanCep,
+          cep: cleanCepVal,
           endereco: customerData.endereco.trim(),
           numero: customerData.numero.trim(),
           complemento: customerData.complemento?.trim() || '',
@@ -423,10 +423,10 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           name: customerData.name.trim(),
-          cpfCnpj: cleanCpf,
+          cpfCnpj: cleanCpfVal,
           email: customerData.email.toLowerCase().trim(),
-          mobilePhone: cleanWhatsapp,
-          postalCode: cleanCep,
+          mobilePhone: cleanPhoneVal,
+          postalCode: cleanCepVal,
           address: customerData.endereco.trim(),
           addressNumber: customerData.numero.trim(),
           complement: customerData.complemento?.trim() || '',
@@ -455,7 +455,7 @@ serve(async (req) => {
     const externalReference = `${userId}_${plan}_${Date.now()}`;
     const creditCard = {
       holderName: cardData.holderName.trim(),
-      number: cleanCardNumber,
+      number: cleanCardNumberVal,
       expiryMonth: cardData.expiryMonth,
       expiryYear: cardData.expiryYear.length === 2 ? `20${cardData.expiryYear}` : cardData.expiryYear,
       ccv: cardData.ccv,
@@ -464,9 +464,9 @@ serve(async (req) => {
     const creditCardHolderInfo = {
       name: customerData.billingName.trim(),
       email: customerData.email.toLowerCase().trim(),
-      cpfCnpj: cleanCpf,
-      phone: cleanWhatsapp,
-      postalCode: cleanCep,
+      cpfCnpj: cleanCpfVal,
+      phone: cleanPhoneVal,
+      postalCode: cleanCepVal,
       addressNumber: customerData.numero.trim(),
       address: customerData.endereco.trim(),
       province: customerData.bairro.trim(),
