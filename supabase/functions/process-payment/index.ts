@@ -284,6 +284,7 @@ serve(async (req) => {
     const { plan, customerData, cardData }: PaymentRequest = rawData;
     const bivvoConfig: BivvoConfig | undefined = rawData.bivvoConfig;
     const affiliateSlug: string | undefined = rawData.affiliateSlug;
+    const trackingId: string | undefined = rawData.trackingId;
 
     let amount: number;
     let recurringAmount: number;
@@ -583,6 +584,7 @@ serve(async (req) => {
     // 6. Register affiliate sale + first commission
     if (affiliate && payment) {
       const { data: sale } = await supabase.from('affiliate_sales').insert({
+        tracking_id: trackingId,
         affiliate_id: affiliate.id,
         payment_id: payment.id,
         user_id: userId,
