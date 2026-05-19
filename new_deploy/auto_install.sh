@@ -38,10 +38,21 @@ echo -e "${BLUE}        🚀 BIVVO - INSTALADOR AUTOMÁTICO COMPLETO 🚀       
 echo -e "${BLUE}=============================================================${NC}"
 echo ""
 echo -e "${YELLOW}Este instalador vai configurar TUDO sozinho.${NC}"
-echo -e "${YELLOW}Tenha em mãos:${NC}"
-echo "  - URL e chave anon do seu projeto Supabase"
-echo "  - Seu subdomínio já apontando para o IP desta VPS"
-echo "  - Um e-mail válido (para o certificado SSL)"
+echo ""
+echo -e "${YELLOW}📋 Tenha em mãos as seguintes credenciais:${NC}"
+echo ""
+echo -e "${BLUE}  FRONTEND (.env da aplicação):${NC}"
+echo "    • URL do Supabase          (Settings → API → Project URL)"
+echo "    • Chave anon do Supabase   (Settings → API → anon public key)"
+echo ""
+echo -e "${BLUE}  BACKEND (Secrets das Edge Functions no Supabase):${NC}"
+echo "    • ASAAS_API_KEY            (Asaas → Integrações → API Key)"
+echo "    • ASAAS_BASE_URL           (produção ou sandbox)"
+echo "    • ASAAS_WEBHOOK_SECRET     (token que VOCÊ inventa)"
+echo ""
+echo -e "${BLUE}  INFRAESTRUTURA:${NC}"
+echo "    • Subdomínio já apontando para o IP desta VPS"
+echo "    • E-mail válido (para o SSL Let's Encrypt)"
 echo ""
 read -p "Pressione ENTER para começar..."
 
@@ -57,14 +68,25 @@ fi
 # 1. Coletar dados
 # -----------------------------------------------------------------------------
 echo ""
-echo -e "${BLUE}━━━━━ ETAPA 1/8: Informações do projeto ━━━━━${NC}"
+echo -e "${BLUE}━━━━━ ETAPA 1/8: Coletando credenciais ━━━━━${NC}"
+echo ""
+echo -e "${YELLOW}▸ Infraestrutura${NC}"
 read -p "🌐 Subdomínio (ex: app.seudominio.com.br): " DOMAIN
 read -p "📧 Seu e-mail (para SSL Let's Encrypt): " EMAIL
-read -p "🔗 URL do Supabase (ex: https://xxxx.supabase.co): " SUPA_URL
-read -p "🔑 Chave anon (publishable) do Supabase: " SUPA_KEY
+echo ""
+echo -e "${YELLOW}▸ Supabase (vai para o .env do frontend)${NC}"
+read -p "🔗 VITE_SUPABASE_URL (ex: https://xxxx.supabase.co): " SUPA_URL
+read -p "🔑 VITE_SUPABASE_PUBLISHABLE_KEY (chave anon): " SUPA_KEY
+echo ""
+echo -e "${YELLOW}▸ Asaas (Secrets do Supabase — opcional agora)${NC}"
+echo -e "${BLUE}   Você pode deixar em branco e cadastrar depois no painel.${NC}"
+read -p "💳 ASAAS_API_KEY (Enter para pular): " ASAAS_API_KEY
+read -p "🌍 ASAAS_BASE_URL [https://api.asaas.com/v3]: " ASAAS_BASE_URL
+ASAAS_BASE_URL=${ASAAS_BASE_URL:-https://api.asaas.com/v3}
+read -p "🔐 ASAAS_WEBHOOK_SECRET (Enter para pular): " ASAAS_WEBHOOK_SECRET
 
 if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ] || [ -z "$SUPA_URL" ] || [ -z "$SUPA_KEY" ]; then
-    echo -e "${RED}❌ Todos os campos são obrigatórios!${NC}"
+    echo -e "${RED}❌ Domínio, e-mail e dados Supabase são obrigatórios!${NC}"
     exit 1
 fi
 
@@ -73,8 +95,9 @@ SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
 
 echo ""
 echo -e "${GREEN}✓ Dados coletados${NC}"
-echo "  Domínio: $DOMAIN"
+echo "  Domínio:    $DOMAIN"
 echo "  Project ID: $SUPA_PROJECT_ID"
+echo "  Asaas:      $([ -n "$ASAAS_API_KEY" ] && echo "informado" || echo "será configurado depois")"
 echo ""
 read -p "Confirma? (s/n): " CONFIRM
 [ "$CONFIRM" != "s" ] && exit 1
@@ -124,7 +147,21 @@ VITE_SUPABASE_URL=$SUPA_URL
 VITE_SUPABASE_PUBLISHABLE_KEY=$SUPA_KEY
 VITE_SUPABASE_PROJECT_ID=$SUPA_PROJECT_ID
 EOF
-echo -e "${GREEN}✓ .env criado${NC}"
+chmod 600 "$APP_DIR/.env"
+echo -e "${GREEN}✓ .env do frontend criado em $APP_DIR/.env${NC}"
+
+# Salvar secrets do Asaas em arquivo separado (se informados)
+if [ -n "$ASAAS_API_KEY" ] || [ -n "$ASAAS_WEBHOOK_SECRET" ]; then
+    cat > "$APP_DIR/supabase-secrets.env" <<EOF
+# Secrets para cadastrar no Supabase em: Edge Functions → Secrets
+ASAAS_API_KEY=$ASAAS_API_KEY
+ASAAS_BASE_URL=$ASAAS_BASE_URL
+ASAAS_WEBHOOK_SECRET=$ASAAS_WEBHOOK_SECRET
+EOF
+    chmod 600 "$APP_DIR/supabase-secrets.env"
+    echo -e "${GREEN}✓ Secrets do Asaas salvos em $APP_DIR/supabase-secrets.env${NC}"
+    echo -e "${YELLOW}  → Cadastre estes valores no painel do Supabase (Edge Functions → Secrets)${NC}"
+fi
 
 # -----------------------------------------------------------------------------
 # 6. Build da aplicação
