@@ -19,6 +19,11 @@ interface Expense {
   date: string;
   type: 'fixed' | 'variable';
   is_automatic: boolean;
+  payment_method?: 'one_time' | 'recurring' | 'installments';
+  installments_total?: number;
+  installment_number?: number;
+  recurring_interval?: 'monthly' | 'weekly' | 'yearly';
+  parent_id?: string;
   created_at: string;
 }
 
