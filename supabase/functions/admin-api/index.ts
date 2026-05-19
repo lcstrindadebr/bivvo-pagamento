@@ -496,7 +496,7 @@ serve(async (req) => {
         slug: finalSlug,
       }).select().single();
       if (affErr) {
-        await supabase.auth.admin.deleteUser(uid);
+        if (!authErr) await supabase.auth.admin.deleteUser(uid);
         throw new Error(affErr.message);
       }
       return new Response(JSON.stringify({ data: aff }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
