@@ -51,6 +51,26 @@ export function validateCardNumber(cardNumber: string): boolean {
   return sum % 10 === 0;
 }
 
+// Validação de data de expiração do cartão
+export function validateExpiry(expiry: string): boolean {
+  if (!/^\d{2}\/\d{2}$/.test(expiry)) return false;
+  
+  const [monthStr, yearStr] = expiry.split('/');
+  const month = parseInt(monthStr, 10);
+  const year = parseInt('20' + yearStr, 10);
+  
+  if (month < 1 || month > 12) return false;
+  
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  
+  if (year < currentYear) return false;
+  if (year === currentYear && month < currentMonth) return false;
+  
+  return true;
+}
+
 // Máscara para CPF
 export function maskCPF(value: string): string {
   const clean = value.replace(/\D/g, '').slice(0, 11);
