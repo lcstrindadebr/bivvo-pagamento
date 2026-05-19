@@ -68,14 +68,25 @@ fi
 # 1. Coletar dados
 # -----------------------------------------------------------------------------
 echo ""
-echo -e "${BLUE}━━━━━ ETAPA 1/8: Informações do projeto ━━━━━${NC}"
+echo -e "${BLUE}━━━━━ ETAPA 1/8: Coletando credenciais ━━━━━${NC}"
+echo ""
+echo -e "${YELLOW}▸ Infraestrutura${NC}"
 read -p "🌐 Subdomínio (ex: app.seudominio.com.br): " DOMAIN
 read -p "📧 Seu e-mail (para SSL Let's Encrypt): " EMAIL
-read -p "🔗 URL do Supabase (ex: https://xxxx.supabase.co): " SUPA_URL
-read -p "🔑 Chave anon (publishable) do Supabase: " SUPA_KEY
+echo ""
+echo -e "${YELLOW}▸ Supabase (vai para o .env do frontend)${NC}"
+read -p "🔗 VITE_SUPABASE_URL (ex: https://xxxx.supabase.co): " SUPA_URL
+read -p "🔑 VITE_SUPABASE_PUBLISHABLE_KEY (chave anon): " SUPA_KEY
+echo ""
+echo -e "${YELLOW}▸ Asaas (Secrets do Supabase — opcional agora)${NC}"
+echo -e "${BLUE}   Você pode deixar em branco e cadastrar depois no painel.${NC}"
+read -p "💳 ASAAS_API_KEY (Enter para pular): " ASAAS_API_KEY
+read -p "🌍 ASAAS_BASE_URL [https://api.asaas.com/v3]: " ASAAS_BASE_URL
+ASAAS_BASE_URL=${ASAAS_BASE_URL:-https://api.asaas.com/v3}
+read -p "🔐 ASAAS_WEBHOOK_SECRET (Enter para pular): " ASAAS_WEBHOOK_SECRET
 
 if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ] || [ -z "$SUPA_URL" ] || [ -z "$SUPA_KEY" ]; then
-    echo -e "${RED}❌ Todos os campos são obrigatórios!${NC}"
+    echo -e "${RED}❌ Domínio, e-mail e dados Supabase são obrigatórios!${NC}"
     exit 1
 fi
 
@@ -84,8 +95,9 @@ SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
 
 echo ""
 echo -e "${GREEN}✓ Dados coletados${NC}"
-echo "  Domínio: $DOMAIN"
+echo "  Domínio:    $DOMAIN"
 echo "  Project ID: $SUPA_PROJECT_ID"
+echo "  Asaas:      $([ -n "$ASAAS_API_KEY" ] && echo "informado" || echo "será configurado depois")"
 echo ""
 read -p "Confirma? (s/n): " CONFIRM
 [ "$CONFIRM" != "s" ] && exit 1
