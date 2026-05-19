@@ -163,6 +163,40 @@ export default function AdminAffiliates() {
     toast({ title: 'Link copiado', description: url });
   };
 
+  const handleDeleteAffiliate = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este afiliado? Todas as suas vendas e comissões serão removidas.')) return;
+    try {
+      await adminPost('delete-affiliate', { id });
+      toast({ title: 'Sucesso', description: 'Afiliado excluído' });
+      load();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteSale = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta venda? As comissões vinculadas também serão removidas.')) return;
+    try {
+      await adminPost('delete-affiliate-sale', { id });
+      toast({ title: 'Sucesso', description: 'Venda excluída' });
+      load();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteCommission = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta comissão?')) return;
+    try {
+      await adminPost('delete-affiliate-commission', { id });
+      toast({ title: 'Sucesso', description: 'Comissão excluída' });
+      load();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Erro ao excluir', variant: 'destructive' });
+    }
+  };
+
+
   if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-accent" /></div>;
 
   return (
