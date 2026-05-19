@@ -359,6 +359,7 @@ serve(async (req) => {
 
     if (action === 'delete-expense' && req.method === 'POST') {
       const { id } = await req.json();
+      if (!id) throw new Error('id obrigatório');
       const { error } = await supabase.from('expenses').delete().eq('id', id);
       if (error) throw error;
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -380,7 +381,8 @@ serve(async (req) => {
     }
 
     if (action === 'update-subscription' && req.method === 'POST') {
-      const { id, ...payload } = await req.json();
+      const body = await req.json();
+      const { id, ...payload } = body;
       if (!id) throw new Error('ID da assinatura é obrigatório');
 
       const asaasUrl = `${ASAAS_BASE_URL}/subscriptions/${id}`;
@@ -578,6 +580,9 @@ serve(async (req) => {
         .single();
         
       if (!comm) throw new Error('Comissão não encontrada');
+      if (comm.status === 'paid') {
+        return new Response(JSON.stringify({ success: true, message: 'Já estava paga' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
 
       // 2. Update commission status
       const { error: updateErr } = await supabase.from('affiliate_commissions')
@@ -588,16 +593,23 @@ serve(async (req) => {
         }).eq('id', id);
       if (updateErr) throw updateErr;
 
-      // 3. Create expense automatically
-      const { error: expenseErr } = await supabase.from('expenses').insert({
-        description: `Repasse Afiliado: ${comm.affiliates?.name || 'Afiliado'}`,
-        amount: comm.commission_amount,
-        category: 'Repasse Afiliado',
-        type: 'variable',
-        is_automatic: true,
-        metadata: { commission_id: id, affiliate_id: comm.affiliate_id }
-      });
-      if (expenseErr) console.error('Erro ao criar despesa automática:', expenseErr);
+      // 3. Create expense automatically (check if already exists to avoid duplication)
+      const { data: existingExpense } = await supabase.from('expenses')
+        .select('id')
+        .eq('metadata->>commission_id', id)
+        .maybeSingle();
+
+      if (!existingExpense) {
+        const { error: expenseErr } = await supabase.from('expenses').insert({
+          description: `Repasse Afiliado: ${comm.affiliates?.name || 'Afiliado'}`,
+          amount: comm.commission_amount,
+          category: 'Repasse Afiliado',
+          type: 'variable',
+          is_automatic: true,
+          metadata: { commission_id: id, affiliate_id: comm.affiliate_id }
+        });
+        if (expenseErr) console.error('Erro ao criar despesa automática:', expenseErr);
+      }
 
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
