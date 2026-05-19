@@ -7,6 +7,7 @@ interface PaymentData {
   installments?: number;
   bivvoConfig?: any;
   affiliateSlug?: string;
+  trackingId?: string;
   customerData: {
     name: string;
     email: string;
