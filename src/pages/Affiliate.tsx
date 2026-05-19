@@ -198,7 +198,23 @@ export default function Affiliate() {
                 <TableBody>
                   {sales.map(s => (
                     <TableRow key={s.id}>
-                      <TableCell className="text-xs">{new Date(s.created_at).toLocaleString('pt-BR')}</TableCell>
+                      <TableCell className="text-xs">
+                        <div className="flex items-center gap-1 group">
+                          {new Date(s.created_at).toLocaleString('pt-BR')}
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity" 
+                            onClick={() => {
+                              navigator.clipboard.writeText(s.id);
+                              toast({ title: "Copiado", description: "ID da venda copiado!" });
+                            }}
+                            title={`Copiar ID: ${s.id}`}
+                          >
+                            <Copy className="h-2 w-2" />
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell>{s.plan_label}</TableCell>
                       <TableCell>{formatCurrency(Number(s.amount_first))}</TableCell>
                       <TableCell>{formatCurrency(Number(s.amount_recurring))}</TableCell>
