@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, DollarSign, Users, Calendar } from 'lucide-react';
+import { Loader2, TrendingUp, DollarSign, Users, Calendar, Receipt } from 'lucide-react';
 import { formatCurrency } from '@/lib/validators';
 
 interface FinanceStats {
@@ -15,9 +15,11 @@ interface FinanceStats {
   mrr: number;
   retainedCommissions: number;
   pendingAffiliatePayout: number;
+  totalExpenses: number;
   freeCash: number;
   payments: any[];
 }
+
 
 interface AdminFinanceDashboardProps {
   adminFetch: (action: string, params?: Record<string, string>) => Promise<any>;
@@ -233,6 +235,25 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-red-500" /> Outras Despesas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <div className="flex flex-col">
+                <div className="text-xl font-bold text-red-500">{formatCurrency(stats?.totalExpenses || 0)}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Lançamentos manuais e automáticos
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="card-glass border-none shadow-xl">
+
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-blue-500" /> Caixa Livre
             </CardTitle>
           </CardHeader>
@@ -241,8 +262,9 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
               <div className="flex flex-col">
                 <div className="text-2xl font-bold text-blue-500">{formatCurrency(stats?.freeCash || 0)}</div>
                 <div className="text-[10px] text-muted-foreground">
-                  (Recebido - Comissões)
+                  (Recebido - Comissões - Despesas)
                 </div>
+
               </div>
             )}
           </CardContent>

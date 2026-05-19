@@ -186,14 +186,14 @@ serve(async (req) => {
         mrr: (subsData.data || [])
           .filter((s: any) => s.status === 'ACTIVE')
           .reduce((acc: number, s: any) => acc + (s.value || 0), 0),
-        // Novos campos solicitados
         retainedCommissions: 0,
         pendingAffiliatePayout: 0,
+        totalExpenses: 0,
         freeCash: 0,
         payments
       };
 
-      // Calcular comissões retidas e repasses pendentes baseados na tabela affiliate_commissions
+      // Calcular comissões retidas e repasses pendentes
       const { data: comms } = await supabase
         .from('affiliate_commissions')
         .select('commission_amount, created_at, status')
@@ -213,15 +213,45 @@ serve(async (req) => {
         });
       }
 
-      // Caixa livre = Valor Pago (líquido que entrou) - (Comissões Retidas + Repasses Pendentes)
-      stats.freeCash = stats.paidValue - (stats.retainedCommissions + stats.pendingAffiliatePayout);
-
-
+      // Buscar despesas no período
+      let expensesQuery = supabase.from('expenses').select('amount');
+      if (dateStart) expensesQuery = expensesQuery.gte('date', dateStart);
+      if (dateEnd) expensesQuery = expensesQuery.lte('date', dateEnd);
       
+      const { data: expenses } = await expensesQuery;
+      stats.totalExpenses = (expenses || []).reduce((acc: number, e: any) => acc + Number(e.amount), 0);
+
+      // Caixa livre = Valor Pago - (Comissões Retidas + Repasses Pendentes + Outras Despesas do período)
+      stats.freeCash = stats.paidValue - (stats.retainedCommissions + stats.pendingAffiliatePayout + stats.totalExpenses);
+
       return new Response(JSON.stringify(stats), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    if (action === 'list-expenses') {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .order('date', { ascending: false });
+      if (error) throw error;
+      return new Response(JSON.stringify({ data }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'create-expense' && req.method === 'POST') {
+      const body = await req.json();
+      const { error } = await supabase.from('expenses').insert(body);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'delete-expense' && req.method === 'POST') {
+      const { id } = await req.json();
+      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
 
     if (action === 'list-users') {
       const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
@@ -375,15 +405,39 @@ serve(async (req) => {
     if (action === 'mark-commission-paid' && req.method === 'POST') {
       const { id, payment_proof_url } = await req.json();
       if (!id) throw new Error('id obrigatório');
-      const { error } = await supabase.from('affiliate_commissions')
+      
+      // 1. Get commission details first to create expense
+      const { data: comm } = await supabase
+        .from('affiliate_commissions')
+        .select('*, affiliates(name)')
+        .eq('id', id)
+        .single();
+        
+      if (!comm) throw new Error('Comissão não encontrada');
+
+      // 2. Update commission status
+      const { error: updateErr } = await supabase.from('affiliate_commissions')
         .update({ 
           status: 'paid', 
           paid_at: new Date().toISOString(),
           payment_proof_url: payment_proof_url || null
         }).eq('id', id);
-      if (error) throw error;
+      if (updateErr) throw updateErr;
+
+      // 3. Create expense automatically
+      const { error: expenseErr } = await supabase.from('expenses').insert({
+        description: `Repasse Afiliado: ${comm.affiliates?.name || 'Afiliado'}`,
+        amount: comm.commission_amount,
+        category: 'Repasse Afiliado',
+        type: 'variable',
+        is_automatic: true,
+        metadata: { commission_id: id, affiliate_id: comm.affiliate_id }
+      });
+      if (expenseErr) console.error('Erro ao criar despesa automática:', expenseErr);
+
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+
 
     return new Response(JSON.stringify({ error: 'Ação inválida' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
