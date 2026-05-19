@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Copy, Link2, FileText, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Tooltip,
   TooltipContent,
@@ -216,8 +217,28 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 {quote.telCost > 0 && <div className="flex justify-between text-xs text-muted-foreground"><span>📞 Telefonia</span><span>{fmtBRL(quote.telCost)}</span></div>}
               </div>
               <div className="space-y-1">
-                <div className="flex justify-between items-baseline"><span className="text-xs text-muted-foreground">1º Mês</span><span className="text-xl font-bold">{fmtBRL(quote.total1m)}</span></div>
-                <div className="flex justify-between items-baseline"><span className="text-xs text-muted-foreground">Recorrente</span><span className="text-base font-semibold text-accent">{fmtBRL(quote.totalRec)}</span></div>
+                <AnimatePresence mode="wait">
+                  <motion.div 
+                    key={`total1m-${quote.total1m}`}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex justify-between items-baseline"
+                  >
+                    <span className="text-xs text-muted-foreground">1º Mês</span>
+                    <span className="text-xl font-bold text-accent">{fmtBRL(quote.total1m)}</span>
+                  </motion.div>
+                </AnimatePresence>
+                <AnimatePresence mode="wait">
+                  <motion.div 
+                    key={`totalRec-${quote.totalRec}`}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex justify-between items-baseline"
+                  >
+                    <span className="text-xs text-muted-foreground">Recorrente</span>
+                    <span className="text-base font-semibold text-primary">{fmtBRL(quote.totalRec)}</span>
+                  </motion.div>
+                </AnimatePresence>
               </div>
               {quote.protagonista && <div className="text-xs p-2 rounded bg-green-500/10 text-green-700 mt-2">✅ Cliente paga {fmtBRL(quote.total1m)} para sempre</div>}
             </>
