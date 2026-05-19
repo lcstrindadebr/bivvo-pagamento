@@ -953,6 +953,14 @@ const Checkout = () => {
       {/* Fixed Footer */}
       <footer className="fixed bottom-0 left-0 right-0 glass border-t border-white/10 p-4 safe-area-bottom">
         <div className="max-w-lg mx-auto">
+          {currentStep === 'payment' && (
+            <p className="text-[10px] text-center text-muted-foreground mb-3">
+              Ao clicar em pagar, você concorda com nossos{" "}
+              <a href="/termos-de-uso" target="_blank" className="underline hover:text-foreground">Termos de Uso</a>
+              {" "}e{" "}
+              <a href="/politica-de-privacidade" target="_blank" className="underline hover:text-foreground">Política de Privacidade</a>.
+            </p>
+          )}
           {currentStep === 'payment' ? (
             <Button
               onClick={handleSubmit}
