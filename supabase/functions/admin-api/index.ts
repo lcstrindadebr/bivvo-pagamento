@@ -176,16 +176,41 @@ serve(async (req) => {
         }));
       }
       
+      // Get global conversion stats
+      const { count: totalClicks } = await supabase.from('affiliate_clicks')
+        .select('*', { count: 'exact', head: true });
+        
+      const { count: totalSalesCount } = await supabase.from('affiliate_sales')
+        .select('*', { count: 'exact', head: true });
+
+      // Calculate Churn (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { data: cancelledSubs } = await supabase.from('affiliate_sales')
+        .select('id')
+        .eq('status', 'cancelled')
+        .gte('updated_at', thirtyDaysAgo.toISOString());
+
+      const activeSubsCount = subsData.totalCount || 0;
+      const churnRate = activeSubsCount > 0 
+        ? ((cancelledSubs?.length || 0) / (activeSubsCount + (cancelledSubs?.length || 0)) * 100)
+        : 0;
+
       const stats = {
         totalPayments: payments.length,
         paidCount: payments.filter((p: any) => ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(p.status)).length,
         totalValue: payments.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
         paidValue: payments.filter((p: any) => ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(p.status))
           .reduce((acc: number, p: any) => acc + (p.value || 0), 0),
-        activeSubscriptions: subsData.totalCount || 0,
+        activeSubscriptions: activeSubsCount,
         mrr: (subsData.data || [])
           .filter((s: any) => s.status === 'ACTIVE')
           .reduce((acc: number, s: any) => acc + (s.value || 0), 0),
+        churnRate,
+        ltv: activeSubsCount > 0 ? (stats_paidValue_total / activeSubsCount) : 0, // Simplified LTV
+        conversionRate: totalClicks ? (totalSalesCount / totalClicks * 100) : 0,
+        totalClicks: totalClicks || 0,
         retainedCommissions: 0,
         pendingAffiliatePayout: 0,
         totalExpenses: 0,

@@ -42,11 +42,33 @@ serve(async (req) => {
         .eq('status', 'paid')
         .not('asaas_subscription_id', 'is', null);
       
+      const { count: totalClicks } = await supabase.from('affiliate_clicks')
+        .select('*', { count: 'exact', head: true })
+        .eq('affiliate_id', aff.id);
+      
       const stats = {
-        activeSubscriptions: sales?.length || 0
+        activeSubscriptions: sales?.length || 0,
+        totalClicks: totalClicks || 0,
+        conversionRate: totalClicks ? ((sales?.length || 0) / totalClicks * 100).toFixed(2) : 0
       };
 
       return new Response(JSON.stringify({ data: { ...aff, stats } }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'conversion-stats') {
+      const { data: clicks } = await supabase.from('affiliate_clicks')
+        .select('created_at')
+        .eq('affiliate_id', aff.id)
+        .order('created_at', { ascending: false });
+        
+      const { data: sales } = await supabase.from('affiliate_sales')
+        .select('created_at, status')
+        .eq('affiliate_id', aff.id)
+        .order('created_at', { ascending: false });
+
+      return new Response(JSON.stringify({ data: { clicks, sales } }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
