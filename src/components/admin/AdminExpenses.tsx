@@ -55,7 +55,10 @@ export default function AdminExpenses({ adminFetch, adminPost }: AdminExpensesPr
     amount: '',
     category: 'Outros',
     date: new Date().toISOString().split('T')[0],
-    type: 'fixed' as 'fixed' | 'variable'
+    type: 'fixed' as 'fixed' | 'variable',
+    payment_method: 'one_time' as 'one_time' | 'recurring' | 'installments',
+    installments_total: '2',
+    recurring_interval: 'monthly' as 'monthly' | 'weekly' | 'yearly'
   });
 
   const loadExpenses = async () => {
