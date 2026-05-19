@@ -275,7 +275,7 @@ export default function AdminAffiliates() {
       <TabsContent value="sales">
         <div className="card-glass rounded-xl overflow-hidden">
           <Table>
-            <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Afiliado</TableHead><TableHead>Plano</TableHead><TableHead>1º mês</TableHead><TableHead>Recorrente</TableHead><TableHead>%</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Afiliado</TableHead><TableHead>Plano</TableHead><TableHead>1º mês</TableHead><TableHead>Recorrente</TableHead><TableHead>%</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
             <TableBody>
               {sales.map(s => (
                 <TableRow key={s.id}>
@@ -297,9 +297,14 @@ export default function AdminAffiliates() {
                       )}
                     </div>
                   </TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleDeleteSale(s.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
-              {sales.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Sem vendas</TableCell></TableRow>}
+              {sales.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Sem vendas</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>
