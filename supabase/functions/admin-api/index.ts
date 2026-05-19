@@ -381,7 +381,8 @@ serve(async (req) => {
     }
 
     if (action === 'update-subscription' && req.method === 'POST') {
-      const { id, ...payload } = await req.json();
+      const body = await req.json();
+      const { id, ...payload } = body;
       if (!id) throw new Error('ID da assinatura é obrigatório');
 
       const asaasUrl = `${ASAAS_BASE_URL}/subscriptions/${id}`;
