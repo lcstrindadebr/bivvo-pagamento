@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp, Receipt, Share2 } from 'lucide-react';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp, Receipt, Share2, Copy } from 'lucide-react';
 
 import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
@@ -825,8 +825,34 @@ const Admin = () => {
                         <div className="space-y-1">
                           <p className="text-sm font-medium">{selectedSub.customerName}</p>
                           <p className="text-xs text-muted-foreground">{selectedSub.customerEmail}</p>
-                          <p className="text-xs text-muted-foreground font-mono">ID Asaas Cliente: {selectedSub.customer}</p>
-                          <p className="text-xs text-muted-foreground font-mono">ID Assinatura: {selectedSub.id}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-muted-foreground font-mono">ID Asaas Cliente: {selectedSub.customer}</p>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-5 w-5 p-0" 
+                              onClick={() => {
+                                navigator.clipboard.writeText(selectedSub.customer);
+                                toast({ title: "Copiado", description: "ID do cliente copiado!" });
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-muted-foreground font-mono">ID Assinatura: {selectedSub.id}</p>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-5 w-5 p-0" 
+                              onClick={() => {
+                                navigator.clipboard.writeText(selectedSub.id);
+                                toast({ title: "Copiado", description: "ID da assinatura copiado!" });
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                       <div className="space-y-3">
@@ -1001,7 +1027,21 @@ const Admin = () => {
                               selectedSubPayments.map((p: any) => (
                                 <TableRow key={p.id}>
                                   <TableCell className="text-[10px]">
-                                    {new Date(p.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                                    <div className="flex items-center gap-1 group">
+                                      <span>{new Date(p.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(p.id);
+                                          toast({ title: "Copiado", description: "ID da cobrança copiado!" });
+                                        }}
+                                        title={`Copiar ID: ${p.id}`}
+                                      >
+                                        <Copy className="h-2 w-2" />
+                                      </Button>
+                                    </div>
                                   </TableCell>
                                   <TableCell className="text-[10px] font-bold">
                                     {formatCurrency(p.value)}
