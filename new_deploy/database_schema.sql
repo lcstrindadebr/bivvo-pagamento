@@ -204,5 +204,25 @@ ALTER TABLE public.marketing_materials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.affiliate_clicks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 
--- Basic Admin Policies (Example)
-CREATE POLICY "Admins can do everything on user_roles" ON public.user_roles USING (EXISTS (SELECT 1 FROM auth.users WHERE id = auth.uid() AND (SELECT role FROM public.user_roles WHERE user_id = auth.uid()) = 'admin'));
+-- Basic Admin Policies
+CREATE POLICY "Admins can do everything on user_roles" ON public.user_roles USING (EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Admins can view audit logs" ON public.audit_logs FOR SELECT USING (EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Admins can view webhooks" ON public.asaas_webhooks FOR SELECT USING (EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- Subscriptions Table (Missing in previous export)
+CREATE TABLE IF NOT EXISTS public.subscriptions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    customer_id uuid NOT NULL,
+    plan_slug text NOT NULL,
+    users_count int4 NOT NULL DEFAULT 1,
+    channels_config jsonb NOT NULL DEFAULT '{}',
+    is_protagonista bool NOT NULL DEFAULT false,
+    has_telefonia bool NOT NULL DEFAULT false,
+    channels_discount int4 NOT NULL DEFAULT 0,
+    status text NOT NULL DEFAULT 'active',
+    account_created bool NOT NULL DEFAULT false,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+
