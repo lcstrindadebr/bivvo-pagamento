@@ -210,15 +210,16 @@ serve(async (req) => {
     }
 
     // 1. Create/Update customer and subscription in our database
-    const cleanCpf = customerData.cpf.replace(/\D/g, '');
-    const cleanPhone = customerData.whatsapp.replace(/\D/g, '');
+    const cleanCpfVal = customerData.cpf.replace(/\D/g, '');
+    const cleanPhoneVal = customerData.whatsapp.replace(/\D/g, '');
+    const cleanCepVal = customerData.cep.replace(/\D/g, '');
 
     const { data: customer, error: customerUpsertError } = await supabase
       .from('customers')
       .upsert({
         name: customerData.name.trim(),
         email: customerData.email.toLowerCase().trim(),
-        phone: cleanPhone,
+        phone: cleanPhoneVal,
       }, { onConflict: 'email' })
       .select('id')
       .single();
@@ -245,10 +246,10 @@ serve(async (req) => {
     console.log('Processing Asaas for plan:', plan, 'amount:', amount, 'recurring:', recurringAmount);
 
 
-    // Sanitize data
-    const cleanCpf = customerData.cpf.replace(/\D/g, '');
-    const cleanWhatsapp = customerData.whatsapp.replace(/\D/g, '');
-    const cleanCep = customerData.cep.replace(/\D/g, '');
+    // Sanitize data (reusing values defined above)
+    const cleanCpf = cleanCpfVal;
+    const cleanWhatsapp = cleanPhoneVal;
+    const cleanCep = cleanCepVal;
 
     // 1. Create or find user in database
     let userId: string;
