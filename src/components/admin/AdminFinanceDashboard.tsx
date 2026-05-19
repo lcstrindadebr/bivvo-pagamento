@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, DollarSign, Users, Calendar, Receipt, XCircle, MousePointerClick } from 'lucide-react';
+import { Loader2, TrendingUp, DollarSign, Users, Calendar, Receipt, XCircle, MousePointerClick, Copy } from 'lucide-react';
 import { formatCurrency } from '@/lib/validators';
+import { useToast } from '@/hooks/use-toast';
 
 interface FinanceStats {
   totalPayments: number;
