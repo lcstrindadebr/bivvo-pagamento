@@ -256,7 +256,14 @@ export default function AdminAffiliates() {
                   <TableCell className="text-amber-600">{formatCurrency(a.stats?.commPending ?? 0)}</TableCell>
                   <TableCell className="text-green-600">{formatCurrency(a.stats?.commPaid ?? 0)}</TableCell>
                   <TableCell><Switch checked={a.status === 'active'} onCheckedChange={() => toggleStatus(a)} /></TableCell>
-                  <TableCell className="text-right"><Button size="sm" variant="ghost" onClick={() => openEdit(a)}>Editar</Button></TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(a)}>Editar</Button>
+                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleDeleteAffiliate(a.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               {affiliates.length === 0 && <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum afiliado</TableCell></TableRow>}
