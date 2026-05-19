@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   validateCPF,
   validateCardNumber,
+  validateExpiry,
   maskCPF,
   maskCardNumber,
   maskCEP,
@@ -244,7 +245,7 @@ const Checkout = () => {
     if (step === 'payment' && paymentMethod === 'CREDIT_CARD') {
       if (!formData.cardName.trim()) newErrors.cardName = 'Nome obrigatório';
       if (!validateCardNumber(formData.cardNumber)) newErrors.cardNumber = 'Cartão inválido';
-      if (!formData.cardExpiry.trim() || formData.cardExpiry.length !== 5) {
+      if (!validateExpiry(formData.cardExpiry)) {
         newErrors.cardExpiry = 'Data inválida';
       }
       if (!formData.cardCvv.trim() || formData.cardCvv.length < 3) {
