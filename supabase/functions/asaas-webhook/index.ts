@@ -6,187 +6,99 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, asaas-access-token',
 };
 
-// Asaas events we care about
-const EVENTS = [
-  'PAYMENT_RECEIVED',
-  'PAYMENT_CONFIRMED',
-  'PAYMENT_OVERDUE',
-  'PAYMENT_DELETED',
-  'PAYMENT_REFUNDED',
-  'PAYMENT_CHARGEBACK_REQUESTED',
-  'SUBSCRIPTION_DELETED',
-  'SUBSCRIPTION_CANCELLED',
-];
-
-// Map Asaas events to our status
-function mapAsaasEventToStatus(event: string): string | null {
-  switch (event) {
-    case 'PAYMENT_RECEIVED':
-    case 'PAYMENT_CONFIRMED':
-      return 'paid';
-    case 'PAYMENT_OVERDUE':
-      return 'overdue';
-    case 'PAYMENT_DELETED':
-      return 'cancelled';
-    case 'PAYMENT_REFUNDED':
-      return 'refunded';
-    case 'PAYMENT_CHARGEBACK_REQUESTED':
-      return 'chargeback';
-    case 'SUBSCRIPTION_DELETED':
-    case 'SUBSCRIPTION_CANCELLED':
-      return 'cancelled';
-    default:
-      return null;
-  }
-}
-
-interface AsaasWebhookPayload {
-  event: string;
-  payment?: {
-    id: string;
-    customer: string;
-    value: number;
-    status: string;
-    billingType: string;
-    subscription?: string;
-    externalReference?: string;
-    paymentDate?: string;
-    confirmedDate?: string;
-  };
-  subscription?: {
-    id: string;
-    customer: string;
-    status: string;
-    externalReference?: string;
-  };
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const ASAAS_WEBHOOK_TOKEN = Deno.env.get('ASAAS_WEBHOOK_TOKEN');
+    const WEBHOOK_SECRET = Deno.env.get('ASAAS_WEBHOOK_SECRET');
+    const authHeader = req.headers.get('asaas-access-token');
 
-    if (ASAAS_WEBHOOK_TOKEN) {
-      const receivedToken = req.headers.get('asaas-access-token');
-      if (receivedToken !== ASAAS_WEBHOOK_TOKEN) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-      }
+    // Validação de token de segurança (configurado no Asaas)
+    if (WEBHOOK_SECRET && authHeader !== WEBHOOK_SECRET) {
+      console.error('Webhook: Token inválido');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
-    const payload: AsaasWebhookPayload = await req.json();
-    const { event, payment, subscription } = payload;
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
-    if (!EVENTS.includes(event)) {
-      return new Response(JSON.stringify({ success: true, message: 'Event ignored' }), { headers: corsHeaders });
-    }
+    const body = await req.json();
+    console.log('Webhook recebido:', body.event, body.payment?.id);
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const newStatus = mapAsaasEventToStatus(event);
+    // Salvar log do webhook
+    await supabase.from('asaas_webhooks').insert({
+      event_id: body.id,
+      event_type: body.event,
+      payload: body,
+      status: 'received'
+    });
 
-    // Handle Subscription events
-    if (event === 'SUBSCRIPTION_DELETED' || event === 'SUBSCRIPTION_CANCELLED') {
-      const subId = subscription?.id;
-      if (subId) {
-        await supabase.from('users').update({ status: 'inactive' }).eq('asaas_subscription_id', subId);
-        await supabase.from('payments').update({ status: 'cancelled' }).eq('asaas_subscription_id', subId);
-        await supabase.from('affiliate_sales').update({ status: 'cancelled' }).eq('asaas_subscription_id', subId);
-        await supabase.from('affiliate_commissions').update({ status: 'cancelled' }).eq('status', 'pending').match({ asaas_subscription_id: subId });
-      }
-      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
-    }
+    const payment = body.payment;
+    if (!payment) return new Response('OK');
 
-    if (!payment) return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
-
-    // Find payment in our database
-    const { data: paymentRecord } = await supabase
-      .from('payments')
-      .select('id, user_id, plan, status, asaas_subscription_id')
-      .eq('asaas_payment_id', payment.id)
-      .maybeSingle();
-
-    if (!paymentRecord && payment.subscription) {
-      // If payment not found, it might be a recurring one. Let's check if we have the subscription.
-      const { data: sub } = await supabase.from('payments').select('user_id, plan').eq('asaas_subscription_id', payment.subscription).limit(1).maybeSingle();
-      if (sub && newStatus === 'paid') {
-        // Create the recurring payment record
-        await supabase.from('payments').insert({
-          user_id: sub.user_id,
-          plan: sub.plan,
-          amount: payment.value,
-          status: 'paid',
-          paid_at: payment.confirmedDate || payment.paymentDate || new Date().toISOString(),
-          asaas_payment_id: payment.id,
-          asaas_subscription_id: payment.subscription
-        });
-      }
-    } else if (paymentRecord) {
-      const updateData: any = { status: newStatus };
-      if (newStatus === 'paid') updateData.paid_at = payment.confirmedDate || payment.paymentDate || new Date().toISOString();
-      await supabase.from('payments').update(updateData).eq('id', paymentRecord.id);
-    }
-
-    // Update User
-    if (payment.customer && (newStatus === 'paid' || ['overdue', 'cancelled', 'refunded'].includes(newStatus || ''))) {
-      const userStatus = newStatus === 'paid' ? 'active' : (newStatus === 'overdue' ? 'overdue' : 'inactive');
-      const updateObj: any = { status: userStatus };
-      if (newStatus === 'paid') {
-        const exp = new Date(); exp.setDate(exp.getDate() + 32); // buffer
-        updateObj.data_expiracao = exp.toISOString();
-      }
-      await supabase.from('users').update(updateObj).eq('asaas_customer_id', payment.customer);
-    }
-
-    // --- Affiliate Logic ---
-    if (payment.subscription) {
-      const { data: sale } = await supabase.from('affiliate_sales')
-        .select('*')
-        .eq('asaas_subscription_id', payment.subscription)
+    // 1. Pagamento Confirmado / Recebido
+    if (['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'].includes(body.event)) {
+      // Buscar pagamento em nosso banco
+      const { data: dbPayment } = await supabase
+        .from('payments')
+        .select('*, users(id, email)')
+        .eq('asaas_payment_id', payment.id)
         .maybeSingle();
 
-      if (sale) {
-        if (newStatus === 'paid') {
-          // Check if this is a recurring payment or the first one
-          const isFirst = payment.id === sale.asaas_payment_id;
+      if (dbPayment && dbPayment.status !== 'approved') {
+        // Atualizar status do pagamento
+        await supabase.from('payments').update({ status: 'approved' }).eq('id', dbPayment.id);
+
+        // Ativar usuário
+        const expirationDate = new Date();
+        expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+        
+        await supabase.from('users').update({
+          status: 'ativo',
+          plano_ativo: dbPayment.plan,
+          data_expiracao: expirationDate.toISOString(),
+          asaas_subscription_id: payment.subscription || dbPayment.asaas_subscription_id
+        }).eq('id', dbPayment.user_id);
+
+        // Atualizar venda do afiliado
+        await supabase.from('affiliate_sales')
+          .update({ status: 'paid' })
+          .eq('asaas_payment_id', payment.id);
           
-          if (isFirst) {
-            await supabase.from('affiliate_sales').update({ status: 'paid' }).eq('id', sale.id);
-            await supabase.from('affiliate_commissions').update({ status: 'approved' }).match({ sale_id: sale.id, kind: 'first', status: 'pending' });
-          } else {
-            // Check if recurring commission already exists for this specific payment
-            const { data: exists } = await supabase.from('affiliate_commissions')
-              .select('id').match({ sale_id: sale.id, asaas_payment_id: payment.id }).maybeSingle();
-            
-            if (!exists) {
-              const { data: aff } = await supabase.from('affiliates').select('commission_recurring').eq('id', sale.affiliate_id).maybeSingle();
-              if (aff?.commission_recurring) {
-                const commission = Math.round(Number(sale.amount_recurring) * Number(sale.commission_percent)) / 100;
-                await supabase.from('affiliate_commissions').insert({
-                  affiliate_id: sale.affiliate_id,
-                  sale_id: sale.id,
-                  sale_amount: sale.amount_recurring,
-                  commission_percent: sale.commission_percent,
-                  commission_amount: commission,
-                  kind: 'recurring',
-                  status: 'approved',
-                  is_recurring: true,
-                  asaas_payment_id: payment.id
-                });
-              }
-            }
-          }
-        } else if (['cancelled', 'refunded', 'chargeback'].includes(newStatus || '')) {
-          await supabase.from('affiliate_sales').update({ status: 'cancelled' }).eq('id', sale.id);
-          await supabase.from('affiliate_commissions').update({ status: 'cancelled' }).match({ sale_id: sale.id, status: 'pending' });
+        // Aprovar comissões pendentes desta venda
+        const { data: sale } = await supabase.from('affiliate_sales').select('id').eq('asaas_payment_id', payment.id).maybeSingle();
+        if (sale) {
+          await supabase.from('affiliate_commissions')
+            .update({ status: 'approved' })
+            .eq('sale_id', sale.id)
+            .eq('status', 'pending');
         }
+
+        console.log('Pagamento aprovado via Webhook:', payment.id);
       }
     }
 
-    return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    // 2. Pagamento Atrasado / Vencido
+    if (body.event === 'PAYMENT_OVERDUE') {
+       // Opcional: Notificar usuário ou marcar como atrasado
+       console.log('Pagamento atrasado:', payment.id);
+    }
+
+    // 3. Assinatura Cancelada
+    if (body.event === 'SUBSCRIPTION_DELETED') {
+      const subscriptionId = body.subscription?.id;
+      if (subscriptionId) {
+        await supabase.from('users').update({ status: 'inativo' }).eq('asaas_subscription_id', subscriptionId);
+        await supabase.from('affiliate_sales').update({ status: 'cancelled' }).eq('asaas_subscription_id', subscriptionId);
+        console.log('Assinatura cancelada via Webhook:', subscriptionId);
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
-    console.error('Webhook error:', error);
-    return new Response(JSON.stringify({ success: false, error: error.message }), { status: 500, headers: corsHeaders });
+    console.error('Webhook Error:', error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   }
 });
