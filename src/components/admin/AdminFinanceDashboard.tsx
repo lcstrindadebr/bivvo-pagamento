@@ -13,6 +13,10 @@ interface FinanceStats {
   paidValue: number;
   activeSubscriptions: number;
   mrr: number;
+  churnRate: number;
+  ltv: number;
+  totalClicks: number;
+  conversionRate: number;
   retainedCommissions: number;
   pendingAffiliatePayout: number;
   totalExpenses: number;

@@ -196,19 +196,21 @@ serve(async (req) => {
       const churnRate = activeSubsCount > 0 
         ? ((cancelledSubs?.length || 0) / (activeSubsCount + (cancelledSubs?.length || 0)) * 100)
         : 0;
+        
+      const paidValue = payments.filter((p: any) => ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(p.status))
+          .reduce((acc: number, p: any) => acc + (p.value || 0), 0);
 
       const stats = {
         totalPayments: payments.length,
         paidCount: payments.filter((p: any) => ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(p.status)).length,
         totalValue: payments.reduce((acc: number, p: any) => acc + (p.value || 0), 0),
-        paidValue: payments.filter((p: any) => ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(p.status))
-          .reduce((acc: number, p: any) => acc + (p.value || 0), 0),
+        paidValue: paidValue,
         activeSubscriptions: activeSubsCount,
         mrr: (subsData.data || [])
           .filter((s: any) => s.status === 'ACTIVE')
           .reduce((acc: number, s: any) => acc + (s.value || 0), 0),
         churnRate,
-        ltv: activeSubsCount > 0 ? (stats_paidValue_total / activeSubsCount) : 0, // Simplified LTV
+        ltv: activeSubsCount > 0 ? (paidValue / activeSubsCount) : 0,
         conversionRate: totalClicks ? (totalSalesCount / totalClicks * 100) : 0,
         totalClicks: totalClicks || 0,
         retainedCommissions: 0,

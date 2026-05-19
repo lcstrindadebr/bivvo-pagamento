@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
 import { encodeBivvoConfig, type BivvoConfig } from '@/lib/bivvo-calc';
@@ -7,6 +9,25 @@ const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const aff = searchParams.get('aff');
+
+  useEffect(() => {
+    if (aff) {
+      const trackClick = async () => {
+        try {
+          await supabase.rpc('track_affiliate_click', {
+            p_affiliate_slug: aff,
+            p_ip: null, // Managed by PG if needed or ignored
+            p_ua: navigator.userAgent,
+            p_ref: document.referrer,
+            p_path: window.location.pathname
+          });
+        } catch (e) {
+          console.error('Click tracking failed:', e);
+        }
+      };
+      trackClick();
+    }
+  }, [aff]);
 
   const handleCheckout = (config: BivvoConfig) => {
     const cfg = encodeBivvoConfig(config);
