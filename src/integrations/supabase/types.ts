@@ -387,6 +387,39 @@ export type Database = {
           },
         ]
       }
+      marketing_materials: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          preview_url: string | null
+          title: string
+          type: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          preview_url?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          preview_url?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
