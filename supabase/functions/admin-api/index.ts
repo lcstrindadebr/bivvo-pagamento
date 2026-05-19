@@ -247,8 +247,81 @@ serve(async (req) => {
 
     if (action === 'create-expense' && req.method === 'POST') {
       const body = await req.json();
-      const { error } = await supabase.from('expenses').insert(body);
-      if (error) throw error;
+      const { payment_method, installments_total, recurring_interval, date, ...rest } = body;
+      
+      if (payment_method === 'installments' && installments_total > 1) {
+        // Create first one and get its ID to be the parent
+        const { data: parent, error: pErr } = await supabase.from('expenses').insert({
+          ...rest,
+          date,
+          payment_method,
+          installments_total,
+          installment_number: 1,
+        }).select('id').single();
+        
+        if (pErr) throw pErr;
+        
+        const installments = [];
+        const startDate = new Date(date);
+        
+        for (let i = 2; i <= installments_total; i++) {
+          const nextDate = new Date(startDate);
+          nextDate.setMonth(startDate.getMonth() + (i - 1));
+          
+          installments.push({
+            ...rest,
+            date: nextDate.toISOString(),
+            payment_method,
+            installments_total,
+            installment_number: i,
+            parent_id: parent.id
+          });
+        }
+        
+        const { error: iErr } = await supabase.from('expenses').insert(installments);
+        if (iErr) throw iErr;
+      } else if (payment_method === 'recurring') {
+        // Create first one and get ID
+        const { data: parent, error: pErr } = await supabase.from('expenses').insert({
+          ...rest,
+          date,
+          payment_method,
+          recurring_interval: recurring_interval || 'monthly',
+        }).select('id').single();
+        
+        if (pErr) throw pErr;
+        
+        const recurrences = [];
+        const startDate = new Date(date);
+        
+        // Project for 12 occurrences
+        for (let i = 1; i < 12; i++) {
+          const nextDate = new Date(startDate);
+          if (recurring_interval === 'weekly') {
+            nextDate.setDate(startDate.getDate() + (i * 7));
+          } else if (recurring_interval === 'yearly') {
+            nextDate.setFullYear(startDate.getFullYear() + i);
+          } else {
+            nextDate.setMonth(startDate.getMonth() + i);
+          }
+          
+          recurrences.push({
+            ...rest,
+            date: nextDate.toISOString(),
+            payment_method,
+            recurring_interval,
+            parent_id: parent.id
+          });
+        }
+        
+        const { error: rErr } = await supabase.from('expenses').insert(recurrences);
+        if (rErr) throw rErr;
+      } else {
+        // Normal one-time expense
+        const { error } = await supabase.from('expenses').insert(body);
+        if (error) throw error;
+      }
+      
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

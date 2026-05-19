@@ -19,6 +19,11 @@ interface Expense {
   date: string;
   type: 'fixed' | 'variable';
   is_automatic: boolean;
+  payment_method?: 'one_time' | 'recurring' | 'installments';
+  installments_total?: number;
+  installment_number?: number;
+  recurring_interval?: 'monthly' | 'weekly' | 'yearly';
+  parent_id?: string;
   created_at: string;
 }
 
@@ -50,7 +55,10 @@ export default function AdminExpenses({ adminFetch, adminPost }: AdminExpensesPr
     amount: '',
     category: 'Outros',
     date: new Date().toISOString().split('T')[0],
-    type: 'fixed' as 'fixed' | 'variable'
+    type: 'fixed' as 'fixed' | 'variable',
+    payment_method: 'one_time' as 'one_time' | 'recurring' | 'installments',
+    installments_total: '2',
+    recurring_interval: 'monthly' as 'monthly' | 'weekly' | 'yearly'
   });
 
   const loadExpenses = async () => {
@@ -80,7 +88,9 @@ export default function AdminExpenses({ adminFetch, adminPost }: AdminExpensesPr
     try {
       await adminPost('create-expense', {
         ...form,
-        amount: parseFloat(form.amount)
+        amount: parseFloat(form.amount),
+        installments_total: form.payment_method === 'installments' ? parseInt(form.installments_total) : null,
+        recurring_interval: form.payment_method === 'recurring' ? form.recurring_interval : null
       });
       toast({ title: 'Sucesso', description: 'Despesa cadastrada com sucesso!' });
       setDialogOpen(false);
@@ -89,7 +99,10 @@ export default function AdminExpenses({ adminFetch, adminPost }: AdminExpensesPr
         amount: '',
         category: 'Outros',
         date: new Date().toISOString().split('T')[0],
-        type: 'fixed'
+        type: 'fixed',
+        payment_method: 'one_time',
+        installments_total: '2',
+        recurring_interval: 'monthly'
       });
       loadExpenses();
     } catch (err) {
@@ -192,6 +205,63 @@ export default function AdminExpenses({ adminFetch, adminPost }: AdminExpensesPr
                   </Select>
                 </div>
               </div>
+
+              <div className="space-y-4 pt-4 border-t border-border/50">
+                <div className="space-y-2">
+                  <Label>Forma de Pagamento</Label>
+                  <Select 
+                    value={form.payment_method} 
+                    onValueChange={(v: any) => setForm(f => ({ ...f, payment_method: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="one_time">À Vista</SelectItem>
+                      <SelectItem value="installments">Parcelado</SelectItem>
+                      <SelectItem value="recurring">Recorrente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {form.payment_method === 'installments' && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Label>Número de Parcelas</Label>
+                    <Input 
+                      type="number" 
+                      min="2" 
+                      max="48"
+                      value={form.installments_total}
+                      onChange={e => setForm(f => ({ ...f, installments_total: e.target.value }))}
+                    />
+                    <p className="text-[10px] text-muted-foreground italic">
+                      As parcelas serão lançadas mensalmente a partir da data selecionada.
+                    </p>
+                  </div>
+                )}
+
+                {form.payment_method === 'recurring' && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Label>Frequência</Label>
+                    <Select 
+                      value={form.recurring_interval} 
+                      onValueChange={(v: any) => setForm(f => ({ ...f, recurring_interval: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="yearly">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground italic">
+                      Projetaremos automaticamente as próximas 12 ocorrências no fluxo de caixa.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
@@ -273,11 +343,23 @@ export default function AdminExpenses({ adminFetch, adminPost }: AdminExpensesPr
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-medium text-sm">{e.description}</span>
-                      {e.is_automatic && (
-                        <Badge variant="outline" className="w-fit text-[9px] h-3 px-1 mt-0.5 bg-accent/5 text-accent border-accent/20">
-                          Automático
-                        </Badge>
-                      )}
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {e.is_automatic && (
+                          <Badge variant="outline" className="w-fit text-[9px] h-3 px-1 bg-accent/5 text-accent border-accent/20">
+                            Automático
+                          </Badge>
+                        )}
+                        {e.payment_method === 'installments' && (
+                          <Badge variant="outline" className="w-fit text-[9px] h-3 px-1 bg-blue-500/5 text-blue-500 border-blue-500/20">
+                            Parcela {e.installment_number}/{e.installments_total}
+                          </Badge>
+                        )}
+                        {e.payment_method === 'recurring' && (
+                          <Badge variant="outline" className="w-fit text-[9px] h-3 px-1 bg-purple-500/5 text-purple-500 border-purple-500/20">
+                            Recorrente ({e.recurring_interval === 'monthly' ? 'Mensal' : e.recurring_interval === 'weekly' ? 'Semanal' : 'Anual'})
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
