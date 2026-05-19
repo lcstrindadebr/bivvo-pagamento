@@ -47,7 +47,7 @@ const Index = () => {
           <img src={bivvoLogo} alt="Bivvo" className="h-6 mx-auto opacity-50 grayscale" />
           <p>© 2026 Bivvo. Todos os direitos reservados. CNPJ 61.912.973/0001-91</p>
           <div className="flex justify-center gap-6 mt-4">
-            <Link to="#" className="hover:text-foreground transition-colors">Termos de Uso</Link>
+            <Link to="/termos-de-uso" className="hover:text-foreground transition-colors">Termos de Uso</Link>
             <Link to="/politica-de-privacidade" className="hover:text-foreground transition-colors">Privacidade</Link>
           </div>
         </div>
