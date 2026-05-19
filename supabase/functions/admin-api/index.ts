@@ -8,7 +8,12 @@ const corsHeaders = {
 
 async function verifyAdmin(supabase: any, authHeader: string) {
   const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+  const authClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: `Bearer ${token}` } } }
+  );
+  const { data: { user }, error } = await authClient.auth.getUser();
   if (error || !user) throw new Error('Não autenticado');
   const { data: role } = await supabase
     .from('user_roles').select('role')
