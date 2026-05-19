@@ -433,7 +433,7 @@ serve(async (req) => {
       const ids = (data ?? []).map((a: any) => a.id);
       
       const { data: sales } = await supabase.from('affiliate_sales')
-        .select('affiliate_id, amount_first, status, asaas_subscription_id')
+        .select('affiliate_id, amount_first, status, asaas_subscription_id, tracking_id')
         .in('affiliate_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
         
       const { data: comms } = await supabase.from('affiliate_commissions')

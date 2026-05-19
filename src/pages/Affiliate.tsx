@@ -194,7 +194,7 @@ export default function Affiliate() {
           <TabsContent value="sales" className="mt-4">
             <div className="card-glass rounded-xl overflow-hidden">
               <Table>
-                <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Plano</TableHead><TableHead>1º mês</TableHead><TableHead>Recorrente</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Plano</TableHead><TableHead>Origem</TableHead><TableHead>1º mês</TableHead><TableHead>Recorrente</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {sales.map(s => (
                     <TableRow key={s.id}>
@@ -216,6 +216,13 @@ export default function Affiliate() {
                         </div>
                       </TableCell>
                       <TableCell>{s.plan_label}</TableCell>
+                      <TableCell>
+                        {s.tracking_id ? (
+                          <Badge variant="secondary" className="text-[10px] font-mono">Calculadora</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px]">Link Direto</Badge>
+                        )}
+                      </TableCell>
                       <TableCell>{formatCurrency(Number(s.amount_first))}</TableCell>
                       <TableCell>{formatCurrency(Number(s.amount_recurring))}</TableCell>
                       <TableCell>
@@ -232,7 +239,7 @@ export default function Affiliate() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {sales.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Sem vendas ainda</TableCell></TableRow>}
+                  {sales.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Sem vendas ainda</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </div>

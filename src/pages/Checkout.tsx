@@ -296,6 +296,7 @@ const Checkout = () => {
       amount: plan.price,
       bivvoConfig,
       affiliateSlug: affiliateSlug || undefined,
+      trackingId: cfgParam || undefined,
       customerData: {
         name: formData.name,
         email: formData.email,
@@ -340,6 +341,7 @@ const Checkout = () => {
           billingType: paymentMethod,
           bivvoConfig,
           affiliateSlug: affiliateSlug || undefined,
+          trackingId: cfgParam || undefined,
           customerData: {
             name: formData.name,
             email: formData.email,

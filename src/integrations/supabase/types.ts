@@ -138,6 +138,7 @@ export type Database = {
           plan_label: string
           plan_slug: string
           status: string
+          tracking_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -157,6 +158,7 @@ export type Database = {
           plan_label: string
           plan_slug: string
           status?: string
+          tracking_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -176,6 +178,7 @@ export type Database = {
           plan_label?: string
           plan_slug?: string
           status?: string
+          tracking_id?: string | null
           updated_at?: string
           user_id?: string | null
         }

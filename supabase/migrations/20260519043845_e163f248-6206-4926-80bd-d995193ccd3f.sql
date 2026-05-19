@@ -1,0 +1,2 @@
+ALTER TABLE public.affiliate_sales ADD COLUMN IF NOT EXISTS tracking_id TEXT;
+COMMENT ON COLUMN public.affiliate_sales.tracking_id IS 'Identificador de rastreamento (ex: cfg da calculadora) para vincular a venda a uma configuração específica.';
