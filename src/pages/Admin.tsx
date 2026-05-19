@@ -11,10 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp } from 'lucide-react';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp, Receipt } from 'lucide-react';
 
 import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
+import AdminExpenses from '@/components/admin/AdminExpenses';
+
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import { formatCurrency } from '@/lib/validators';
 
@@ -440,6 +442,8 @@ const Admin = () => {
 
 
             <TabsTrigger value="affiliates" className="gap-2"><Handshake className="h-4 w-4" /> Afiliados</TabsTrigger>
+            <TabsTrigger value="expenses" className="gap-2"><Receipt className="h-4 w-4" /> Despesas</TabsTrigger>
+
           </TabsList>
 
           {/* DASHBOARD TAB */}
@@ -447,7 +451,13 @@ const Admin = () => {
             <AdminFinanceDashboard adminFetch={adminFetch} />
           </TabsContent>
 
+          {/* EXPENSES TAB */}
+          <TabsContent value="expenses">
+            <AdminExpenses adminFetch={adminFetch} adminPost={adminPost} />
+          </TabsContent>
+
           {/* PLANS TAB */}
+
           <TabsContent value="plans">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Planos</h2>
