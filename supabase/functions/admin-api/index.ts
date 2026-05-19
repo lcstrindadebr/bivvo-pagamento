@@ -359,6 +359,7 @@ serve(async (req) => {
 
     if (action === 'delete-expense' && req.method === 'POST') {
       const { id } = await req.json();
+      if (!id) throw new Error('id obrigatório');
       const { error } = await supabase.from('expenses').delete().eq('id', id);
       if (error) throw error;
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
