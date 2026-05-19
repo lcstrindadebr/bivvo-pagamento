@@ -1,158 +1,149 @@
-# Roteiro de Instalação e Deploy (VPS + Supabase Externo)
+# 🚀 Guia Definitivo de Instalação - Bivvo
 
-Este documento detalha o processo de migração do projeto Bivvo para uma infraestrutura externa.
-
-## 1. Requisitos Prévios
-
-- **VPS:** Ubuntu 22.04 LTS (recomendado) com acesso root/sudo.
-- **Domínio:** Um domínio apontado para o IP da VPS (registros A).
-- **Supabase:** Uma conta no [Supabase.com](https://supabase.com) com um projeto novo criado.
-- **Asaas:** Acesso à conta Asaas para configurar API Key e Webhooks.
+Este guia foi criado para que **qualquer pessoa**, mesmo sem conhecimento técnico avançado, consiga colocar o sistema Bivvo no ar em uma VPS própria com um banco de dados Supabase externo.
 
 ---
 
-## 2. Preparação do Banco de Dados (Supabase Externo)
-
-1. No painel do Supabase, acesse **SQL Editor**.
-2. Execute o conteúdo do arquivo `database_schema.sql` (que será gerado na pasta `new_deploy`).
-3. Vá em **Project Settings > API** e anote:
-   - `Project URL`
-   - `Anon Key`
-   - `Service Role Key` (mantenha em sigilo)
+## 📋 Pré-requisitos
+Antes de começar, você precisa ter:
+1.  **Uma conta no [Supabase](https://supabase.com)** (Gratuita ou Pro).
+2.  **Uma VPS** (Recomendamos Ubuntu 22.04 na DigitalOcean, Hetzner ou Contabo).
+3.  **Um Domínio ou Subdomínio** (ex: `app.seudominio.com.br`) apontado para o IP da sua VPS.
+4.  **Uma conta no [Asaas](https://asaas.com)** para receber pagamentos.
 
 ---
 
-## 3. Configuração das Edge Functions no Supabase Externo
+## 🛠️ PASSO 1: Configurando o Supabase (O Coração)
 
-Como a exportação é manual, os arquivos das funções já estão organizados na pasta `new_deploy/functions`.
-
-### Passo a Passo para Criar as Funções Manualmente:
-
-1. No painel do Supabase, vá em **Edge Functions**.
-2. Clique em **Create a New Function** para cada uma das seguintes:
-   - `admin-api`
-   - `affiliate-api`
-   - `asaas-webhook`
-   - `check-payment-status`
-   - `create-subscription`
-   - `process-payment`
-
-3. Para cada função criada:
-   - Copie o conteúdo do arquivo `index.ts` correspondente dentro de `new_deploy/functions/<nome-da-funcao>/`.
-   - **Importante:** Se a função importar arquivos de `_shared`, você precisará garantir que esses arquivos também existam no ambiente de execução ou ajustar os caminhos para URLs absolutas se necessário (o padrão CLI gerencia isso, mas na criação manual pelo painel, prefira usar o CLI conforme abaixo).
-
-### Recomendação: Deploy via CLI (Mais Seguro e Rápido)
-
-Mesmo sendo manual, a melhor forma é usar o CLI para evitar erros de importação:
-
-1. Na raiz da pasta `new_deploy`, certifique-se de que a estrutura `functions/` está presente.
-2. Inicialize o projeto Supabase localmente (se ainda não fez):
-   ```bash
-   npx supabase init
-   ```
-3. Vincule ao seu novo projeto:
-   ```bash
-   npx supabase link --project-ref <seu-project-id>
-   ```
-4. Configure as variáveis de ambiente necessárias:
-   ```bash
-   npx supabase secrets set ASAAS_API_KEY="sua_chave"
-   npx supabase secrets set ASAAS_BASE_URL="https://api.asaas.com/v3"
-   npx supabase secrets set ASAAS_WEBHOOK_SECRET="seu_token_webhook"
-   ```
-5. Faça o deploy de todas as funções de uma vez:
-   ```bash
-   npx supabase functions deploy --all
-   ```
+1.  **Crie um novo projeto** no Supabase.
+2.  **Banco de Dados:**
+    *   No menu lateral, clique em **SQL Editor**.
+    *   Clique em **New Query**.
+    *   Abra o arquivo `database_schema.sql` (nesta pasta), copie todo o texto e cole no editor do Supabase.
+    *   Clique em **Run**. Isso criará todas as tabelas e regras de segurança.
+3.  **Pegue suas chaves:**
+    *   Vá em **Project Settings > API**.
+    *   Copie a `Project URL` e a `anon public` key. Você precisará delas no Passo 4.
 
 ---
 
-## 4. Configuração do Frontend na VPS
+## ⚡ PASSO 2: Edge Functions (A Inteligência)
 
-### Instalação de Dependências
-Na VPS, instale o Node.js e Nginx:
-```bash
-sudo apt update
-sudo apt install -y nodejs npm nginx
-sudo npm install -g n
-sudo n stable
-```
+As Edge Functions processam os pagamentos e webhooks. A forma mais fácil de instalar é usando o computador local (o seu PC):
 
-### Build do Projeto
-1. Clone o repositório na VPS.
-2. Crie o arquivo `.env` na raiz:
-   ```env
-   VITE_SUPABASE_URL=https://<seu-projeto>.supabase.co
-   VITE_SUPABASE_PUBLISHABLE_KEY=<sua-anon-key>
-   ```
-3. Instale e gere o build:
-   ```bash
-   npm install
-   npm run build
-   ```
-   Os arquivos serão gerados na pasta `dist/`.
+1.  Abra o terminal na pasta `new_deploy` no seu computador.
+2.  **Instale a ferramenta do Supabase:**
+    ```bash
+    npm install -g supabase
+    ```
+3.  **Conecte ao seu projeto:**
+    ```bash
+    supabase login
+    supabase link --project-ref <SEU_PROJECT_ID_DO_SUPABASE>
+    ```
+4.  **Configure as senhas do Asaas:**
+    Substitua os valores abaixo pelas suas chaves do Asaas:
+    ```bash
+    supabase secrets set ASAAS_API_KEY="sua_api_key_aqui"
+    supabase secrets set ASAAS_BASE_URL="https://api.asaas.com/v3"
+    supabase secrets set ASAAS_WEBHOOK_SECRET="escolha_uma_senha_para_o_webhook"
+    ```
+5.  **Envie as funções:**
+    ```bash
+    supabase functions deploy --all
+    ```
 
 ---
 
-## 5. Configuração do Domínio com Nginx
+## 💻 PASSO 3: Configurando a VPS (O Servidor)
 
-O Nginx atuará como o servidor web principal, servindo os arquivos estáticos do frontend e garantindo que as rotas do React (SPA) funcionem corretamente sob o seu domínio.
+1.  Acesse sua VPS via Terminal (SSH).
+2.  Envie o arquivo `vps_setup.sh` para a VPS ou execute o comando abaixo para preparar tudo automaticamente:
+    ```bash
+    curl -s https://raw.githubusercontent.com/seu-repo/vps_setup.sh | bash
+    ```
+    *(Ou simplesmente instale manualmente: `sudo apt update && sudo apt install -y nodejs npm nginx certbot python3-certbot-nginx`)*
 
-### Criar Configuração do Site
-Crie o arquivo: `/etc/nginx/sites-available/bivvo`
+---
 
-```nginx
-server {
-    listen 80;
-    server_name seu-dominio.com www.seu-dominio.com;
+## 📦 PASSO 4: Preparando a Aplicação (O Site)
 
-    # Caminho onde você fez o build do projeto (item 4)
-    root /var/www/bivvo/dist;
-    index index.html;
+No seu computador local:
+1.  Crie um arquivo chamado `.env` na raiz do projeto Bivvo.
+2.  Coloque as informações do Supabase que você pegou no Passo 1:
+    ```env
+    VITE_SUPABASE_URL=https://seuid.supabase.co
+    VITE_SUPABASE_ANON_KEY=sua-chave-anon-aqui
+    ```
+3.  Gere os arquivos do site:
+    ```bash
+    npm install
+    npm run build
+    ```
+4.  Isso criará uma pasta chamada `dist`. Envie o conteúdo dessa pasta para a VPS no caminho `/var/www/bivvo`.
 
-    # Suporte a rotas do React (SPA)
-    location / {
-        try_files $uri $uri/ /index.html;
+---
+
+## 🌐 PASSO 5: Configurando o Subdomínio e Nginx
+
+Agora vamos dizer à VPS para mostrar o site quando alguém acessar seu subdomínio.
+
+1.  Na VPS, crie o arquivo de configuração:
+    ```bash
+    sudo nano /etc/nginx/sites-available/bivvo
+    ```
+2.  Cole o conteúdo abaixo (substitua `app.seudominio.com.br` pelo seu subdomínio):
+    ```nginx
+    server {
+        listen 80;
+        server_name app.seudominio.com.br;
+
+        root /var/www/bivvo;
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        # Segurança básica
+        location ~ /\.ht {
+            deny all;
+        }
     }
-
-    # Logs de acesso
-    access_log /var/log/nginx/bivvo_access.log;
-    error_log /var/log/nginx/bivvo_error.log;
-
-    # Otimização de Gzip
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-}
-```
-
-### Ativar o Domínio e Configurar SSL
-Execute os comandos abaixo na VPS:
-
-1. **Habilitar o site:**
-   ```bash
-   sudo ln -s /etc/nginx/sites-available/bivvo /etc/nginx/sites-enabled/
-   ```
-
-2. **Testar e reiniciar o Nginx:**
-   ```bash
-   sudo nginx -t
-   sudo systemctl restart nginx
-   ```
-
-3. **Instalar Certificado SSL (HTTPS Gratuito):**
-   ```bash
-   sudo apt install -y certbot python3-certbot-nginx
-   sudo certbot --nginx -d seu-dominio.com -d www.seu-dominio.com
-   ```
-   *Siga as instruções na tela para redirecionar todo o tráfego HTTP para HTTPS.*
+    ```
+3.  Ative a configuração:
+    ```bash
+    sudo ln -s /etc/nginx/sites-available/bivvo /etc/nginx/sites-enabled/
+    sudo nginx -t
+    sudo systemctl restart nginx
+    ```
 
 ---
 
-## 6. Configuração Final no Asaas
+## 🔒 PASSO 6: Ativando o SSL (HTTPS Seguro)
 
-1. Vá em **Minha Conta > Integrações > Webhooks**.
-2. Ative o Webhook de Cobranças.
-3. URL do Webhook: `https://<seu-projeto-supabase>.supabase.co/functions/v1/asaas-webhook`
-4. Token de Autenticação: Use o mesmo valor que você definiu em `ASAAS_WEBHOOK_SECRET` no Supabase.
-5. Selecione os eventos: `Pagamento confirmado`, `Pagamento recebido`, `Assinatura removida`.
+Para que o site tenha o cadeado de segurança:
+1.  Execute na VPS:
+    ```bash
+    sudo certbot --nginx -d app.seudominio.com.br
+    ```
+2.  Siga as instruções (digite seu e-mail e aceite os termos). O Certbot configurará tudo sozinho.
 
+---
+
+## 🔗 PASSO 7: Conectando com o Asaas (Webhooks)
+
+Para que o sistema saiba quando um boleto ou PIX foi pago:
+1.  No painel do Asaas, vá em **Minha Conta > Integrações > Webhooks**.
+2.  **URL do Webhook:** `https://seuid.supabase.co/functions/v1/asaas-webhook`
+3.  **Token:** Use o mesmo que você definiu no comando `supabase secrets set ASAAS_WEBHOOK_SECRET`.
+4.  **Eventos:** Marque `Pagamento Confirmado`, `Pagamento Recebido` e `Assinatura Cancelada`.
+
+---
+
+## ✅ Concluído!
+Seu sistema agora está rodando em `https://app.seudominio.com.br`.
+
+### Dicas de Manutenção:
+*   **Logs:** Se algo não funcionar, veja os erros com: `sudo tail -f /var/log/nginx/error.log`
+*   **Atualização:** Para atualizar o site, basta fazer um novo `npm run build` e substituir os arquivos na pasta `/var/www/bivvo`.
