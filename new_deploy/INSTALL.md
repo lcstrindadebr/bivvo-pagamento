@@ -1,152 +1,113 @@
 # 🚀 Guia Definitivo de Instalação - Bivvo
 
-Este guia foi criado para que **qualquer pessoa**, mesmo sem conhecimento técnico avançado, consiga colocar o sistema Bivvo no ar em uma VPS própria com um banco de dados Supabase externo.
+Este guia foi criado para que **qualquer pessoa**, mesmo sem conhecimento técnico, consiga colocar o sistema Bivvo no ar.
+
+O código-fonte oficial fica em: **https://github.com/lcstrindadebr/bivvo-pagamento**
 
 ---
 
-## 📋 Pré-requisitos
-Antes de começar, você precisa ter:
-1.  **Uma conta no [Supabase](https://supabase.com)** (Gratuita ou Pro).
-2.  **Uma VPS** (Recomendamos Ubuntu 22.04 na DigitalOcean, Hetzner ou Contabo).
-3.  **Um Domínio ou Subdomínio** (ex: `app.seudominio.com.br`) apontado para o IP da sua VPS.
-4.  **Uma conta no [Asaas](https://asaas.com)** para receber pagamentos.
+## ⚡ Instalação Automática (RECOMENDADO)
+
+Em **5 minutos** o sistema estará no ar. O instalador faz tudo sozinho:
+atualiza o Ubuntu, instala Node.js + Nginx + Certbot, clona o repositório,
+configura o `.env`, faz o build, configura o subdomínio e gera o SSL HTTPS.
+
+### Pré-requisitos
+1. **VPS Ubuntu 22.04** (DigitalOcean, Hetzner, Contabo, etc.) com acesso root.
+2. **Subdomínio** (ex: `app.seudominio.com.br`) apontando (registro A) para o IP da VPS.
+3. **Projeto Supabase** já criado (anote URL e chave `anon`).
+4. **Conta no Asaas** com API Key.
+
+### Executar o instalador
+Conecte na VPS via SSH e cole:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lcstrindadebr/bivvo-pagamento/main/new_deploy/auto_install.sh -o install.sh
+chmod +x install.sh
+sudo ./install.sh
+```
+
+O script vai perguntar:
+- 🌐 Subdomínio
+- 📧 Seu e-mail (para o SSL)
+- 🔗 URL do Supabase
+- 🔑 Chave anon do Supabase
+
+Pronto. Ao final, o site estará rodando em `https://seu-subdominio` com HTTPS ativo.
 
 ---
 
-## 🛠️ PASSO 1: Configurando o Supabase (O Coração)
+## 🧩 Pós-Instalação (3 passos manuais no Supabase)
 
-1.  **Crie um novo projeto** no Supabase.
-2.  **Banco de Dados:**
-    *   No menu lateral, clique em **SQL Editor**.
-    *   Clique em **New Query**.
-    *   Abra o arquivo `database_schema.sql` (nesta pasta), copie todo o texto e cole no editor do Supabase.
-    *   Clique em **Run**. Isso criará todas as tabelas e regras de segurança.
-3.  **Pegue suas chaves:**
-    *   Vá em **Project Settings > API**.
-    *   Copie a `Project URL` e a `anon public` key. Você precisará delas no Passo 4.
+O instalador deixa a aplicação no ar, mas o **backend (Supabase)** precisa ser configurado uma única vez no painel:
 
----
+### 1️⃣ Criar as tabelas do banco
+- No painel do Supabase, abra **SQL Editor → New Query**
+- Cole o conteúdo do arquivo `new_deploy/database_schema.sql`
+- Clique em **Run**
 
-## ⚡ PASSO 2: Edge Functions (A Inteligência)
+### 2️⃣ Cadastrar os Secrets (Asaas)
+Vá em **Edge Functions → Secrets** e adicione:
 
-As Edge Functions processam os pagamentos e webhooks. Elas podem ser instaladas manualmente pelo painel ou via terminal.
+| Nome | Valor |
+|------|-------|
+| `ASAAS_API_KEY` | Sua chave de API do Asaas |
+| `ASAAS_BASE_URL` | `https://api.asaas.com/v3` (produção) ou `https://sandbox.asaas.com/api/v3` |
+| `ASAAS_WEBHOOK_SECRET` | Um token/senha que você inventar (anote para o passo 4) |
 
-### 🔑 Configurando as Variáveis (OBRIGATÓRIO)
-Antes de qualquer coisa, você deve cadastrar as chaves do Asaas no Supabase:
-1.  No painel do Supabase, vá em **Edge Functions > Secrets**.
-2.  Adicione estas 3 chaves exatamente assim:
-    *   `ASAAS_API_KEY`: Sua chave de API do Asaas.
-    *   `ASAAS_BASE_URL`: `https://api.asaas.com/v3`
-    *   `ASAAS_WEBHOOK_SECRET`: Uma senha/token que você inventar (anote-a para o Passo 7).
+### 3️⃣ Publicar as Edge Functions manualmente
+Para cada pasta dentro de `new_deploy/functions/`:
 
-### Opção A: Instalação Manual (Pelo Navegador)
-1.  No painel do Supabase, vá em **Edge Functions** e clique em **Create a New Function**.
-2.  Dê o nome exato da pasta da função (ex: `asaas-webhook`).
-3.  Abra a pasta `new_deploy/functions/asaas-webhook` no seu computador.
-4.  Abra o arquivo `index.ts`, copie todo o código e cole no editor do Supabase.
-5.  **Repita** para todas as funções na pasta `functions`.
-    *   *Nota: Funções que usam a pasta `_shared` podem precisar de ajuste nos caminhos se instaladas via navegador. Recomendamos a Opção B para evitar erros.*
+1. No Supabase, vá em **Edge Functions → Create a new function**
+2. Use o **nome exato da pasta** (ex: `asaas-webhook`, `process-payment`, `create-subscription`, `check-payment-status`, `admin-api`, `affiliate-api`)
+3. Abra o `index.ts` da pasta, copie todo o código e cole no editor
+4. Clique em **Deploy**
 
-### Opção B: Instalação via Terminal (Recomendado/Rápido)
-1.  Abra o terminal na pasta `new_deploy` no seu computador e execute:
-    ```bash
-    npm install -g supabase
-    supabase login
-    supabase link --project-ref <SEU_PROJECT_ID>
-    supabase functions deploy --all
-    ```
+> Funções que usam código compartilhado (`_shared/bivvo-calc.ts`): cole o conteúdo de `_shared` diretamente no `index.ts` da função, ou use a opção via CLI abaixo.
+
+### 4️⃣ Configurar o Webhook no Asaas
+- Painel do Asaas → **Integrações → Webhooks**
+- URL: `https://SEU-PROJETO.supabase.co/functions/v1/asaas-webhook`
+- Token: o mesmo valor de `ASAAS_WEBHOOK_SECRET`
+- Eventos: `Pagamento Confirmado`, `Pagamento Recebido`, `Assinatura Cancelada`
 
 ---
 
-## 💻 PASSO 3: Configurando a VPS (O Servidor)
+## 🔄 Atualizar o site no futuro
 
-1.  Acesse sua VPS via Terminal (SSH).
-2.  Envie o arquivo `vps_setup.sh` para a VPS ou execute o comando abaixo para preparar tudo automaticamente:
-    ```bash
-    curl -s https://raw.githubusercontent.com/seu-repo/vps_setup.sh | bash
-    ```
-    *(Ou simplesmente instale manualmente: `sudo apt update && sudo apt install -y nodejs npm nginx certbot python3-certbot-nginx`)*
-
----
-
-## 📦 PASSO 4: Preparando a Aplicação (O Site)
-
-No seu computador local:
-1.  Crie um arquivo chamado `.env` na raiz do projeto Bivvo.
-2.  Coloque as informações do Supabase que você pegou no Passo 1:
-    ```env
-    VITE_SUPABASE_URL=https://seuid.supabase.co
-    VITE_SUPABASE_ANON_KEY=sua-chave-anon-aqui
-    ```
-3.  Gere os arquivos do site:
-    ```bash
-    npm install
-    npm run build
-    ```
-4.  Isso criará uma pasta chamada `dist`. Envie o conteúdo dessa pasta para a VPS no caminho `/var/www/bivvo`.
+```bash
+cd /opt/bivvo-pagamento
+git pull
+npm install
+npm run build
+sudo cp -r dist/* /var/www/bivvo/
+```
 
 ---
 
-## 🌐 PASSO 5: Configurando o Subdomínio e Nginx
+## 🆘 Solução de problemas
 
-Agora vamos dizer à VPS para mostrar o site quando alguém acessar seu subdomínio.
-
-1.  Na VPS, crie o arquivo de configuração:
-    ```bash
-    sudo nano /etc/nginx/sites-available/bivvo
-    ```
-2.  Cole o conteúdo abaixo (substitua `app.seudominio.com.br` pelo seu subdomínio):
-    ```nginx
-    server {
-        listen 80;
-        server_name app.seudominio.com.br;
-
-        root /var/www/bivvo;
-        index index.html;
-
-        location / {
-            try_files $uri $uri/ /index.html;
-        }
-
-        # Segurança básica
-        location ~ /\.ht {
-            deny all;
-        }
-    }
-    ```
-3.  Ative a configuração:
-    ```bash
-    sudo ln -s /etc/nginx/sites-available/bivvo /etc/nginx/sites-enabled/
-    sudo nginx -t
-    sudo systemctl restart nginx
-    ```
+| Problema | Solução |
+|----------|---------|
+| Site não abre | `sudo tail -f /var/log/nginx/error.log` |
+| SSL falhou | Confira se o DNS já propagou: `dig +short SEU.DOMINIO` |
+| Pagamento não confirma | Veja os logs em Supabase → Edge Functions → `asaas-webhook` |
+| Atualizar Nginx | `sudo nginx -t && sudo systemctl reload nginx` |
 
 ---
 
-## 🔒 PASSO 6: Ativando o SSL (HTTPS Seguro)
+## 🔧 Alternativa: Edge Functions via CLI (mais rápido)
 
-Para que o site tenha o cadeado de segurança:
-1.  Execute na VPS:
-    ```bash
-    sudo certbot --nginx -d app.seudominio.com.br
-    ```
-2.  Siga as instruções (digite seu e-mail e aceite os termos). O Certbot configurará tudo sozinho.
+Se preferir publicar as funções de uma vez:
 
----
-
-## 🔗 PASSO 7: Conectando com o Asaas (Webhooks)
-
-Para que o sistema saiba quando um boleto ou PIX foi pago:
-1.  No painel do Asaas, vá em **Minha Conta > Integrações > Webhooks**.
-2.  **URL do Webhook:** `https://seuid.supabase.co/functions/v1/asaas-webhook`
-3.  **Token:** Use o mesmo que você definiu no comando `supabase secrets set ASAAS_WEBHOOK_SECRET`.
-4.  **Eventos:** Marque `Pagamento Confirmado`, `Pagamento Recebido` e `Assinatura Cancelada`.
+```bash
+cd /opt/bivvo-pagamento
+npm install -g supabase
+supabase login
+supabase link --project-ref SEU_PROJECT_ID
+supabase functions deploy --all
+```
 
 ---
 
-## ✅ Concluído!
-Seu sistema agora está rodando em `https://app.seudominio.com.br`.
-
-### Dicas de Manutenção:
-*   **Logs:** Se algo não funcionar, veja os erros com: `sudo tail -f /var/log/nginx/error.log`
-*   **Atualização:** Para atualizar o site, basta fazer um novo `npm run build` e substituir os arquivos na pasta `/var/www/bivvo`.
+✅ **Concluído!** Seu Bivvo está no ar.
