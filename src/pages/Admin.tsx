@@ -1027,7 +1027,21 @@ const Admin = () => {
                               selectedSubPayments.map((p: any) => (
                                 <TableRow key={p.id}>
                                   <TableCell className="text-[10px]">
-                                    {new Date(p.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                                    <div className="flex items-center gap-1 group">
+                                      <span>{new Date(p.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(p.id);
+                                          toast({ title: "Copiado", description: "ID da cobrança copiado!" });
+                                        }}
+                                        title={`Copiar ID: ${p.id}`}
+                                      >
+                                        <Copy className="h-2 w-2" />
+                                      </Button>
+                                    </div>
                                   </TableCell>
                                   <TableCell className="text-[10px] font-bold">
                                     {formatCurrency(p.value)}
