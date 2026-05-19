@@ -88,7 +88,9 @@ export default function AdminExpenses({ adminFetch, adminPost }: AdminExpensesPr
     try {
       await adminPost('create-expense', {
         ...form,
-        amount: parseFloat(form.amount)
+        amount: parseFloat(form.amount),
+        installments_total: form.payment_method === 'installments' ? parseInt(form.installments_total) : null,
+        recurring_interval: form.payment_method === 'recurring' ? form.recurring_interval : null
       });
       toast({ title: 'Sucesso', description: 'Despesa cadastrada com sucesso!' });
       setDialogOpen(false);
@@ -97,7 +99,10 @@ export default function AdminExpenses({ adminFetch, adminPost }: AdminExpensesPr
         amount: '',
         category: 'Outros',
         date: new Date().toISOString().split('T')[0],
-        type: 'fixed'
+        type: 'fixed',
+        payment_method: 'one_time',
+        installments_total: '2',
+        recurring_interval: 'monthly'
       });
       loadExpenses();
     } catch (err) {
