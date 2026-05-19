@@ -335,11 +335,6 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
           </CardContent>
         </Card>
       </div>
-            )}
-          </CardContent>
-        </Card>
-
-      </div>
 
       <Card className="card-glass border-none shadow-xl overflow-hidden">
         <CardHeader>

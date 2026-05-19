@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { LogOut, Loader2, Calculator, ListChecks, DollarSign, User, XCircle, Eye, MousePointerClick, Share2, Copy, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
+import { CardMarketingLink, CardMarketingTools } from '@/components/affiliate/MarketingTools';
 import { formatCurrency } from '@/lib/validators';
 
 interface Affiliate {
