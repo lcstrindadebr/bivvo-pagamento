@@ -34,6 +34,21 @@ async function verifyAdmin(supabase: any, authHeader: string) {
   return user;
 }
 
+async function logAction(supabase: any, user: any, action: string, tableName?: string, recordId?: string, oldData?: any, newData?: any) {
+  try {
+    await supabase.from('audit_logs').insert({
+      user_id: user?.id,
+      action,
+      table_name: tableName,
+      record_id: recordId,
+      old_data: oldData,
+      new_data: newData
+    });
+  } catch (e) {
+    console.error('Audit Log Error:', e);
+  }
+}
+
 async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_URL: string, ASAAS_API_KEY: string) {
   if (customerIds.length === 0) return new Map();
 
@@ -370,10 +385,15 @@ serve(async (req) => {
     }
 
     if (action === 'delete-expense' && req.method === 'POST') {
+      const user = await verifyAdmin(supabase, authHeader);
       const { id } = await req.json();
       if (!id) throw new Error('id obrigatório');
+      
+      const { data: oldData } = await supabase.from('expenses').select('*').eq('id', id).single();
       const { error } = await supabase.from('expenses').delete().eq('id', id);
       if (error) throw error;
+      
+      await logAction(supabase, user, 'delete-expense', 'expenses', id, oldData, null);
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
