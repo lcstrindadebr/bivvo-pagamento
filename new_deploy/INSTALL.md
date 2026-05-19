@@ -29,27 +29,30 @@ Antes de começar, você precisa ter:
 
 ## ⚡ PASSO 2: Edge Functions (A Inteligência)
 
-As Edge Functions processam os pagamentos e webhooks. A forma mais fácil de instalar é usando o computador local (o seu PC):
+As Edge Functions processam os pagamentos e webhooks. Elas podem ser instaladas manualmente pelo painel ou via terminal.
 
-1.  Abra o terminal na pasta `new_deploy` no seu computador.
-2.  **Instale a ferramenta do Supabase:**
+### 🔑 Configurando as Variáveis (OBRIGATÓRIO)
+Antes de qualquer coisa, você deve cadastrar as chaves do Asaas no Supabase:
+1.  No painel do Supabase, vá em **Edge Functions > Secrets**.
+2.  Adicione estas 3 chaves exatamente assim:
+    *   `ASAAS_API_KEY`: Sua chave de API do Asaas.
+    *   `ASAAS_BASE_URL`: `https://api.asaas.com/v3`
+    *   `ASAAS_WEBHOOK_SECRET`: Uma senha/token que você inventar (anote-a para o Passo 7).
+
+### Opção A: Instalação Manual (Pelo Navegador)
+1.  No painel do Supabase, vá em **Edge Functions** e clique em **Create a New Function**.
+2.  Dê o nome exato da pasta da função (ex: `asaas-webhook`).
+3.  Abra a pasta `new_deploy/functions/asaas-webhook` no seu computador.
+4.  Abra o arquivo `index.ts`, copie todo o código e cole no editor do Supabase.
+5.  **Repita** para todas as funções na pasta `functions`.
+    *   *Nota: Funções que usam a pasta `_shared` podem precisar de ajuste nos caminhos se instaladas via navegador. Recomendamos a Opção B para evitar erros.*
+
+### Opção B: Instalação via Terminal (Recomendado/Rápido)
+1.  Abra o terminal na pasta `new_deploy` no seu computador e execute:
     ```bash
     npm install -g supabase
-    ```
-3.  **Conecte ao seu projeto:**
-    ```bash
     supabase login
-    supabase link --project-ref <SEU_PROJECT_ID_DO_SUPABASE>
-    ```
-4.  **Configure as senhas do Asaas:**
-    Substitua os valores abaixo pelas suas chaves do Asaas:
-    ```bash
-    supabase secrets set ASAAS_API_KEY="sua_api_key_aqui"
-    supabase secrets set ASAAS_BASE_URL="https://api.asaas.com/v3"
-    supabase secrets set ASAAS_WEBHOOK_SECRET="escolha_uma_senha_para_o_webhook"
-    ```
-5.  **Envie as funções:**
-    ```bash
+    supabase link --project-ref <SEU_PROJECT_ID>
     supabase functions deploy --all
     ```
 
