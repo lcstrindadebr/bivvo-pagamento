@@ -183,6 +183,13 @@ export default function Affiliate() {
             <BivvoCalculator affiliateSlug={me.slug} />
           </TabsContent>
 
+          <TabsContent value="marketing" className="mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CardMarketingLink slug={me.slug} />
+              <CardMarketingTools />
+            </div>
+          </TabsContent>
+
           <TabsContent value="sales" className="mt-4">
             <div className="card-glass rounded-xl overflow-hidden">
               <Table>

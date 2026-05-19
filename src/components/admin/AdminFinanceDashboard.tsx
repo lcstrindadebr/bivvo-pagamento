@@ -284,6 +284,10 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
               <div className="text-2xl font-bold text-yellow-500">
                 {formatCurrency((stats?.totalValue || 0) - (stats?.paidValue || 0))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
