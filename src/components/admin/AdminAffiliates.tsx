@@ -374,14 +374,6 @@ export default function AdminAffiliates() {
                       </Button>
                     </div>
                   </TableCell>
-
-                      <Button size="sm" variant="ghost" asChild>
-                        <a href={c.payment_proof_url} target="_blank" rel="noopener noreferrer">
-                          <Eye className="h-3 w-3 mr-1" /> Comprovante
-                        </a>
-                      </Button>
-                    ) : null}
-                  </TableCell>
                 </TableRow>
               ))}
               {commissions.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Sem comissões</TableCell></TableRow>}
