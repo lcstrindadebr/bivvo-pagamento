@@ -240,6 +240,12 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <Button onClick={() => onCheckout?.(config)} className="w-full bg-accent hover:bg-accent/90 text-white py-6 text-lg font-bold shadow-lg shadow-accent/20">
                 Assinar agora
               </Button>
+              <p className="mt-3 text-[10px] text-center text-muted-foreground">
+                Ao clicar em assinar, você concorda com nossos{" "}
+                <a href="/termos-de-uso" target="_blank" className="underline hover:text-foreground">Termos de Uso</a>
+                {" "}e{" "}
+                <a href="/politica-de-privacidade" target="_blank" className="underline hover:text-foreground">Política de Privacidade</a>.
+              </p>
               <div className="mt-4 flex items-center justify-center gap-4 grayscale opacity-50">
                 <img src="https://logodownload.org/wp-content/uploads/2014/10/visa-logo.png" alt="Visa" className="h-4" />
                 <img src="https://logodownload.org/wp-content/uploads/2014/07/mastercard-logo.png" alt="Mastercard" className="h-6" />
