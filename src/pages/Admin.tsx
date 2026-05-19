@@ -825,8 +825,34 @@ const Admin = () => {
                         <div className="space-y-1">
                           <p className="text-sm font-medium">{selectedSub.customerName}</p>
                           <p className="text-xs text-muted-foreground">{selectedSub.customerEmail}</p>
-                          <p className="text-xs text-muted-foreground font-mono">ID Asaas Cliente: {selectedSub.customer}</p>
-                          <p className="text-xs text-muted-foreground font-mono">ID Assinatura: {selectedSub.id}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-muted-foreground font-mono">ID Asaas Cliente: {selectedSub.customer}</p>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-5 w-5 p-0" 
+                              onClick={() => {
+                                navigator.clipboard.writeText(selectedSub.customer);
+                                toast({ title: "Copiado", description: "ID do cliente copiado!" });
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-muted-foreground font-mono">ID Assinatura: {selectedSub.id}</p>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-5 w-5 p-0" 
+                              onClick={() => {
+                                navigator.clipboard.writeText(selectedSub.id);
+                                toast({ title: "Copiado", description: "ID da assinatura copiado!" });
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                       <div className="space-y-3">
