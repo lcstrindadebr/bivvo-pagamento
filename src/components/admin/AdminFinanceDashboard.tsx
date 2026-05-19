@@ -222,8 +222,9 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
               <div className="flex flex-col">
                 <div className="text-xl font-bold text-amber-500">{formatCurrency(stats?.pendingAffiliatePayout || 0)}</div>
                 <div className="text-[10px] text-muted-foreground">
-                  {formatCurrency(stats?.retainedCommissions || 0)} retido (< 7 dias)
+                  {formatCurrency(stats?.retainedCommissions || 0)} retido (menos de 7 dias)
                 </div>
+
               </div>
             )}
           </CardContent>
