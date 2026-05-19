@@ -31,6 +31,7 @@ interface AdminFinanceDashboardProps {
 }
 
 export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps) {
+  const { toast } = useToast();
   const [stats, setStats] = useState<FinanceStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'today' | '7days' | '30days' | 'month' | 'custom'>('month');
