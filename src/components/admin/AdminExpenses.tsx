@@ -205,6 +205,63 @@ export default function AdminExpenses({ adminFetch, adminPost }: AdminExpensesPr
                   </Select>
                 </div>
               </div>
+
+              <div className="space-y-4 pt-4 border-t border-border/50">
+                <div className="space-y-2">
+                  <Label>Forma de Pagamento</Label>
+                  <Select 
+                    value={form.payment_method} 
+                    onValueChange={(v: any) => setForm(f => ({ ...f, payment_method: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="one_time">À Vista</SelectItem>
+                      <SelectItem value="installments">Parcelado</SelectItem>
+                      <SelectItem value="recurring">Recorrente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {form.payment_method === 'installments' && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Label>Número de Parcelas</Label>
+                    <Input 
+                      type="number" 
+                      min="2" 
+                      max="48"
+                      value={form.installments_total}
+                      onChange={e => setForm(f => ({ ...f, installments_total: e.target.value }))}
+                    />
+                    <p className="text-[10px] text-muted-foreground italic">
+                      As parcelas serão lançadas mensalmente a partir da data selecionada.
+                    </p>
+                  </div>
+                )}
+
+                {form.payment_method === 'recurring' && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Label>Frequência</Label>
+                    <Select 
+                      value={form.recurring_interval} 
+                      onValueChange={(v: any) => setForm(f => ({ ...f, recurring_interval: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Semanal</SelectItem>
+                        <SelectItem value="monthly">Mensal</SelectItem>
+                        <SelectItem value="yearly">Anual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground italic">
+                      Projetaremos automaticamente as próximas 12 ocorrências no fluxo de caixa.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
