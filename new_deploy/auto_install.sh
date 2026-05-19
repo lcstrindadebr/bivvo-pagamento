@@ -147,7 +147,21 @@ VITE_SUPABASE_URL=$SUPA_URL
 VITE_SUPABASE_PUBLISHABLE_KEY=$SUPA_KEY
 VITE_SUPABASE_PROJECT_ID=$SUPA_PROJECT_ID
 EOF
-echo -e "${GREEN}✓ .env criado${NC}"
+chmod 600 "$APP_DIR/.env"
+echo -e "${GREEN}✓ .env do frontend criado em $APP_DIR/.env${NC}"
+
+# Salvar secrets do Asaas em arquivo separado (se informados)
+if [ -n "$ASAAS_API_KEY" ] || [ -n "$ASAAS_WEBHOOK_SECRET" ]; then
+    cat > "$APP_DIR/supabase-secrets.env" <<EOF
+# Secrets para cadastrar no Supabase em: Edge Functions → Secrets
+ASAAS_API_KEY=$ASAAS_API_KEY
+ASAAS_BASE_URL=$ASAAS_BASE_URL
+ASAAS_WEBHOOK_SECRET=$ASAAS_WEBHOOK_SECRET
+EOF
+    chmod 600 "$APP_DIR/supabase-secrets.env"
+    echo -e "${GREEN}✓ Secrets do Asaas salvos em $APP_DIR/supabase-secrets.env${NC}"
+    echo -e "${YELLOW}  → Cadastre estes valores no painel do Supabase (Edge Functions → Secrets)${NC}"
+fi
 
 # -----------------------------------------------------------------------------
 # 6. Build da aplicação
