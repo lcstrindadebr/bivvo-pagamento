@@ -55,25 +55,19 @@ function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
   const plan = PLANS[cfg.plan];
   if (!plan) throw new Error('Plano inválido');
   const users = Math.max(1, Math.floor(cfg.users || plan.users));
-  const extraUsers = Math.max(0, users - 12);
+  const extraUsers = Math.max(0, users - plan.users);
   const extraCost = extraUsers * EXTRA_USER_PRICE;
-  let baseFull = plan.full;
-  let basePromo = plan.promo;
-  if (extraUsers > 0) {
-    baseFull = PLANS.pro.full + extraCost;
-    basePromo = PLANS.pro.promo + extraCost;
-  }
+  const basePromo = plan.promo + extraCost;
+  const baseFull = plan.full + extraCost;
   const base1m = basePromo;
   const baseRec = cfg.protagonista ? base1m : baseFull;
-
   const discountPercent = Math.min(30, Math.max(0, cfg.channelsDiscount || 0));
   const discountFactor = 1 - (discountPercent / 100);
-
   let channelsTotal = 0;
-  const channelLines: BivvoQuote['channelLines'] = [];
-  const channels = cfg.channels || {};
+  const channelLines: BivvoQuote["channelLines"] = [];
+  const cfgChannels = cfg.channels || {};
   for (const c of CANAIS_DEF) {
-    const qty = Math.max(0, Math.floor(channels[c.id] || 0));
+    const qty = Math.max(0, Math.floor(cfgChannels[c.id] || 0));
     const extra = Math.max(0, qty - c.included);
     if (extra > 0) {
       const amount = round2(extra * c.unit * discountFactor);
@@ -84,25 +78,7 @@ function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
   const telCost = cfg.telefonia ? TELEFONIA_PRICE : 0;
   const total1m = round2(base1m + channelsTotal + telCost);
   const totalRec = round2(baseRec + channelsTotal + telCost);
-  const planLabel = extraUsers > 0
-    ? `Plano Personalizado (PRO+${extraUsers}u)`
-    : `Plano ${plan.name} (${plan.users}u)`;
-
-  return {
-    planSlug: cfg.plan,
-    planLabel,
-    users,
-    extraUsers,
-    base1m: round2(base1m),
-    baseRec: round2(baseRec),
-    channelsTotal: round2(channelsTotal),
-    channelsDiscountPercent: discountPercent,
-    telCost,
-    total1m,
-    totalRec,
-    protagonista: !!cfg.protagonista,
-    channelLines,
-  };
+  const planLabel = extraUsers > 0 ? `Plano Personalizado (${plan.name} + ${extraUsers}u)` : `Plano ${plan.name} (${plan.users}u)`;
 }
 
 function round2(n: number) { return Math.round(n * 100) / 100; }
@@ -623,19 +599,26 @@ serve(async (req) => {
 
     const subscriptionId = paymentResult.id;
 
-    // Fetch the first payment from the subscription
+    // Fetch the first payment from the subscription (with retry)
     console.log('Fetching first payment from subscription...');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const paymentsResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}/payments`, {
-      headers: { 'access_token': ASAAS_API_KEY },
-    });
-    const paymentsResult = await paymentsResponse.json();
+    let firstPayment: any = null;
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const paymentsResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}/payments`, {
+        headers: { 'access_token': ASAAS_API_KEY },
+      });
+      const paymentsResult = await paymentsResponse.json();
+      if (paymentsResult.data && paymentsResult.data.length > 0) {
+        firstPayment = paymentsResult.data[0];
+        break;
+      }
+      console.log(`Payment not found yet, retrying... (${i+1}/5)`);
+    }
     
-    if (!paymentsResult.data || paymentsResult.data.length === 0) {
-      throw new Error('No payment found for subscription');
+    if (!firstPayment) {
+      throw new Error('Não foi possível localizar o primeiro pagamento da assinatura no Asaas após várias tentativas. Verifique o painel do Asaas.');
     }
 
-    const firstPayment = paymentsResult.data[0];
     const asaasPaymentId = firstPayment.id;
 
     // 4. Save payment to database

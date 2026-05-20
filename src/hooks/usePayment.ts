@@ -124,7 +124,9 @@ export function usePayment() {
 
       // Iniciar polling para verificar status caso não seja imediato (comum no Asaas)
       setStatus('polling');
-      const finalResult = await pollPaymentStatus(result.asaasId, data.plan === 'mensal' ? 'subscription' : 'payment');
+      // For Bivvo, we are always dealing with subscriptions
+      const finalResult = await pollPaymentStatus(result.asaasId, 'subscription');
+
       
       return { ...result, status: finalResult, success: finalResult === 'approved' };
     } catch (err) {
