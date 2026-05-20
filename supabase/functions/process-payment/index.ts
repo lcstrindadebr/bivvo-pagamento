@@ -523,7 +523,8 @@ serve(async (req) => {
     // 2. Create or find customer in Asaas
     if (!asaasCustomerId) {
       console.log('Creating customer in Asaas...');
-      const customerResponse = await fetch(`${ASAAS_BASE_URL}/customers`, {
+      console.log('Creating customer in Asaas...');
+      const customerResult = await asaasFetch(`${ASAAS_BASE_URL}/customers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -546,13 +547,7 @@ serve(async (req) => {
         }),
       });
 
-      const customerResult = await customerResponse.json();
-      console.log('Asaas customer response:', JSON.stringify(customerResult));
-
-      if (customerResult.errors) {
-        throw new Error(`Asaas error: ${customerResult.errors[0]?.description || 'Unknown error'}`);
-      }
-
+      console.log('Asaas customer created:', customerResult.id);
       asaasCustomerId = customerResult.id;
 
       // Save asaas_customer_id to user
