@@ -89,15 +89,27 @@ sudo cp -r dist/* /var/www/bivvo/
 
 ## 🔧 Alternativa: Edge Functions via CLI (mais rápido)
 
-Se preferir publicar as funções de uma vez:
+Se preferir publicar as funções de uma vez pelo terminal (exige Docker):
 
 ```bash
 cd /opt/bivvo-pagamento
-npm install -g supabase
-supabase login
-supabase link --project-ref SEU_PROJECT_ID
-supabase functions deploy --all
+# Siga as instruções para logar e linkar o projeto
+npx supabase login
+npx supabase link --project-ref SEU_PROJECT_ID
+npx supabase functions deploy --all --no-verify-jwt
 ```
+
+---
+
+## 🔍 Resolução de problemas (Troubleshooting)
+
+### Erro: "non-2xx status code" ou "Module not found"
+Se ao tentar assinar aparecer o erro **non-2xx status code**:
+1. Verifique se você cadastrou o **ASAAS_API_KEY** e o **ASAAS_BASE_URL** corretamente em **Edge Functions → Secrets** no painel do Supabase.
+2. Certifique-se de que a URL no Asaas está correta (Produção vs Sandbox).
+3. Se você copiou o código manualmente, certifique-se de que copiou o código da pasta `new_deploy/functions/`, pois eles são adaptados para funcionar sem arquivos externos.
+4. Verifique os logs em **Edge Functions → [Nome da Função] → Logs** para ver o erro exato retornado pela API do Asaas.
+
 
 ---
 
