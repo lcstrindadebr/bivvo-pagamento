@@ -6,15 +6,15 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 DO $$
 DECLARE
-  user_id UUID;
-  user_email TEXT := 'admin@bivvo.com.br';
-  user_password TEXT := '@Skol6678';
+  v_user_id UUID;
+  v_email TEXT := 'admin@bivvo.com.br';
+  v_password TEXT := '@Skol6678';
 BEGIN
-  -- Verifica se o usuário já existe na tabela de autenticação
-  SELECT id INTO user_id FROM auth.users WHERE email = user_email;
+  -- 1. Verificar se o usuário já existe na tabela de autenticação
+  SELECT id INTO v_user_id FROM auth.users WHERE email = v_email;
 
-  IF user_id IS NULL THEN
-    -- Criar novo usuário com metadados de admin
+  IF v_user_id IS NULL THEN
+    -- Criar novo usuário na auth.users
     INSERT INTO auth.users (
       instance_id,
       id,
@@ -37,11 +37,11 @@ BEGIN
       gen_random_uuid(),
       'authenticated',
       'authenticated',
-      user_email,
-      crypt(user_password, gen_salt('bf')),
+      v_email,
+      crypt(v_password, gen_salt('bf')),
       now(),
       '{"provider": "email", "providers": ["email"], "role": "admin"}',
-      '{"full_name": "Administrador Bivvo", "role": "admin"}',
+      '{"full_name": "Administrador Bivvo"}',
       now(),
       now(),
       '',
@@ -49,34 +49,41 @@ BEGIN
       '',
       '',
       false
-    ) RETURNING id INTO user_id;
+    ) RETURNING id INTO v_user_id;
     
-    RAISE NOTICE 'Usuário criado com ID: %', user_id;
+    RAISE NOTICE 'Usuário auth criado com ID: %', v_user_id;
   ELSE
-    -- Atualizar usuário existente para garantir que seja admin
+    -- Atualizar usuário existente
     UPDATE auth.users 
     SET 
-      encrypted_password = crypt(user_password, gen_salt('bf')),
+      encrypted_password = crypt(v_password, gen_salt('bf')),
       raw_app_meta_data = '{"provider": "email", "providers": ["email"], "role": "admin"}',
-      raw_user_meta_data = raw_user_meta_data || '{"role": "admin"}',
       updated_at = now(),
       email_confirmed_at = COALESCE(email_confirmed_at, now())
-    WHERE id = user_id;
+    WHERE id = v_user_id;
     
-    RAISE NOTICE 'Usuário atualizado como admin. ID: %', user_id;
+    RAISE NOTICE 'Usuário auth atualizado. ID: %', v_user_id;
   END IF;
 
-  -- 3. Inserir ou atualizar na tabela public.profiles (Obrigatório para o sistema reconhecer como admin)
-  -- Se a tabela não existir, o script apenas ignora
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'profiles') THEN
-    INSERT INTO public.profiles (id, role, full_name, updated_at)
-    VALUES (user_id, 'admin', 'Administrador Bivvo', now())
-    ON CONFLICT (id) DO UPDATE SET 
-      role = 'admin', 
-      updated_at = now();
-    
-    RAISE NOTICE 'Perfil atualizado na tabela public.profiles';
-  END IF;
+  -- 2. Garantir que a Role de Admin esteja na tabela user_roles (IMPORTANTE)
+  -- Deletamos roles conflitantes para evitar erros de duplicidade e garantir 'admin'
+  DELETE FROM public.user_roles WHERE user_id = v_user_id;
+  INSERT INTO public.user_roles (user_id, role)
+  VALUES (v_user_id, 'admin');
+  
+  RAISE NOTICE 'Role admin atribuída na tabela public.user_roles';
+
+  -- 3. Garantir que o perfil exista na tabela public.users
+  INSERT INTO public.users (id, name, email, status, updated_at)
+  VALUES (v_user_id, 'Administrador Bivvo', v_email, 'ativo', now())
+  ON CONFLICT (email) DO UPDATE SET 
+    id = v_user_id,
+    name = 'Administrador Bivvo',
+    status = 'ativo',
+    updated_at = now();
+
+  RAISE NOTICE 'Perfil atualizado na tabela public.users';
 
 END $$;
+
 
