@@ -50,7 +50,9 @@ serve(async (req) => {
 
         // Ativar usuário
         const expirationDate = new Date();
-        expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+        expirationDate.setMonth(expirationDate.getMonth() + 1);
+        expirationDate.setDate(expirationDate.getDate() + 3); // 3 days grace period
+
         
         await supabase.from('users').update({
           status: 'ativo',
