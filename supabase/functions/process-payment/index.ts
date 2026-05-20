@@ -54,15 +54,14 @@ interface BivvoQuote {
 function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
   const plan = PLANS[cfg.plan];
   if (!plan) throw new Error('Plano inválido');
+  
   const users = Math.max(1, Math.floor(cfg.users || plan.users));
-  const extraUsers = Math.max(0, users - 12);
+  const extraUsers = Math.max(0, users - plan.users);
   const extraCost = extraUsers * EXTRA_USER_PRICE;
-  let baseFull = plan.full;
-  let basePromo = plan.promo;
-  if (extraUsers > 0) {
-    baseFull = PLANS.pro.full + extraCost;
-    basePromo = PLANS.pro.promo + extraCost;
-  }
+  
+  const basePromo = plan.promo + extraCost;
+  const baseFull = plan.full + extraCost;
+  
   const base1m = basePromo;
   const baseRec = cfg.protagonista ? base1m : baseFull;
 
@@ -71,9 +70,10 @@ function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
 
   let channelsTotal = 0;
   const channelLines: BivvoQuote['channelLines'] = [];
-  const channels = cfg.channels || {};
+  const cfgChannels = cfg.channels || {};
+  
   for (const c of CANAIS_DEF) {
-    const qty = Math.max(0, Math.floor(channels[c.id] || 0));
+    const qty = Math.max(0, Math.floor(cfgChannels[c.id] || 0));
     const extra = Math.max(0, qty - c.included);
     if (extra > 0) {
       const amount = round2(extra * c.unit * discountFactor);
@@ -84,8 +84,9 @@ function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
   const telCost = cfg.telefonia ? TELEFONIA_PRICE : 0;
   const total1m = round2(base1m + channelsTotal + telCost);
   const totalRec = round2(baseRec + channelsTotal + telCost);
+  
   const planLabel = extraUsers > 0
-    ? `Plano Personalizado (PRO+${extraUsers}u)`
+    ? `Plano Personalizado (${plan.name} + ${extraUsers}u)`
     : `Plano ${plan.name} (${plan.users}u)`;
 
   return {
