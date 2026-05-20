@@ -496,7 +496,28 @@ serve(async (req) => {
     let subscriptionResult = await createSubscription(asaasCustomerId!);
     console.log('Subscription response:', JSON.stringify(subscriptionResult));
 
-    // Handle case where customer was deleted in Asaas but still exists in our DB
+    // Fetch the first payment from the subscription (with retry)
+    console.log('Fetching first payment from subscription...');
+    let firstPayment: any = null;
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const paymentsResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionResult.id}/payments`, {
+        headers: { 'access_token': ASAAS_API_KEY },
+      });
+      const paymentsResult = await paymentsResponse.json();
+      if (paymentsResult.data && paymentsResult.data.length > 0) {
+        firstPayment = paymentsResult.data[0];
+        break;
+      }
+      console.log(`Payment not found yet, retrying... (${i+1}/5)`);
+    }
+
+    if (!firstPayment) {
+      throw new Error('Não foi possível localizar o pagamento da assinatura no Asaas após várias tentativas.');
+    }
+
+    const asaasPaymentId = firstPayment.id;
+
     if (subscriptionResult.errors) {
       const errorDesc = subscriptionResult.errors[0]?.description || '';
       const isRemovedCustomer = errorDesc.includes('cliente removido') || 

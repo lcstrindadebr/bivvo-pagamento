@@ -624,19 +624,26 @@ serve(async (req) => {
 
     const subscriptionId = paymentResult.id;
 
-    // Fetch the first payment from the subscription
+    // Fetch the first payment from the subscription (with retry)
     console.log('Fetching first payment from subscription...');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const paymentsResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}/payments`, {
-      headers: { 'access_token': ASAAS_API_KEY },
-    });
-    const paymentsResult = await paymentsResponse.json();
+    let firstPayment: any = null;
+    for (let i = 0; i < 5; i++) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const paymentsResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}/payments`, {
+        headers: { 'access_token': ASAAS_API_KEY },
+      });
+      const paymentsResult = await paymentsResponse.json();
+      if (paymentsResult.data && paymentsResult.data.length > 0) {
+        firstPayment = paymentsResult.data[0];
+        break;
+      }
+      console.log(`Payment not found yet, retrying... (${i+1}/5)`);
+    }
     
-    if (!paymentsResult.data || paymentsResult.data.length === 0) {
-      throw new Error('No payment found for subscription');
+    if (!firstPayment) {
+      throw new Error('Não foi possível localizar o primeiro pagamento da assinatura no Asaas após várias tentativas. Verifique o painel do Asaas.');
     }
 
-    const firstPayment = paymentsResult.data[0];
     const asaasPaymentId = firstPayment.id;
 
     // 4. Save payment to database
