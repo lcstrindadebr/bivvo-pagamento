@@ -262,10 +262,10 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 Assinar agora
               </Button>
               <div className="mt-6 flex items-center justify-center gap-6 opacity-90">
-                <img src="https://logodownload.org/wp-content/uploads/2014/10/visa-logo-1.png" alt="Visa" className="h-3 w-auto object-contain" />
+                <img src="https://logopng.com.br/logos/visa-3.png" alt="Visa" className="h-4 w-auto object-contain" />
                 <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-7 w-auto object-contain" />
                 <img src="https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png" alt="Pix" className="h-6 w-auto object-contain" />
-                <img src="https://www.boletobancario.com/img/site/logos/logo-boleto-bancario.png" alt="Boleto" className="h-5 w-auto object-contain" />
+                <img src="https://logopng.com.br/logos/boleto-bancario-4.png" alt="Boleto" className="h-5 w-auto object-contain" />
               </div>
             </div>
           )}
