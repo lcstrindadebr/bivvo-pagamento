@@ -107,29 +107,32 @@ update_supabase_auto() {
     
     if ! command -v supabase &> /dev/null; then
         echo -e "${YELLOW}Supabase CLI não encontrado. Instalando agora (aguarde)...${NC}"
-        # Usamos npm install direto para evitar o prompt interativo do npx
-        npm install -g supabase --unsafe-perm || { echo -e "${RED}❌ Falha ao instalar Supabase CLI. Verifique sua conexão.${NC}"; exit 1; }
+        npm install -g supabase --unsafe-perm || { echo -e "${RED}❌ Falha ao instalar Supabase CLI.${NC}"; exit 1; }
     fi
 
-
-    if [ -f "$APP_DIR/.env" ]; then
-        SUPA_URL=$(grep VITE_SUPABASE_URL "$APP_DIR/.env" | cut -d= -f2 | tr -d '"' | tr -d "'")
-        SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
-    fi
-
-
-    if [ -z "$SUPA_PROJECT_ID" ]; then
-         read -p "ID do Projeto Supabase (Project Ref): " SUPA_PROJECT_ID
-    fi
+    # Credenciais fornecidas pelo usuário
+    DEFAULT_TOKEN="sbp_8e99f339f89f30eda805734c6e7c37ffa50859c4"
+    DEFAULT_PROJECT_ID="bcijktxnuzsatvhammpl"
 
     echo -e "${BLUE}Fazendo login no Supabase...${NC}"
-    echo -e "${YELLOW}Você precisará de um Access Token do Supabase (gere em: https://supabase.com/dashboard/account/tokens)${NC}"
-    read -p "Insira seu Supabase Access Token: " SUPA_TOKEN
-    export SUPABASE_ACCESS_TOKEN="$SUPA_TOKEN"
+    # Tenta usar o token padrão se nada for passado
+    export SUPABASE_ACCESS_TOKEN="${SUPABASE_ACCESS_TOKEN:-$DEFAULT_TOKEN}"
+    supabase login --token "$SUPABASE_ACCESS_TOKEN"
 
-    echo -e "${BLUE}Linkando projeto $SUPA_PROJECT_ID...${NC}"
+    # Determina o Project ID
+    if [ -z "$SUPA_PROJECT_ID" ]; then
+        if [ -f "$APP_DIR/.env" ]; then
+            SUPA_URL=$(grep VITE_SUPABASE_URL "$APP_DIR/.env" | cut -d= -f2 | tr -d '"' | tr -d "'")
+            SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
+        fi
+    fi
+    
+    # Fallback para o ID padrão se não encontrou no .env
+    PROJECT_REF="${SUPA_PROJECT_ID:-$DEFAULT_PROJECT_ID}"
+
+    echo -e "${BLUE}Linkando projeto $PROJECT_REF...${NC}"
     cd "$APP_DIR"
-    supabase link --project-ref "$SUPA_PROJECT_ID"
+    supabase link --project-ref "$PROJECT_REF"
 
     echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
     if [ -f "new_deploy/database_schema.sql" ]; then
@@ -139,18 +142,11 @@ update_supabase_auto() {
 
     echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
     if [ -d "supabase/functions" ]; then
-        # Lista as pastas em supabase/functions para fazer o deploy individual
-        for function_dir in supabase/functions/*/ ; do
-            function_name=$(basename "$function_dir")
-            # Pula pastas que começam com underline (como _shared)
-            if [[ ! "$function_name" =~ ^_ ]]; then
-                echo -e "${BLUE}➤ Publicando function: $function_name${NC}"
-                supabase functions deploy "$function_name" --project-ref "$SUPA_PROJECT_ID" --no-verify-jwt
-            fi
-        done
+        # Deploy geral conforme solicitado: npx supabase functions deploy --no-verify-jwt
+        # Isso faz deploy de todas as functions de uma vez se estiver na raiz do projeto
+        supabase functions deploy --project-ref "$PROJECT_REF" --no-verify-jwt
         echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
     fi
-
 
     echo -e "${GREEN}✓ Atualização do Supabase concluída!${NC}"
 }
