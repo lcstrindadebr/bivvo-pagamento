@@ -86,6 +86,9 @@ serve(async (req) => {
     const body = await req.json();
     const { plan, customerData, cardData, bivvoConfig, affiliateSlug, trackingId } = body;
 
+    // Get remote IP from headers (Supabase adds this)
+    const remoteIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+
     // 1. Database Client
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -179,6 +182,7 @@ serve(async (req) => {
           phone: cleanPhone,
         },
         discount: amount < recurringAmount ? { value: round2(recurringAmount - amount), type: 'FIXED', dueDateLimitDays: 0 } : undefined,
+        remoteIp,
       }),
     });
 
