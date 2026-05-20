@@ -262,7 +262,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 Assinar agora
               </Button>
               <div className="mt-6 flex items-center justify-center gap-6 opacity-90">
-                <img src="https://cdn.jsdelivr.net/gh/aayush-05/logos@main/logos/visa.svg" alt="Visa" className="h-3 w-auto object-contain" />
+                <img src="https://vignette.wikia.nocookie.net/logopedia/images/d/d6/Visa_2014.png" alt="Visa" className="h-3 w-auto object-contain" />
                 <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-7 w-auto object-contain" />
                 <img src="https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png" alt="Pix" className="h-6 w-auto object-contain" />
                 <div className="flex flex-col items-center gap-0.5 border border-border/60 rounded px-1.5 py-0.5 bg-white shadow-sm">
