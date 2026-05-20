@@ -533,12 +533,9 @@ serve(async (req) => {
 
     if (billingType === 'PIX') {
       console.log('Fetching PIX QR Code...');
-      const pixResponse = await fetch(`${ASAAS_BASE_URL}/payments/${paymentId}/pixQrCode`, {
-        headers: {
-          'access_token': ASAAS_API_KEY,
-        },
+      const pixResult = await asaasFetch(`${ASAAS_BASE_URL}/payments/${paymentId}/pixQrCode`, {
+        headers: { 'access_token': ASAAS_API_KEY },
       });
-      const pixResult = await pixResponse.json();
       console.log('PIX result:', JSON.stringify(pixResult));
 
       if (pixResult.encodedImage && pixResult.payload) {
@@ -550,12 +547,9 @@ serve(async (req) => {
       }
     } else if (billingType === 'BOLETO') {
       console.log('Fetching Boleto details...');
-      const boletoResponse = await fetch(`${ASAAS_BASE_URL}/payments/${paymentId}/identificationField`, {
-        headers: {
-          'access_token': ASAAS_API_KEY,
-        },
+      const boletoResult = await asaasFetch(`${ASAAS_BASE_URL}/payments/${paymentId}/identificationField`, {
+        headers: { 'access_token': ASAAS_API_KEY },
       });
-      const boletoResult = await boletoResponse.json();
       console.log('Boleto result:', JSON.stringify(boletoResult));
 
       paymentDetails = {
