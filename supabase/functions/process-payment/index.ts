@@ -1,74 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
+import { quoteBivvo, round2 } from "../_shared/bivvo-logic.ts";
+import { asaasFetch } from "../_shared/asaas.ts";
 
-// --- Bivvo Calculation Logic (Standalone) ---
-const PLANS = {
-  standard: { name: 'STANDARD', users: 3, promo: 169.90, full: 197.90 },
-  silver:   { name: 'SILVER',   users: 6, promo: 287.90, full: 389.90 },
-  pro:      { name: 'PRO',      users: 12, promo: 429.90, full: 527.90 },
-} as const;
-
-const EXTRA_USER_PRICE = 35;
-const TELEFONIA_PRICE = 100;
-
-const CANAIS_DEF = [
-  { id: 'waof',   label: 'WhatsApp API Oficial',     included: 1, unit: 100, emoji: '📱' },
-  { id: 'wano',   label: 'WhatsApp API não oficial', included: 1, unit: 50,  emoji: '💬' },
-  { id: 'ig',     label: 'Instagram',                included: 1, unit: 50,  emoji: '📸' },
-  { id: 'fb',     label: 'Facebook',                 included: 1, unit: 50,  emoji: '📘' },
-  { id: 'email',  label: 'E-mail',                   included: 1, unit: 50,  emoji: '✉️'  },
-  { id: 'olx',    label: 'OLX',                      included: 0, unit: 100, emoji: '🏷️' },
-  { id: 'tiktok', label: 'TikTok',                   included: 0, unit: 100, emoji: '🎵' },
-  { id: 'ml',     label: 'Mercado Livre',            included: 0, unit: 100, emoji: '🛒' },
-  { id: 'li',     label: 'LinkedIn',                 included: 0, unit: 100, emoji: '💼' },
-  { id: 'yt',     label: 'YouTube',                  included: 0, unit: 100, emoji: '▶️'  },
-  { id: 'woo',    label: 'WooCommerce',              included: 0, unit: 100, emoji: '🛍️' },
-] as const;
-
-function round2(n: number) { return Math.round(n * 100) / 100; }
-
-function quoteBivvo(cfg: any) {
-  const plan = PLANS[cfg.plan as keyof typeof PLANS];
-  if (!plan) throw new Error('Plano inválido');
-  const users = Math.max(1, Math.floor(cfg.users || plan.users));
-  const extraUsers = Math.max(0, users - plan.users);
-  const extraCost = extraUsers * EXTRA_USER_PRICE;
-  const basePromo = plan.promo + extraCost;
-  const baseFull = plan.full + extraCost;
-  const base1m = basePromo;
-  const baseRec = cfg.protagonista ? base1m : baseFull;
-  const discountPercent = Math.min(30, Math.max(0, cfg.channelsDiscount || 0));
-  const discountFactor = 1 - (discountPercent / 100);
-  let channelsTotal = 0;
-  const cfgChannels = cfg.channels || {};
-  for (const c of CANAIS_DEF) {
-    const qty = Math.max(0, Math.floor(cfgChannels[c.id] || 0));
-    const extra = Math.max(0, qty - c.included);
-    if (extra > 0) channelsTotal += round2(extra * c.unit * discountFactor);
-  }
-  const telCost = cfg.telefonia ? TELEFONIA_PRICE : 0;
-  const total1m = round2(base1m + channelsTotal + telCost);
-  const totalRec = round2(baseRec + channelsTotal + telCost);
-  return { planLabel: extraUsers > 0 ? `${plan.name} + ${extraUsers}u` : plan.name, total1m, totalRec };
-}
-
-// --- Asaas Fetch Wrapper ---
-async function asaasFetch(url: string, options: RequestInit) {
-  const response = await fetch(url, options);
-  const contentType = response.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.errors?.[0]?.description || `Asaas Error ${response.status}`);
-    return data;
-  }
-  if (!response.ok) throw new Error(`Asaas HTTP Error ${response.status}`);
-  return await response.text();
-}
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
