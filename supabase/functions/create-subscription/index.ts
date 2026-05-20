@@ -217,11 +217,13 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!ASAAS_API_KEY || !ASAAS_BASE_URL) {
-      console.error('Missing Asaas configuration:', { hasKey: !!ASAAS_API_KEY, baseUrl: ASAAS_BASE_URL });
-      throw new Error('Configuração do Asaas (API Key ou URL) não encontrada nos Secrets do Supabase.');
+    if (!ASAAS_API_KEY || !ASAAS_BASE_URL || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Missing configuration:', { hasKey: !!ASAAS_API_KEY, hasUrl: !!ASAAS_BASE_URL, hasSupabase: !!SUPABASE_URL });
+      return new Response(JSON.stringify({ success: false, error: 'Configuração do servidor faltando (Asaas/Supabase).' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
-
 
     const rawData = await req.json();
     console.log('Received subscription request:', JSON.stringify(rawData));
@@ -231,7 +233,7 @@ serve(async (req) => {
       console.error('Validation failed:', validation.error);
       return new Response(JSON.stringify({
         success: false,
-        error: 'Dados inválidos. Verifique as informações e tente novamente.',
+        error: validation.error || 'Dados inválidos.',
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
