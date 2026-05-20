@@ -262,9 +262,9 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 Assinar agora
               </Button>
               <div className="mt-4 flex items-center justify-center gap-6 grayscale opacity-60">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-4 w-auto" />
-                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6 w-auto" />
-                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Pix_logo.svg" alt="Pix" className="h-5 w-auto" />
+                <img src="https://cdn.jsdelivr.net/gh/aayush-05/logos@main/logos/visa.svg" alt="Visa" className="h-4 w-auto" />
+                <img src="https://cdn.jsdelivr.net/gh/aayush-05/logos@main/logos/mastercard.svg" alt="Mastercard" className="h-6 w-auto" />
+                <img src="https://raw.githubusercontent.com/bacen/pix-dict-api/master/assets/logo-pix-png.png" alt="Pix" className="h-5 w-auto" />
               </div>
             </div>
           )}
