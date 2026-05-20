@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-// --- Inlined Bivvo Calc (Portability) ---
+
+// --- Bivvo Calculation Logic (Standalone) ---
 const PLANS = {
   standard: { name: 'STANDARD', users: 3, promo: 169.90, full: 197.90 },
   silver:   { name: 'SILVER',   users: 6, promo: 287.90, full: 389.90 },
@@ -51,6 +52,8 @@ interface BivvoQuote {
   channelLines: Array<{ id: string; label: string; emoji: string; qty: number; amount: number }>;
 }
 
+function round2(n: number) { return Math.round(n * 100) / 100; }
+
 function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
   const plan = PLANS[cfg.plan];
   if (!plan) throw new Error('Plano inválido');
@@ -79,158 +82,62 @@ function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
   const total1m = round2(base1m + channelsTotal + telCost);
   const totalRec = round2(baseRec + channelsTotal + telCost);
   const planLabel = extraUsers > 0 ? `Plano Personalizado (${plan.name} + ${extraUsers}u)` : `Plano ${plan.name} (${plan.users}u)`;
+  
+  return {
+    planSlug: cfg.plan,
+    planLabel,
+    users,
+    extraUsers,
+    base1m,
+    baseRec,
+    channelsTotal,
+    channelsDiscountPercent: discountPercent,
+    telCost,
+    total1m,
+    totalRec,
+    protagonista: cfg.protagonista,
+    channelLines
+  };
 }
 
-function round2(n: number) { return Math.round(n * 100) / 100; }
-// --- End Inlined Bivvo Calc ---
+// --- Validation Utils ---
+const VALID_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+
+function validateCPF(cpf: string): boolean {
+  const clean = cpf.replace(/\D/g, '');
+  if (clean.length !== 11 || /^(\d)\1{10}$/.test(clean)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(clean.charAt(i)) * (10 - i);
+  let rev = 11 - (sum % 11);
+  if (rev === 10 || rev === 11) rev = 0;
+  if (rev !== parseInt(clean.charAt(9))) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(clean.charAt(i)) * (11 - i);
+  rev = 11 - (sum % 11);
+  if (rev === 10 || rev === 11) rev = 0;
+  return rev === parseInt(clean.charAt(10));
+}
+
+// --- Asaas Fetch Wrapper ---
+async function asaasFetch(url: string, options: RequestInit) {
+  const response = await fetch(url, options);
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.errors?.[0]?.description || `Asaas Error ${response.status}`);
+    return data;
+  }
+  if (!response.ok) throw new Error(`Asaas HTTP Error ${response.status}`);
+  return await response.text();
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-async function asaasFetch(url: string, options: RequestInit) {
-  const response = await fetch(url, options);
-  const contentType = response.headers.get('content-type');
-  
-  if (contentType && contentType.includes('application/json')) {
-    const data = await response.json();
-    if (!response.ok) {
-      const errorMsg = data.errors?.[0]?.description || `Erro Asaas (HTTP ${response.status})`;
-      throw new Error(errorMsg);
-    }
-    return data;
-  } else {
-    if (!response.ok) {
-      const text = await response.text();
-      console.error('Asaas Error (Non-JSON):', text);
-      throw new Error(`Erro na API do Asaas (HTTP ${response.status})`);
-    }
-    return await response.text();
-  }
-}
-
-// Plan prices fetched from DB dynamically
-
-const VALID_STATES = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-];
-
-// CPF validation algorithm
-function validateCPF(cpf: string): boolean {
-  if (!/^\d{11}$/.test(cpf)) return false;
-  if (/^(\d)\1{10}$/.test(cpf)) return false;
-  
-  let sum = 0;
-  for (let i = 0; i < 9; i++) {
-    sum += parseInt(cpf.charAt(i)) * (10 - i);
-  }
-  let remainder = (sum * 10) % 11;
-  if (remainder === 10 || remainder === 11) remainder = 0;
-  if (remainder !== parseInt(cpf.charAt(9))) return false;
-  
-  sum = 0;
-  for (let i = 0; i < 10; i++) {
-    sum += parseInt(cpf.charAt(i)) * (11 - i);
-  }
-  remainder = (sum * 10) % 11;
-  if (remainder === 10 || remainder === 11) remainder = 0;
-  if (remainder !== parseInt(cpf.charAt(10))) return false;
-  
-  return true;
-}
-
-// Validate subscription request
-function validateSubscriptionRequest(data: any): { valid: boolean; error?: string } {
-  if (!data.plan || typeof data.plan !== 'string') {
-    return { valid: false, error: 'Invalid plan' };
-  }
-  
-  const VALID_BILLING_TYPES = ['PIX', 'BOLETO'];
-  if (!data.billingType || !VALID_BILLING_TYPES.includes(data.billingType)) {
-    return { valid: false, error: 'Invalid billing type' };
-  }
-  
-  const cd = data.customerData;
-  if (!cd) {
-    return { valid: false, error: 'Missing customer data' };
-  }
-  
-  if (!cd.name || typeof cd.name !== 'string' || cd.name.trim().length < 3 || cd.name.length > 100) {
-    return { valid: false, error: 'Invalid name' };
-  }
-  
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!cd.email || !emailRegex.test(cd.email) || cd.email.length > 255) {
-    return { valid: false, error: 'Invalid email' };
-  }
-  
-  const cleanCpf = (cd.cpf || '').replace(/\D/g, '');
-  if (!validateCPF(cleanCpf)) {
-    return { valid: false, error: 'Invalid CPF' };
-  }
-  
-  const cleanPhone = (cd.whatsapp || '').replace(/\D/g, '');
-  if (!/^\d{10,11}$/.test(cleanPhone)) {
-    return { valid: false, error: 'Invalid phone number' };
-  }
-  
-  if (!cd.billingName || cd.billingName.trim().length < 3 || cd.billingName.length > 100) {
-    return { valid: false, error: 'Invalid billing name' };
-  }
-  
-  const cleanCep = (cd.cep || '').replace(/\D/g, '');
-  if (!/^\d{8}$/.test(cleanCep)) {
-    return { valid: false, error: 'Invalid CEP' };
-  }
-  
-  if (!cd.endereco || cd.endereco.length > 200) {
-    return { valid: false, error: 'Invalid address' };
-  }
-  if (!cd.numero || cd.numero.length > 20) {
-    return { valid: false, error: 'Invalid address number' };
-  }
-  if (cd.complemento && cd.complemento.length > 100) {
-    return { valid: false, error: 'Invalid complement' };
-  }
-  if (!cd.bairro || cd.bairro.length > 100) {
-    return { valid: false, error: 'Invalid neighborhood' };
-  }
-  if (!cd.cidade || cd.cidade.length > 100) {
-    return { valid: false, error: 'Invalid city' };
-  }
-  if (!cd.estado || !VALID_STATES.includes(cd.estado.toUpperCase())) {
-    return { valid: false, error: 'Invalid state' };
-  }
-  
-  return { valid: true };
-}
-
-interface SubscriptionRequest {
-  plan: string;
-  billingType: 'PIX' | 'BOLETO';
-  customerData: {
-    name: string;
-    email: string;
-    cpf: string;
-    whatsapp: string;
-    billingName: string;
-    cep: string;
-    endereco: string;
-    numero: string;
-    complemento?: string;
-    bairro: string;
-    cidade: string;
-    estado: string;
-  };
-}
-
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY');
@@ -239,401 +146,178 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!ASAAS_API_KEY || !ASAAS_BASE_URL || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Missing configuration:', { hasKey: !!ASAAS_API_KEY, hasUrl: !!ASAAS_BASE_URL, hasSupabase: !!SUPABASE_URL });
-      return new Response(JSON.stringify({ success: false, error: 'Configuração do servidor faltando (Asaas/Supabase).' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      throw new Error('Configuração incompleta no servidor (Secrets).');
     }
 
-    const rawData = await req.json();
-    console.log('Received subscription request:', JSON.stringify(rawData));
-    
-    const validation = validateSubscriptionRequest(rawData);
-    if (!validation.valid) {
-      console.error('Validation failed:', validation.error);
-      return new Response(JSON.stringify({
-        success: false,
-        error: validation.error || 'Dados inválidos.',
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const body = await req.json();
+    const { plan, billingType, customerData, bivvoConfig, affiliateSlug, trackingId } = body;
 
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
-    const { plan, billingType, customerData }: SubscriptionRequest = rawData;
-    const bivvoConfig: BivvoConfig | undefined = rawData.bivvoConfig;
-    const affiliateSlug: string | undefined = rawData.affiliateSlug;
-    const trackingId: string | undefined = rawData.trackingId;
+    // 1. Database Client
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    let amount: number;
-    let recurringAmount: number;
-    let planLabel = plan;
-    let quote: ReturnType<typeof quoteBivvo> | null = null;
-
+    // 2. Resolve Price & Plan
+    let amount: number, recurringAmount: number, planLabel: string;
     if (bivvoConfig) {
-      try {
-        quote = quoteBivvo(bivvoConfig);
-        amount = quote.total1m;
-        recurringAmount = quote.totalRec;
-        planLabel = quote.planLabel;
-      } catch (e) {
-        return new Response(JSON.stringify({ success: false, error: 'Configuração inválida' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+      const quote = quoteBivvo(bivvoConfig);
+      amount = quote.total1m;
+      recurringAmount = quote.totalRec;
+      planLabel = quote.planLabel;
     } else {
-      const { data: planData, error: planError } = await supabase
-        .from('plans')
-        .select('price')
-        .eq('slug', plan)
-        .eq('active', true)
-        .maybeSingle();
-
-      if (planError || !planData) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Plano não encontrado ou inativo.',
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      amount = Number(planData.price);
-      recurringAmount = amount;
+      const { data: pData } = await supabase.from('plans').select('price, name').eq('slug', plan).eq('active', true).single();
+      if (!pData) throw new Error('Plano não encontrado.');
+      amount = recurringAmount = Number(pData.price);
+      planLabel = `Plano ${pData.name}`;
     }
 
-    // Lookup affiliate
-    let affiliate: { id: string; commission_percent: number; commission_recurring: boolean } | null = null;
-    if (affiliateSlug) {
-      const { data: aff } = await supabase
-        .from('affiliates')
-        .select('id, commission_percent, commission_recurring, status')
-        .eq('slug', affiliateSlug)
-        .eq('status', 'active')
-        .maybeSingle();
-      if (aff) affiliate = aff as any;
-    }
+    // 3. User & Customer Management
+    const cleanCpf = customerData.cpf.replace(/\D/g, '');
+    const cleanPhone = customerData.whatsapp.replace(/\D/g, '');
+    const cleanCep = customerData.cep.replace(/\D/g, '');
 
-    // 1. Create/Update customer and subscription in our database
-    const cleanCpfVal = customerData.cpf.replace(/\D/g, '');
-    const cleanPhoneVal = customerData.whatsapp.replace(/\D/g, '');
-    const cleanCepVal = customerData.cep.replace(/\D/g, '');
+    // Upsert User
+    const { data: user, error: uErr } = await supabase.from('users').upsert({
+      email: customerData.email.toLowerCase().trim(),
+      name: customerData.name.trim(),
+      whatsapp: cleanPhone,
+      cpf: cleanCpf,
+      billing_name: customerData.billingName.trim(),
+      cep: cleanCep,
+      endereco: customerData.endereco.trim(),
+      numero: customerData.numero.trim(),
+      complemento: customerData.complemento?.trim() || '',
+      bairro: customerData.bairro.trim(),
+      cidade: customerData.cidade.trim(),
+      estado: customerData.estado.toUpperCase(),
+    }, { onConflict: 'email' }).select('id, asaas_customer_id').single();
+    if (uErr) throw uErr;
 
-    const { data: customer, error: customerUpsertError } = await supabase
-      .from('customers')
-      .upsert({
-        name: customerData.name.trim(),
-        email: customerData.email.toLowerCase().trim(),
-        phone: cleanPhoneVal,
-      }, { onConflict: 'email' })
-      .select('id')
-      .single();
+    // Upsert Customer (Lead tracking)
+    await supabase.from('customers').upsert({
+      email: customerData.email.toLowerCase().trim(),
+      name: customerData.name.trim(),
+      phone: cleanPhone,
+    }, { onConflict: 'email' });
 
-    if (customerUpsertError) throw new Error(`Error saving customer: ${customerUpsertError.message}`);
-
-    const { data: dbSubscription, error: subInsertError } = await supabase
-      .from('subscriptions')
-      .insert({
-        customer_id: customer.id,
-        plan_slug: plan,
-        users_count: bivvoConfig?.users || 1,
-        channels_config: bivvoConfig?.channels || {},
-        is_protagonista: bivvoConfig?.protagonista || false,
-        has_telefonia: bivvoConfig?.telefonia || false,
-        channels_discount: bivvoConfig?.channelsDiscount || 0,
-        status: 'active'
-      })
-      .select('id')
-      .single();
-
-    if (subInsertError) throw new Error(`Error saving subscription: ${subInsertError.message}`);
-
-    console.log('Processing Asaas for plan:', plan, 'amount:', amount, 'recurring:', recurringAmount);
-
-
-    // Sanitize data (reusing values defined above)
-    const cleanCpf = cleanCpfVal;
-    const cleanWhatsapp = cleanPhoneVal;
-    const cleanCep = cleanCepVal;
-
-    // 1. Create or find user in database
-    let userId: string;
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id, asaas_customer_id')
-      .eq('email', customerData.email)
-      .maybeSingle();
-
-    let asaasCustomerId = existingUser?.asaas_customer_id;
-
-    if (existingUser) {
-      userId = existingUser.id;
-      await supabase.from('users').update({
-        name: customerData.name.trim(),
-        whatsapp: cleanWhatsapp,
-        cpf: cleanCpf,
-        billing_name: customerData.billingName.trim(),
-        cep: cleanCep,
-        endereco: customerData.endereco.trim(),
-        numero: customerData.numero.trim(),
-        complemento: customerData.complemento?.trim() || '',
-        bairro: customerData.bairro.trim(),
-        cidade: customerData.cidade.trim(),
-        estado: customerData.estado.toUpperCase(),
-      }).eq('id', userId);
-    } else {
-      const { data: newUser, error: userError } = await supabase
-        .from('users')
-        .insert({
-          name: customerData.name.trim(),
-          email: customerData.email.toLowerCase().trim(),
-          whatsapp: cleanWhatsapp,
-          cpf: cleanCpf,
-          billing_name: customerData.billingName.trim(),
-          cep: cleanCep,
-          endereco: customerData.endereco.trim(),
-          numero: customerData.numero.trim(),
-          complemento: customerData.complemento?.trim() || '',
-          bairro: customerData.bairro.trim(),
-          cidade: customerData.cidade.trim(),
-          estado: customerData.estado.toUpperCase(),
-        })
-        .select('id')
-        .single();
-
-      if (userError) throw new Error(`Error creating user: ${userError.message}`);
-      userId = newUser.id;
-    }
-
-    // 2. Create or find customer in Asaas
+    // 4. Asaas Integration
+    let asaasCustomerId = user.asaas_customer_id;
     if (!asaasCustomerId) {
-      console.log('Creating customer in Asaas...');
-      console.log('Using Asaas URL:', ASAAS_BASE_URL);
-      
-      const customerResult = await asaasFetch(`${ASAAS_BASE_URL}/customers`, {
+      const cRes = await asaasFetch(`${ASAAS_BASE_URL}/customers`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'access_token': ASAAS_API_KEY,
-        },
+        headers: { 'Content-Type': 'application/json', 'access_token': ASAAS_API_KEY },
         body: JSON.stringify({
           name: customerData.name.trim(),
           cpfCnpj: cleanCpf,
           email: customerData.email.toLowerCase().trim(),
-          mobilePhone: cleanWhatsapp,
+          mobilePhone: cleanPhone,
           postalCode: cleanCep,
           address: customerData.endereco.trim(),
           addressNumber: customerData.numero.trim(),
-          complement: customerData.complemento?.trim() || '',
-          province: customerData.bairro.trim(),
-          city: customerData.cidade.trim(),
-          state: customerData.estado.toUpperCase(),
-          externalReference: userId,
+          externalReference: user.id,
           notificationDisabled: false,
         }),
       });
-
-      console.log('Asaas customer created:', customerResult.id);
-      asaasCustomerId = customerResult.id;
-      await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', userId);
+      asaasCustomerId = cRes.id;
+      await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', user.id);
     }
 
-    // 3. Create subscription in Asaas
+    // 5. Create Subscription
     const nextDueDate = new Date();
     nextDueDate.setDate(nextDueDate.getDate() + (billingType === 'BOLETO' ? 3 : 1));
 
-    const createSubscription = async (customerId: string) => {
-      console.log('Creating subscription in Asaas...');
-      const subscriptionPayload = {
-        customer: customerId,
-        billingType: billingType,
+    const sRes = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'access_token': ASAAS_API_KEY },
+      body: JSON.stringify({
+        customer: asaasCustomerId,
+        billingType,
         nextDueDate: nextDueDate.toISOString().split('T')[0],
         value: recurringAmount,
-        discount: amount < recurringAmount ? {
-          value: recurringAmount - amount,
-          type: 'FIXED',
-          dueDateLimitDays: 0
-        } : undefined,
+        discount: amount < recurringAmount ? { value: round2(recurringAmount - amount), type: 'FIXED', dueDateLimitDays: 0 } : undefined,
         cycle: 'MONTHLY',
         description: `Assinatura ${planLabel}`,
-        externalReference: `${userId}_${plan}_subscription`,
-      };
-
-      console.log('Subscription payload:', JSON.stringify(subscriptionPayload));
-
-      const subscriptionResult = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'access_token': ASAAS_API_KEY,
-        },
-        body: JSON.stringify(subscriptionPayload),
-      });
-
-      return subscriptionResult;
-    };
-
-    let subscriptionResult = await createSubscription(asaasCustomerId!);
-    console.log('Subscription response:', JSON.stringify(subscriptionResult));
-
-    // Fetch the first payment from the subscription (with retry)
-    console.log('Fetching first payment from subscription...');
-    let firstPayment: any = null;
-    for (let i = 0; i < 5; i++) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      const paymentsResult = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionResult.id}/payments`, {
-        headers: { 'access_token': ASAAS_API_KEY },
-      });
-      if (paymentsResult.data && paymentsResult.data.length > 0) {
-        firstPayment = paymentsResult.data[0];
-        break;
-      }
-      console.log(`Payment not found yet, retrying... (${i+1}/5)`);
-    }
-
-    if (!firstPayment) {
-      throw new Error('Não foi possível localizar o pagamento da assinatura no Asaas após várias tentativas.');
-    }
-
-    const subscriptionId = subscriptionResult.id;
-    const paymentId = firstPayment.id;
-    
-    // Save asaas_subscription_id to user
-    await supabase.from('users').update({ asaas_subscription_id: subscriptionId }).eq('id', userId);
-
-
-
-    // 4. Get the first payment created by the subscription
-    console.log('Fetching first payment from subscription...');
-    
-    // Small delay to ensure payment is created
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const paymentsResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}/payments`, {
-      headers: {
-        'access_token': ASAAS_API_KEY,
-      },
+        externalReference: `${user.id}_${plan}`,
+      }),
     });
 
-    const paymentsResult = await paymentsResponse.json();
-    console.log('Subscription payments:', JSON.stringify(paymentsResult));
-
-    if (!paymentsResult.data || paymentsResult.data.length === 0) {
-      throw new Error('No payment found for subscription');
+    // 6. Fetch First Payment for PIX/Boleto Details
+    let firstPayment: any = null;
+    for (let i = 0; i < 5; i++) {
+      const pRes = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions/${sRes.id}/payments`, {
+        headers: { 'access_token': ASAAS_API_KEY },
+      });
+      if (pRes.data?.length > 0) {
+        firstPayment = pRes.data[0];
+        break;
+      }
+      await new Promise(r => setTimeout(r, 1500));
     }
+    if (!firstPayment) throw new Error('Não foi possível gerar a cobrança inicial no Asaas.');
 
-    const firstPayment = paymentsResult.data[0];
-    const paymentId = firstPayment.id;
-
-    // 5. Get payment details (for PIX QR Code or Boleto URL)
+    // Details for UI
     let paymentDetails: any = {};
-
     if (billingType === 'PIX') {
-      console.log('Fetching PIX QR Code...');
-      const pixResult = await asaasFetch(`${ASAAS_BASE_URL}/payments/${paymentId}/pixQrCode`, {
+      const pix = await asaasFetch(`${ASAAS_BASE_URL}/payments/${firstPayment.id}/pixQrCode`, {
         headers: { 'access_token': ASAAS_API_KEY },
       });
-      console.log('PIX result:', JSON.stringify(pixResult));
-
-      if (pixResult.encodedImage && pixResult.payload) {
-        paymentDetails = {
-          pixQrCode: pixResult.encodedImage,
-          pixCopyPaste: pixResult.payload,
-          expiresAt: pixResult.expirationDate,
-        };
-      }
+      paymentDetails = { pixQrCode: pix.encodedImage, pixCopyPaste: pix.payload, expiresAt: pix.expirationDate };
     } else if (billingType === 'BOLETO') {
-      console.log('Fetching Boleto details...');
-      const boletoResult = await asaasFetch(`${ASAAS_BASE_URL}/payments/${paymentId}/identificationField`, {
+      const bar = await asaasFetch(`${ASAAS_BASE_URL}/payments/${firstPayment.id}/identificationField`, {
         headers: { 'access_token': ASAAS_API_KEY },
       });
-      console.log('Boleto result:', JSON.stringify(boletoResult));
-
-      paymentDetails = {
-        boletoUrl: firstPayment.bankSlipUrl,
-        barCode: boletoResult.identificationField,
-        dueDate: firstPayment.dueDate,
-      };
+      paymentDetails = { boletoUrl: firstPayment.bankSlipUrl, barCode: bar.identificationField, dueDate: firstPayment.dueDate };
     }
 
-    // 6. Save payment to database
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .insert({
-        user_id: userId,
-        plan,
-        amount,
-        status: 'pending',
-        asaas_payment_id: paymentId,
-        asaas_subscription_id: subscriptionId,
-      })
-      .select('id')
-      .single();
+    // 7. DB Payment Record
+    const { data: dbPayment } = await supabase.from('payments').insert({
+      user_id: user.id,
+      plan,
+      amount,
+      status: 'pending',
+      asaas_payment_id: firstPayment.id,
+      asaas_subscription_id: sRes.id,
+    }).select('id').single();
 
-    if (paymentError) {
-      console.error('Database save failed:', paymentError);
-      // Cancel subscription in Asaas
-      await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}`, {
-        method: 'DELETE',
-        headers: { 'access_token': ASAAS_API_KEY },
-      });
-      throw new Error('Falha ao processar pagamento. Nenhuma cobrança foi efetivada.');
-    }
-
-    console.log('Subscription created successfully');
-
-    // 7. Register affiliate sale + first commission
-    if (affiliate && payment) {
-      const { data: sale } = await supabase.from('affiliate_sales').insert({
-        tracking_id: trackingId,
-        affiliate_id: affiliate.id,
-        payment_id: payment.id,
-        user_id: userId,
-        plan_slug: plan,
-        plan_label: planLabel,
-        config: bivvoConfig ?? {},
-        amount_first: amount,
-        amount_recurring: recurringAmount,
-        commission_percent: affiliate.commission_percent,
-        status: 'pending',
-        asaas_payment_id: paymentId,
-        asaas_subscription_id: subscriptionId,
-      }).select('id').single();
-
-      if (sale) {
-        const commission = Math.round(amount * affiliate.commission_percent) / 100;
-        await supabase.from('affiliate_commissions').insert({
-          affiliate_id: affiliate.id,
-          sale_id: sale.id,
-          sale_amount: amount,
-          commission_percent: affiliate.commission_percent,
-          commission_amount: commission,
-          kind: 'first',
+    // 8. Affiliate Tracking
+    if (affiliateSlug && dbPayment) {
+      const { data: aff } = await supabase.from('affiliates').select('id, commission_percent').eq('slug', affiliateSlug).eq('status', 'active').maybeSingle();
+      if (aff) {
+        const { data: sale } = await supabase.from('affiliate_sales').insert({
+          affiliate_id: aff.id,
+          payment_id: dbPayment.id,
+          user_id: user.id,
+          plan_slug: plan,
+          plan_label: planLabel,
+          config: bivvoConfig || {},
+          amount_first: amount,
+          amount_recurring: recurringAmount,
+          commission_percent: aff.commission_percent,
           status: 'pending',
-        });
+          tracking_id: trackingId,
+          asaas_payment_id: firstPayment.id,
+          asaas_subscription_id: sRes.id,
+        }).select('id').single();
+        if (sale) {
+          await supabase.from('affiliate_commissions').insert({
+            affiliate_id: aff.id,
+            sale_id: sale.id,
+            sale_amount: amount,
+            commission_percent: aff.commission_percent,
+            commission_amount: round2((amount * aff.commission_percent) / 100),
+            kind: 'first',
+            status: 'pending',
+          });
+        }
       }
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      paymentId: payment.id,
-      asaasPaymentId: paymentId,
-      subscriptionId: subscriptionId,
-      ...paymentDetails,
-    }), {
+    return new Response(JSON.stringify({ success: true, paymentId: dbPayment?.id, asaasPaymentId: firstPayment.id, subscriptionId: sRes.id, ...paymentDetails }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
-    console.error('Subscription error:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: error instanceof Error ? error.message : 'Erro ao processar assinatura',
-    }), {
-      status: 500,
+  } catch (err) {
+    console.error('Create Subscription Error:', err);
+    return new Response(JSON.stringify({ success: false, error: err.message }), {
+      status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
