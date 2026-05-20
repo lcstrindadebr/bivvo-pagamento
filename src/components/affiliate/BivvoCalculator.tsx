@@ -261,19 +261,17 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <Button onClick={() => onCheckout?.(config)} className="w-full bg-accent hover:bg-accent/90 text-white py-6 text-lg font-bold shadow-lg shadow-accent/20">
                 Assinar agora
               </Button>
-              <div className="mt-4 flex items-center justify-center gap-4 text-muted-foreground opacity-60">
-                <div className="flex items-center gap-1.5 border border-border/50 rounded px-2 py-1 bg-muted/20">
-                  <CreditCard className="h-3 w-3" />
-                  <span className="text-[10px] font-bold tracking-tighter">VISA</span>
-                </div>
-                <div className="flex items-center gap-1.5 border border-border/50 rounded px-2 py-1 bg-muted/20">
-                  <CreditCard className="h-3 w-3" />
-                  <span className="text-[10px] font-bold tracking-tighter">MASTERCARD</span>
-                </div>
-                <div className="flex items-center gap-1.5 border border-border/50 rounded px-2 py-1 bg-muted/20">
-                  <QrCode className="h-3 w-3 text-accent" />
-                  <span className="text-[10px] font-bold tracking-tighter">PIX</span>
-                </div>
+              <div className="mt-6 flex items-center justify-center gap-8 grayscale opacity-70">
+                <svg viewBox="0 0 100 32" className="h-4 w-auto fill-current" aria-label="Visa">
+                  <path d="M38.1 1.1h-5.8c-1.8 0-3.3 1-3.9 2.5L19 25.1h6.1l1.2-3.4h7.5l.7 3.4h5.4L38.1 1.1zm-3.5 15.6l-2.4-11.4 4.1 11.4h-1.7zm19 8.4h5.8L61 1.1h-5.8L53.6 25.1zM11.6 1.1H0l11.6 24h11.6L11.6 1.1zm74.8 0h-5.4l-4.7 24h5.4l4.7-24z"/>
+                </svg>
+                <svg viewBox="0 0 100 62" className="h-7 w-auto" aria-label="Mastercard">
+                  <circle cx="35" cy="31" r="31" fill="currentColor" fillOpacity="0.8"/>
+                  <circle cx="65" cy="31" r="31" fill="currentColor" fillOpacity="0.5"/>
+                </svg>
+                <svg viewBox="0 0 100 100" className="h-6 w-auto text-accent fill-current" aria-label="Pix">
+                  <path d="M46.7 1.6c1.8-1.8 4.8-1.8 6.6 0l45.1 45.1c1.8 1.8 1.8 4.8 0 6.6L53.3 98.4c-1.8 1.8-4.8 1.8-6.6 0L1.6 53.3c-1.8-1.8-1.8-4.8 0-6.6L46.7 1.6zM50 82.5l29.2-29.2-29.2-29.2L20.8 53.3 50 82.5z"/>
+                </svg>
               </div>
             </div>
           )}
