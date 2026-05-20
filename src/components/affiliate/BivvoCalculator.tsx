@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Link2, FileText, Info } from 'lucide-react';
+import { Copy, Link2, FileText, Info, CreditCard, QrCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -261,10 +261,19 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <Button onClick={() => onCheckout?.(config)} className="w-full bg-accent hover:bg-accent/90 text-white py-6 text-lg font-bold shadow-lg shadow-accent/20">
                 Assinar agora
               </Button>
-              <div className="mt-4 flex items-center justify-center gap-6 grayscale opacity-60">
-                <img src="https://cdn.jsdelivr.net/gh/aayush-05/logos@main/logos/visa.svg" alt="Visa" className="h-4 w-auto" />
-                <img src="https://cdn.jsdelivr.net/gh/aayush-05/logos@main/logos/mastercard.svg" alt="Mastercard" className="h-6 w-auto" />
-                <img src="https://raw.githubusercontent.com/bacen/pix-dict-api/master/assets/logo-pix-png.png" alt="Pix" className="h-5 w-auto" />
+              <div className="mt-4 flex items-center justify-center gap-4 text-muted-foreground opacity-60">
+                <div className="flex items-center gap-1.5 border border-border/50 rounded px-2 py-1 bg-muted/20">
+                  <CreditCard className="h-3 w-3" />
+                  <span className="text-[10px] font-bold tracking-tighter">VISA</span>
+                </div>
+                <div className="flex items-center gap-1.5 border border-border/50 rounded px-2 py-1 bg-muted/20">
+                  <CreditCard className="h-3 w-3" />
+                  <span className="text-[10px] font-bold tracking-tighter">MASTERCARD</span>
+                </div>
+                <div className="flex items-center gap-1.5 border border-border/50 rounded px-2 py-1 bg-muted/20">
+                  <QrCode className="h-3 w-3 text-accent" />
+                  <span className="text-[10px] font-bold tracking-tighter">PIX</span>
+                </div>
               </div>
             </div>
           )}
