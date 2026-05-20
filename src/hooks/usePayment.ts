@@ -71,9 +71,21 @@ export function usePayment() {
         attempts++;
         
         try {
-          const { data: result, error: pollError } = await supabase.functions.invoke('check-payment-status', {
-            body: { asaasId, type },
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-payment-status`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: JSON.stringify({ asaasId, type }),
           });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
 
           if (pollError) throw pollError;
 
@@ -109,9 +121,21 @@ export function usePayment() {
     setStatus('processing');
 
     try {
-      const { data: result, error: fnError } = await supabase.functions.invoke('process-payment', {
-        body: data,
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify(data),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
 
       if (fnError) throw new Error(fnError.message);
       if (!result.success) throw new Error(result.error || 'Erro desconhecido no processamento');
