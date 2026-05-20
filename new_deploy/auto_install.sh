@@ -113,9 +113,10 @@ update_supabase_auto() {
 
 
     if [ -f "$APP_DIR/.env" ]; then
-        SUPA_URL=$(grep VITE_SUPABASE_URL "$APP_DIR/.env" | cut -d= -f2)
+        SUPA_URL=$(grep VITE_SUPABASE_URL "$APP_DIR/.env" | cut -d= -f2 | tr -d '"' | tr -d "'")
         SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
     fi
+
 
     if [ -z "$SUPA_PROJECT_ID" ]; then
          read -p "ID do Projeto Supabase (Project Ref): " SUPA_PROJECT_ID
@@ -128,7 +129,7 @@ update_supabase_auto() {
 
     echo -e "${BLUE}Linkando projeto $SUPA_PROJECT_ID...${NC}"
     cd "$APP_DIR"
-    supabase link --project-ref "$SUPA_PROJECT_ID" --non-interactive
+    supabase link --project-ref "$SUPA_PROJECT_ID"
 
     echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
     if [ -f "new_deploy/database_schema.sql" ]; then
