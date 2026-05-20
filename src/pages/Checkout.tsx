@@ -369,7 +369,7 @@ const Checkout = () => {
 
       const result = await response.json();
 
-      if (fnError) throw new Error(fnError.message);
+      
       if (!result.success) throw new Error(result.error);
 
       if (paymentMethod === 'PIX') {

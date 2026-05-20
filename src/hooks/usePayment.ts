@@ -87,7 +87,7 @@ export function usePayment() {
 
           const result = await response.json();
 
-          if (pollError) throw pollError;
+          
 
           if (result?.status === 'APPROVED' || result?.status === 'CONFIRMED' || result?.status === 'RECEIVED') {
             setStatus('approved');
@@ -137,7 +137,7 @@ export function usePayment() {
 
       const result = await response.json();
 
-      if (fnError) throw new Error(fnError.message);
+      
       if (!result.success) throw new Error(result.error || 'Erro desconhecido no processamento');
 
       // Se aprovado imediatamente
