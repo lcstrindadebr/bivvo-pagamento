@@ -136,9 +136,18 @@ update_supabase_auto() {
 
     echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
     if [ -d "supabase/functions" ]; then
-        supabase functions deploy --no-verify-jwt
+        # Lista as pastas em supabase/functions para fazer o deploy individual
+        for function_dir in supabase/functions/*/ ; do
+            function_name=$(basename "$function_dir")
+            # Pula pastas que começam com underline (como _shared)
+            if [[ ! "$function_name" =~ ^_ ]]; then
+                echo -e "${BLUE}➤ Publicando function: $function_name${NC}"
+                supabase functions deploy "$function_name" --project-ref "$SUPA_PROJECT_ID" --no-verify-jwt
+            fi
+        done
         echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
     fi
+
 
     echo -e "${GREEN}✓ Atualização do Supabase concluída!${NC}"
 }
