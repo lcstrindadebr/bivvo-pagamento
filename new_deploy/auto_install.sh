@@ -113,9 +113,10 @@ update_supabase_auto() {
 
 
     if [ -f "$APP_DIR/.env" ]; then
-        SUPA_URL=$(grep VITE_SUPABASE_URL "$APP_DIR/.env" | cut -d= -f2)
+        SUPA_URL=$(grep VITE_SUPABASE_URL "$APP_DIR/.env" | cut -d= -f2 | tr -d '"' | tr -d "'")
         SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
     fi
+
 
     if [ -z "$SUPA_PROJECT_ID" ]; then
          read -p "ID do Projeto Supabase (Project Ref): " SUPA_PROJECT_ID
