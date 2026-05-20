@@ -333,10 +333,13 @@ const Checkout = () => {
     setGeneratingPayment(true);
 
     try {
-      const { supabase } = await import('@/integrations/supabase/client');
-      
-      const { data: result, error: fnError } = await supabase.functions.invoke('create-subscription', {
-        body: {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({
           plan: plan.slug,
           billingType: paymentMethod,
           bivvoConfig,
@@ -356,10 +359,17 @@ const Checkout = () => {
             cidade: formData.cidade,
             estado: formData.estado,
           },
-        },
+        }),
       });
 
-      if (fnError) throw new Error(fnError.message);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      
       if (!result.success) throw new Error(result.error);
 
       if (paymentMethod === 'PIX') {
