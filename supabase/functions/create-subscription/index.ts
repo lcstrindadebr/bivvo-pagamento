@@ -88,8 +88,23 @@ serve(async (req) => {
       phone: cleanPhone,
     }, { onConflict: 'email' });
 
-    // 4. Asaas Integration
+    // 4. Asaas Integration - validate existing customer, recreate if removed
     let asaasCustomerId = user.asaas_customer_id;
+    if (asaasCustomerId) {
+      try {
+        const existing = await asaasFetch(`${ASAAS_BASE_URL}/customers/${asaasCustomerId}`, {
+          headers: { 'access_token': ASAAS_API_KEY },
+        });
+        if (existing?.deleted === true) {
+          console.log('Cliente Asaas removido, será recriado:', asaasCustomerId);
+          asaasCustomerId = null;
+        }
+      } catch (e) {
+        console.log('Cliente Asaas inválido, será recriado:', asaasCustomerId, e.message);
+        asaasCustomerId = null;
+      }
+    }
+
     if (!asaasCustomerId) {
       const cRes = await asaasFetch(`${ASAAS_BASE_URL}/customers`, {
         method: 'POST',
@@ -109,6 +124,7 @@ serve(async (req) => {
       asaasCustomerId = cRes.id;
       await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', user.id);
     }
+
 
     // 5. Create Subscription
     const nextDueDate = new Date();
