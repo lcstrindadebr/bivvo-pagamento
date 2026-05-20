@@ -464,7 +464,7 @@ serve(async (req) => {
 
       console.log('Subscription payload:', JSON.stringify(subscriptionPayload));
 
-      const subscriptionResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions`, {
+      const subscriptionResult = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -473,7 +473,7 @@ serve(async (req) => {
         body: JSON.stringify(subscriptionPayload),
       });
 
-      return subscriptionResponse.json();
+      return subscriptionResult;
     };
 
     let subscriptionResult = await createSubscription(asaasCustomerId!);
