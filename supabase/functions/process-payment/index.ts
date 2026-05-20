@@ -149,7 +149,9 @@ serve(async (req) => {
 
     if (isApproved) {
       const expDate = new Date();
-      expDate.setFullYear(expDate.getFullYear() + 1);
+      expDate.setMonth(expDate.getMonth() + 1);
+      expDate.setDate(expDate.getDate() + 3); // 3 days grace period
+
       await supabase.from('users').update({
         status: 'ativo',
         plano_ativo: plan,
