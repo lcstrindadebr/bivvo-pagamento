@@ -261,21 +261,11 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <Button onClick={() => onCheckout?.(config)} className="w-full bg-accent hover:bg-accent/90 text-white py-6 text-lg font-bold shadow-lg shadow-accent/20">
                 Assinar agora
               </Button>
-              <div className="mt-6 flex items-center justify-center gap-8 grayscale opacity-70">
-                <svg viewBox="0 0 24 24" className="h-4 w-auto fill-current" aria-label="Visa">
-                  <path d="M15.191 14.394h-1.91l1.192-7.394h1.91L15.191 14.394zM21.053 7h-1.848c-.571 0-1 .329-1.246.912l-3.513 8.384h2.006l.399-1.106h2.453l.231 1.106h1.766L21.053 7zm-3.708 6.586l1.049-2.903.601 2.903h-1.65zM8.953 7l-1.82 5.034L6.34 7H4.218L6.444 14.394h1.933L10.873 7H8.953zm-6.191 0L1.442 7.15l-.014.066c1.192.304 2.279.792 3.193 1.45l.449-2.731H1.2c-.3 0-.54.2-.64.51L0 8.847l.019.014c.502-.256 1.051-.387 1.62-.387 1.408 0 2.41 1.066 2.41 2.71 0 1.874-1.258 3.21-2.915 3.21-1.077 0-1.854-.51-2.316-1.106l-.019.014L.43 14.394h1.868l.271-1.659c.28.31.649.526 1.065.626l.014-.066c-.632-.153-1.084-.632-1.084-1.293 0-.749.566-1.352 1.341-1.352.792 0 1.416.591 1.416 1.352 0 .661-.43 1.139-1.051 1.293l.014.066c.416-.1.785-.316 1.065-.626l.354 1.659h1.868L6.417 7H2.762z"/>
-                </svg>
-                <svg viewBox="0 0 24 24" className="h-7 w-auto" aria-label="Mastercard">
-                  <path d="M15.15 12c0-1.92-.93-3.61-2.35-4.66C11.38 6.29 9.79 5.75 8.07 5.75c-3.45 0-6.25 2.8-6.25 6.25s2.8 6.25 6.25 6.25c1.72 0 3.31-.54 4.73-1.59 1.42-1.05 2.35-2.74 2.35-4.66z" fill="#EB001B"/>
-                  <path d="M22.18 12c0 3.45-2.8 6.25-6.25 6.25-1.72 0-3.31-.54-4.73-1.59 1.42-1.05 2.35-2.74 2.35-4.66s-.93-3.61-2.35-4.66c-1.42-1.05-3.01-1.59-4.73-1.59 3.45 0 6.25 2.8 6.25 6.25z" fill="#F79E1B"/>
-                  <path d="M11.2 13.59c.51-.55.82-1.28.82-2.09s-.31-1.54-.82-2.09c-.51.55-.82 1.28-.82 2.09s.31 1.54.82 2.09z" fill="#FF5F00"/>
-                </svg>
-                <svg viewBox="0 0 512 512" className="h-6 w-auto" aria-label="Pix">
-                  <path d="M129.5 0h253c71.5 0 129.5 58 129.5 129.5v253c0 71.5-58 129.5-129.5 129.5h-253C58 512 0 454 0 382.5v-253C0 58 58 0 129.5 0z" fill="#32bcad"/>
-                  <path d="M328.4 121c-40.4 0-73.4 33-73.4 73.4 0 40.4 33 73.4 73.4 73.4 40.4 0 73.4-33 73.4-73.4 0-40.4-33-73.4-73.4-73.4zm0 106.3c-18.1 0-32.9-14.8-32.9-32.9 0-18.1 14.8-32.9 32.9-32.9 18.1 0 32.9 14.8 32.9 32.9 0 18.1-14.8 32.9-32.9 32.9z" fill="#fff"/>
-                  <path d="M183.6 121c-40.4 0-73.4 33-73.4 73.4 0 40.4 33 73.4 73.4 73.4 40.4 0 73.4-33 73.4-73.4 0-40.4-33-73.4-73.4-73.4zm0 106.3c-18.1 0-32.9-14.8-32.9-32.9 0-18.1 14.8-32.9 32.9-32.9 18.1 0 32.9 14.8 32.9 32.9 0 18.1-14.8 32.9-32.9 32.9z" fill="#fff"/>
-                  <path d="M256 226.5c-40.4 0-73.4 33-73.4 73.4 0 40.4 33 73.4 73.4 73.4 40.4 0 73.4-33 73.4-73.4 0-40.4-33-73.4-73.4-73.4zm0 106.3c-18.1 0-32.9-14.8-32.9-32.9 0-18.1 14.8-32.9 32.9-32.9 18.1 0 32.9 14.8 32.9 32.9 0 18.1-14.8 32.9-32.9 32.9z" fill="#fff"/>
-                </svg>
+              <div className="mt-6 flex items-center justify-center gap-6 opacity-90">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-4 w-auto object-contain" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-7 w-auto object-contain" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Pix_logo.svg" alt="Pix" className="h-6 w-auto object-contain" />
+                <img src="https://logopng.com.br/logos/boleto-bancario-43.png" alt="Boleto" className="h-5 w-auto object-contain" />
               </div>
             </div>
           )}
