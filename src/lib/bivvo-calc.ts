@@ -1,4 +1,4 @@
-// Shared Bivvo pricing calculator. KEEP IN SYNC with supabase/functions/_shared/bivvo-calc.ts
+// Shared Bivvo pricing calculator. KEEP IN SYNC with edge functions.
 
 export const PLANS = {
   standard: { name: 'STANDARD', users: 3, promo: 169.90, full: 197.90 },
@@ -54,12 +54,10 @@ export function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
   const plan = PLANS[cfg.plan];
   if (!plan) throw new Error('Plano inválido');
   
-  // Calculate users
   const users = Math.max(1, Math.floor(cfg.users || plan.users));
   const extraUsers = Math.max(0, users - plan.users);
   const extraCost = extraUsers * EXTRA_USER_PRICE;
   
-  // Base prices (including extra users)
   const basePromo = plan.promo + extraCost;
   const baseFull = plan.full + extraCost;
   
