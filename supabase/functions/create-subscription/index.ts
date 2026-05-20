@@ -218,8 +218,10 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!ASAAS_API_KEY || !ASAAS_BASE_URL) {
-      throw new Error('Missing Asaas configuration');
+      console.error('Missing Asaas configuration:', { hasKey: !!ASAAS_API_KEY, baseUrl: ASAAS_BASE_URL });
+      throw new Error('Configuração do Asaas (API Key ou URL) não encontrada nos Secrets do Supabase.');
     }
+
 
     const rawData = await req.json();
     console.log('Received subscription request:', JSON.stringify(rawData));
