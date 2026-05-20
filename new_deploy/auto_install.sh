@@ -241,9 +241,10 @@ case $OPTION in
     2)
         # Atualizar Código
         echo ""
-        echo -e "${BLUE}━━━━━ ATUALIZANDO CÓDIGO ━━━━━${NC}"
+        echo -e "${BLUE}━━━━━ ATUALIZANDO CÓDIGO E SUPABASE ━━━━━${NC}"
         cd "$APP_DIR" && git pull
         run_build
+        update_supabase_auto
         exit 0
         ;;
     3)
