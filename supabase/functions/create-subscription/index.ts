@@ -151,6 +151,9 @@ serve(async (req) => {
 
     const body = await req.json();
     const { plan, billingType, customerData, bivvoConfig, affiliateSlug, trackingId } = body;
+    
+    // Get remote IP from headers (Supabase adds this)
+    const remoteIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
 
     // 1. Database Client
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -237,6 +240,7 @@ serve(async (req) => {
         cycle: 'MONTHLY',
         description: `Assinatura ${planLabel}`,
         externalReference: `${user.id}_${plan}`,
+        remoteIp,
       }),
     });
     console.log('Assinatura criada:', sRes.id);
