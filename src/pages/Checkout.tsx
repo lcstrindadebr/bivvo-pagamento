@@ -338,7 +338,7 @@ const Checkout = () => {
         headers: {
           'Content-Type': 'application/json',
           // Authorization removed to avoid malformed JWT errors when using publishable key
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({
           plan: plan.slug,
