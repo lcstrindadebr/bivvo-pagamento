@@ -123,9 +123,9 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <button onClick={() => setUsers(u => u + 1)} className="w-8 h-8 hover:bg-muted">+</button>
             </div>
           </div>
-          {users > 12 && (
+          {users > PLANS[plan].users && (
             <div className="text-xs p-2 rounded bg-amber-500/10 text-amber-700">
-              PRO + {users - 12} extras × R$ 35 = {fmtBRL((users - 12) * 35)}
+              {PLANS[plan].name} + {users - PLANS[plan].users} extras × R$ 35 = {fmtBRL((users - PLANS[plan].users) * 35)}
             </div>
           )}
         </div>
