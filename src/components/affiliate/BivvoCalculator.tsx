@@ -261,10 +261,10 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <Button onClick={() => onCheckout?.(config)} className="w-full bg-accent hover:bg-accent/90 text-white py-6 text-lg font-bold shadow-lg shadow-accent/20">
                 Assinar agora
               </Button>
-              <div className="mt-4 flex items-center justify-center gap-4 grayscale opacity-60">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Visa_2021.svg" alt="Visa" className="h-4" />
-                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6" />
-                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a2/Logo_Pix_Brasil.png" alt="Pix" className="h-4" />
+              <div className="mt-4 flex items-center justify-center gap-6 grayscale opacity-60">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-4 w-auto" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6 w-auto" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Pix_logo.svg" alt="Pix" className="h-5 w-auto" />
               </div>
             </div>
           )}
