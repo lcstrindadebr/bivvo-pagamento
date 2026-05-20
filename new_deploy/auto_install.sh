@@ -106,9 +106,11 @@ update_supabase_auto() {
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE AUTOMATICAMENTE ━━━━━${NC}"
     
     if ! command -v supabase &> /dev/null; then
-        echo -e "${YELLOW}Instalando Supabase CLI...${NC}"
-        npx supabase --version &>/dev/null || npm install -g supabase
+        echo -e "${YELLOW}Supabase CLI não encontrado. Instalando agora (aguarde)...${NC}"
+        # Usamos npm install direto para evitar o prompt interativo do npx
+        npm install -g supabase --unsafe-perm || { echo -e "${RED}❌ Falha ao instalar Supabase CLI. Verifique sua conexão.${NC}"; exit 1; }
     fi
+
 
     if [ -f "$APP_DIR/.env" ]; then
         SUPA_URL=$(grep VITE_SUPABASE_URL "$APP_DIR/.env" | cut -d= -f2)
