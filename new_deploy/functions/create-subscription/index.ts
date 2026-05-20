@@ -224,6 +224,7 @@ serve(async (req) => {
     const nextDueDate = new Date();
     nextDueDate.setDate(nextDueDate.getDate() + (billingType === 'BOLETO' ? 3 : 1));
 
+    console.log('Criando assinatura no Asaas...', billingType);
     const sRes = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'access_token': ASAAS_API_KEY },
@@ -238,6 +239,7 @@ serve(async (req) => {
         externalReference: `${user.id}_${plan}`,
       }),
     });
+    console.log('Assinatura criada:', sRes.id);
 
     // 6. Fetch First Payment for PIX/Boleto Details
     let firstPayment: any = null;
