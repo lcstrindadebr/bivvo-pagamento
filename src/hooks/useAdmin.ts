@@ -64,7 +64,7 @@ export function useAdmin() {
       method: opts.method || 'GET',
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
-        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         'Content-Type': 'application/json',
       },
       body: opts.body ? JSON.stringify(opts.body) : undefined,
