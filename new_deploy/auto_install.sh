@@ -184,6 +184,49 @@ case $OPTION in
         exit 0
         ;;
     3)
+        # Atualizar Supabase
+        echo ""
+        echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE ━━━━━${NC}"
+        
+        if ! command -v supabase &> /dev/null; then
+            echo -e "${YELLOW}Instalando Supabase CLI...${NC}"
+            npx supabase --version &>/dev/null || npm install -g supabase
+        fi
+
+        if [ -f "$APP_DIR/.env" ]; then
+            SUPA_URL=$(grep VITE_SUPABASE_URL "$APP_DIR/.env" | cut -d= -f2)
+            SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
+        fi
+
+        if [ -z "$SUPA_PROJECT_ID" ]; then
+             read -p "ID do Projeto Supabase (Project Ref): " SUPA_PROJECT_ID
+        fi
+
+        echo -e "${BLUE}Fazendo login no Supabase...${NC}"
+        echo -e "${YELLOW}Você precisará de um Access Token do Supabase (gere em: https://supabase.com/dashboard/account/tokens)${NC}"
+        read -p "Insira seu Supabase Access Token: " SUPA_TOKEN
+        export SUPABASE_ACCESS_TOKEN="$SUPA_TOKEN"
+
+        echo -e "${BLUE}Linkando projeto $SUPA_PROJECT_ID...${NC}"
+        cd "$APP_DIR"
+        supabase link --project-ref "$SUPA_PROJECT_ID" --non-interactive
+
+        echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
+        if [ -f "new_deploy/database_schema.sql" ]; then
+            supabase db execute --file "new_deploy/database_schema.sql"
+            echo -e "${GREEN}✓ Banco de dados atualizado.${NC}"
+        fi
+
+        echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
+        if [ -d "supabase/functions" ]; then
+            supabase functions deploy --no-verify-jwt
+            echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
+        fi
+
+        echo -e "${GREEN}✓ Atualização do Supabase concluída!${NC}"
+        exit 0
+        ;;
+    4)
         # Instalação Completa
         echo ""
         echo -e "${YELLOW}📋 Iniciando Instalação Completa...${NC}"
@@ -204,6 +247,7 @@ case $OPTION in
             exit 1
         fi
         ;;
+
     *) exit 0 ;;
 esac
 
