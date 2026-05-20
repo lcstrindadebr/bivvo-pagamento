@@ -171,10 +171,24 @@ if [ -d "$APP_DIR" ]; then
     echo "1) 🛠️  Manutenção (Trocar credenciais / Domínio)"
     echo "2) 🔄 Atualizar Código (Git Pull + Build)"
     echo "3) ⚡ Atualizar Supabase (Functions + SQL)"
-    echo "4) 🧹 Reinstalação Completa"
+    echo "4) 🧹 Reinstalação Completa (Apaga tudo e instala do zero)"
     echo "5) ❌ Sair"
     echo ""
     read -p "Escolha uma opção: " OPTION
+
+    if [ "$OPTION" == "4" ]; then
+        echo -e "${RED}⚠️  ATENÇÃO: Isso apagará TODOS os dados locais e configurações em $APP_DIR e $WEB_DIR!${NC}"
+        read -p "Tem certeza? (s/N): " CONFIRM
+        if [[ "$CONFIRM" =~ ^[Ss]$ ]]; then
+            echo -e "${YELLOW}Removendo instalação anterior...${NC}"
+            rm -rf "$APP_DIR"
+            rm -rf "$WEB_DIR"
+            # O fluxo continuará para a instalação completa (OPTION 4 abaixo)
+        else
+            echo -e "${BLUE}Operação cancelada.${NC}"
+            exit 0
+        fi
+    fi
 else
     echo -e "${YELLOW}Nenhuma instalação detectada.${NC}"
     echo ""
