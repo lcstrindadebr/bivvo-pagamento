@@ -86,7 +86,9 @@ sudo ./install.sh
 Ele detectará que o sistema já está instalado e oferecerá as opções:
 1. **Manutenção:** Alterar URL/Chave do Supabase, API Key do Asaas ou trocar o subdomínio (reconfigura Nginx e SSL).
 2. **Atualizar Código:** Faz um `git pull` e gera um novo build automaticamente.
-3. **Reinstalação:** Remove e instala tudo do zero.
+3. **Atualizar Supabase:** Publica automaticamente as Edge Functions e aplica o SQL do banco usando suas credenciais já salvas (requer um Access Token do Supabase, gerado em https://supabase.com/dashboard/account/tokens).
+4. **Reinstalação:** Remove e instala tudo do zero.
+
 
 
 ---
