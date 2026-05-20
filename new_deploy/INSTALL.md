@@ -75,15 +75,19 @@ Repita para: `asaas-webhook`, `process-payment`, `create-subscription`, `check-p
 
 ---
 
-## 🔄 Atualizar o site no futuro
+## 🔧 Manutenção e Atualização
+
+O script de instalação também serve para manutenção. Se você precisar trocar credenciais ou atualizar o site, basta rodar o mesmo comando novamente:
 
 ```bash
-cd /opt/bivvo-pagamento
-git pull
-npm install
-npm run build
-sudo cp -r dist/* /var/www/bivvo/
+sudo ./install.sh
 ```
+
+Ele detectará que o sistema já está instalado e oferecerá as opções:
+1. **Manutenção:** Alterar URL/Chave do Supabase, API Key do Asaas ou trocar o subdomínio (reconfigura Nginx e SSL).
+2. **Atualizar Código:** Faz um `git pull` e gera um novo build automaticamente.
+3. **Reinstalação:** Remove e instala tudo do zero.
+
 
 ---
 
