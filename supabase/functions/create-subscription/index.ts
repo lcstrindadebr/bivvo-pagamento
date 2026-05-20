@@ -89,6 +89,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function asaasFetch(url: string, options: RequestInit) {
+  const response = await fetch(url, options);
+  const contentType = response.headers.get('content-type');
+  
+  if (contentType && contentType.includes('application/json')) {
+    const data = await response.json();
+    if (!response.ok) {
+      const errorMsg = data.errors?.[0]?.description || `Erro Asaas (HTTP ${response.status})`;
+      throw new Error(errorMsg);
+    }
+    return data;
+  } else {
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('Asaas Error (Non-JSON):', text);
+      throw new Error(`Erro na API do Asaas (HTTP ${response.status})`);
+    }
+    return await response.text();
+  }
+}
+
 // Plan prices fetched from DB dynamically
 
 const VALID_STATES = [
@@ -217,11 +238,13 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!ASAAS_API_KEY || !ASAAS_BASE_URL) {
-      console.error('Missing Asaas configuration:', { hasKey: !!ASAAS_API_KEY, baseUrl: ASAAS_BASE_URL });
-      throw new Error('Configuração do Asaas (API Key ou URL) não encontrada nos Secrets do Supabase.');
+    if (!ASAAS_API_KEY || !ASAAS_BASE_URL || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Missing configuration:', { hasKey: !!ASAAS_API_KEY, hasUrl: !!ASAAS_BASE_URL, hasSupabase: !!SUPABASE_URL });
+      return new Response(JSON.stringify({ success: false, error: 'Configuração do servidor faltando (Asaas/Supabase).' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
-
 
     const rawData = await req.json();
     console.log('Received subscription request:', JSON.stringify(rawData));
@@ -231,7 +254,7 @@ serve(async (req) => {
       console.error('Validation failed:', validation.error);
       return new Response(JSON.stringify({
         success: false,
-        error: 'Dados inválidos. Verifique as informações e tente novamente.',
+        error: validation.error || 'Dados inválidos.',
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -390,7 +413,7 @@ serve(async (req) => {
       console.log('Creating customer in Asaas...');
       console.log('Using Asaas URL:', ASAAS_BASE_URL);
       
-      const customerResponse = await fetch(`${ASAAS_BASE_URL}/customers`, {
+      const customerResult = await asaasFetch(`${ASAAS_BASE_URL}/customers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -413,24 +436,7 @@ serve(async (req) => {
         }),
       });
 
-      console.log('Customer response status:', customerResponse.status);
-      
-      // Check if response is JSON before parsing
-      const contentType = customerResponse.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const textResponse = await customerResponse.text();
-        console.error('Non-JSON response from Asaas:', textResponse.substring(0, 500));
-        throw new Error('Asaas API retornou resposta inválida. Verifique a configuração da API.');
-      }
-
-      const customerResult = await customerResponse.json();
-      console.log('Asaas customer response:', JSON.stringify(customerResult));
-
-      if (!customerResponse.ok || customerResult.errors) {
-        const errorMsg = customerResult.errors?.[0]?.description || `HTTP ${customerResponse.status}`;
-        throw new Error(`Erro Asaas: ${errorMsg}`);
-      }
-
+      console.log('Asaas customer created:', customerResult.id);
       asaasCustomerId = customerResult.id;
       await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', userId);
     }
@@ -458,7 +464,7 @@ serve(async (req) => {
 
       console.log('Subscription payload:', JSON.stringify(subscriptionPayload));
 
-      const subscriptionResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions`, {
+      const subscriptionResult = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -467,7 +473,7 @@ serve(async (req) => {
         body: JSON.stringify(subscriptionPayload),
       });
 
-      return subscriptionResponse.json();
+      return subscriptionResult;
     };
 
     let subscriptionResult = await createSubscription(asaasCustomerId!);
@@ -478,10 +484,9 @@ serve(async (req) => {
     let firstPayment: any = null;
     for (let i = 0; i < 5; i++) {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      const paymentsResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionResult.id}/payments`, {
+      const paymentsResult = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionResult.id}/payments`, {
         headers: { 'access_token': ASAAS_API_KEY },
       });
-      const paymentsResult = await paymentsResponse.json();
       if (paymentsResult.data && paymentsResult.data.length > 0) {
         firstPayment = paymentsResult.data[0];
         break;
@@ -493,65 +498,12 @@ serve(async (req) => {
       throw new Error('Não foi possível localizar o pagamento da assinatura no Asaas após várias tentativas.');
     }
 
-    const asaasPaymentId = firstPayment.id;
-
-    if (subscriptionResult.errors) {
-      const errorDesc = subscriptionResult.errors[0]?.description || '';
-      const isRemovedCustomer = errorDesc.includes('cliente removido') || 
-                                 errorDesc.includes('customer removed') ||
-                                 errorDesc.includes('invalid_object');
-      
-      if (isRemovedCustomer) {
-        console.log('Customer was removed from Asaas, creating new customer...');
-        
-        // Create new customer in Asaas
-        const customerResponse = await fetch(`${ASAAS_BASE_URL}/customers`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'access_token': ASAAS_API_KEY,
-          },
-          body: JSON.stringify({
-            name: customerData.name.trim(),
-            cpfCnpj: cleanCpf,
-            email: customerData.email.toLowerCase().trim(),
-            mobilePhone: cleanWhatsapp,
-            postalCode: cleanCep,
-            address: customerData.endereco.trim(),
-            addressNumber: customerData.numero.trim(),
-            complement: customerData.complemento?.trim() || '',
-            province: customerData.bairro.trim(),
-            city: customerData.cidade.trim(),
-            state: customerData.estado.toUpperCase(),
-            externalReference: userId,
-            notificationDisabled: false,
-          }),
-        });
-
-        const customerResult = await customerResponse.json();
-        console.log('New customer created:', JSON.stringify(customerResult));
-
-        if (!customerResponse.ok || customerResult.errors) {
-          throw new Error(`Erro ao recriar cliente: ${customerResult.errors?.[0]?.description || 'Unknown error'}`);
-        }
-
-        asaasCustomerId = customerResult.id;
-        await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', userId);
-
-        // Retry subscription with new customer
-        subscriptionResult = await createSubscription(asaasCustomerId);
-        console.log('Retry subscription response:', JSON.stringify(subscriptionResult));
-      }
-
-      if (subscriptionResult.errors) {
-        throw new Error(`Subscription error: ${subscriptionResult.errors[0]?.description || 'Unknown error'}`);
-      }
-    }
-
     const subscriptionId = subscriptionResult.id;
+    const paymentId = firstPayment.id;
     
     // Save asaas_subscription_id to user
     await supabase.from('users').update({ asaas_subscription_id: subscriptionId }).eq('id', userId);
+
 
 
     // 4. Get the first payment created by the subscription
@@ -581,12 +533,9 @@ serve(async (req) => {
 
     if (billingType === 'PIX') {
       console.log('Fetching PIX QR Code...');
-      const pixResponse = await fetch(`${ASAAS_BASE_URL}/payments/${paymentId}/pixQrCode`, {
-        headers: {
-          'access_token': ASAAS_API_KEY,
-        },
+      const pixResult = await asaasFetch(`${ASAAS_BASE_URL}/payments/${paymentId}/pixQrCode`, {
+        headers: { 'access_token': ASAAS_API_KEY },
       });
-      const pixResult = await pixResponse.json();
       console.log('PIX result:', JSON.stringify(pixResult));
 
       if (pixResult.encodedImage && pixResult.payload) {
@@ -598,12 +547,9 @@ serve(async (req) => {
       }
     } else if (billingType === 'BOLETO') {
       console.log('Fetching Boleto details...');
-      const boletoResponse = await fetch(`${ASAAS_BASE_URL}/payments/${paymentId}/identificationField`, {
-        headers: {
-          'access_token': ASAAS_API_KEY,
-        },
+      const boletoResult = await asaasFetch(`${ASAAS_BASE_URL}/payments/${paymentId}/identificationField`, {
+        headers: { 'access_token': ASAAS_API_KEY },
       });
-      const boletoResult = await boletoResponse.json();
       console.log('Boleto result:', JSON.stringify(boletoResult));
 
       paymentDetails = {

@@ -89,6 +89,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function asaasFetch(url: string, options: RequestInit) {
+  const response = await fetch(url, options);
+  const contentType = response.headers.get('content-type');
+  
+  if (contentType && contentType.includes('application/json')) {
+    const data = await response.json();
+    if (!response.ok) {
+      const errorMsg = data.errors?.[0]?.description || `Erro Asaas (HTTP ${response.status})`;
+      throw new Error(errorMsg);
+    }
+    return data;
+  } else {
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('Asaas Error (Non-JSON):', text);
+      throw new Error(`Erro na API do Asaas (HTTP ${response.status})`);
+    }
+    return await response.text();
+  }
+}
+
 // Plan prices will be fetched from DB dynamically
 
 const VALID_STATES = [
@@ -342,11 +363,13 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!ASAAS_API_KEY || !ASAAS_BASE_URL) {
-      console.error('Missing Asaas configuration:', { hasKey: !!ASAAS_API_KEY, baseUrl: ASAAS_BASE_URL });
-      throw new Error('Configuração do Asaas (API Key ou URL) não encontrada nos Secrets do Supabase.');
+    if (!ASAAS_API_KEY || !ASAAS_BASE_URL || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Missing configuration:', { hasKey: !!ASAAS_API_KEY, hasUrl: !!ASAAS_BASE_URL, hasSupabase: !!SUPABASE_URL });
+      return new Response(JSON.stringify({ success: false, error: 'Configuração do servidor faltando (Asaas/Supabase).' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
-
 
     // Parse and validate request
     const rawData = await req.json();
@@ -357,7 +380,7 @@ serve(async (req) => {
       console.error('Validation failed:', validation.error);
       return new Response(JSON.stringify({
         success: false,
-        error: 'Dados inválidos. Verifique as informações e tente novamente.',
+        error: validation.error || 'Dados inválidos.',
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -500,7 +523,8 @@ serve(async (req) => {
     // 2. Create or find customer in Asaas
     if (!asaasCustomerId) {
       console.log('Creating customer in Asaas...');
-      const customerResponse = await fetch(`${ASAAS_BASE_URL}/customers`, {
+      console.log('Creating customer in Asaas...');
+      const customerResult = await asaasFetch(`${ASAAS_BASE_URL}/customers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -523,13 +547,7 @@ serve(async (req) => {
         }),
       });
 
-      const customerResult = await customerResponse.json();
-      console.log('Asaas customer response:', JSON.stringify(customerResult));
-
-      if (customerResult.errors) {
-        throw new Error(`Asaas error: ${customerResult.errors[0]?.description || 'Unknown error'}`);
-      }
-
+      console.log('Asaas customer created:', customerResult.id);
       asaasCustomerId = customerResult.id;
 
       // Save asaas_customer_id to user
@@ -568,36 +586,35 @@ serve(async (req) => {
 
     console.log('Creating credit card subscription...');
     
-    const subscriptionResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions`, {
+    const subscriptionPayload = {
+      customer: asaasCustomerId,
+      billingType: 'CREDIT_CARD',
+      value: recurringAmount,
+      nextDueDate: nextDueDate.toISOString().split('T')[0],
+      cycle: 'MONTHLY',
+      description: `Plano ${planLabel}`,
+      externalReference: `${userId}_${plan}_subscription`,
+      creditCard,
+      creditCardHolderInfo,
+      discount: amount < recurringAmount ? {
+        value: Math.round((recurringAmount - amount) * 100) / 100,
+        type: 'FIXED',
+        dueDateLimitDays: 0
+      } : undefined,
+    };
+
+    console.log('Creating credit card subscription with payload:', JSON.stringify(subscriptionPayload));
+    
+    paymentResult = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'access_token': ASAAS_API_KEY,
       },
-      body: JSON.stringify({
-        customer: asaasCustomerId,
-        billingType: 'CREDIT_CARD',
-        value: recurringAmount,
-        nextDueDate: nextDueDate.toISOString().split('T')[0],
-        cycle: 'MONTHLY',
-        description: `Plano ${planLabel}`,
-        externalReference: `${userId}_${plan}_subscription`,
-        creditCard,
-        creditCardHolderInfo,
-        discount: amount < recurringAmount ? {
-          value: Math.round((recurringAmount - amount) * 100) / 100,
-          type: 'FIXED',
-          dueDateLimitDays: 0
-        } : undefined,
-      }),
+      body: JSON.stringify(subscriptionPayload),
     });
 
-    paymentResult = await subscriptionResponse.json();
     console.log('Subscription response:', JSON.stringify(paymentResult));
-
-    if (paymentResult.errors) {
-      throw new Error(`Subscription error: ${paymentResult.errors[0]?.description || 'Unknown error'}`);
-    }
 
     const subscriptionId = paymentResult.id;
 
@@ -606,10 +623,9 @@ serve(async (req) => {
     let firstPayment: any = null;
     for (let i = 0; i < 5; i++) {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      const paymentsResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}/payments`, {
+      const paymentsResult = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}/payments`, {
         headers: { 'access_token': ASAAS_API_KEY },
       });
-      const paymentsResult = await paymentsResponse.json();
       if (paymentsResult.data && paymentsResult.data.length > 0) {
         firstPayment = paymentsResult.data[0];
         break;
