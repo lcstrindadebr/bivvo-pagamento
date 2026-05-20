@@ -56,14 +56,16 @@ Vá em **Edge Functions → Secrets** e adicione:
 | `ASAAS_WEBHOOK_SECRET` | Um token/senha que você inventar (anote para o passo 4) |
 
 ### 3️⃣ Publicar as Edge Functions manualmente
-Para cada pasta dentro de `new_deploy/functions/`:
+As funções agora são **autossuficientes** (não dependem de arquivos externos), o que permite copiar e colar diretamente no painel do Supabase.
 
+Para cada função:
 1. No Supabase, vá em **Edge Functions → Create a new function**
-2. Use o **nome exato da pasta** (ex: `asaas-webhook`, `process-payment`, `create-subscription`, `check-payment-status`, `admin-api`, `affiliate-api`)
-3. Abra o `index.ts` da pasta, copie todo o código e cole no editor
-4. Clique em **Deploy**
+2. Dê o nome exato (ex: `process-payment`)
+3. No repositório, abra o arquivo `new_deploy/functions/[NOME-DA-FUNÇÃO]/index.ts`
+4. **Copie TODO o conteúdo** e cole no editor do Supabase.
+5. Clique em **Deploy** ou **Save**.
 
-> Funções que usam código compartilhado (`_shared/bivvo-calc.ts`): cole o conteúdo de `_shared` diretamente no `index.ts` da função, ou use a opção via CLI abaixo.
+Repita para: `asaas-webhook`, `process-payment`, `create-subscription`, `check-payment-status`, `admin-api`, `affiliate-api`.
 
 ### 4️⃣ Configurar o Webhook no Asaas
 - Painel do Asaas → **Integrações → Webhooks**
@@ -82,17 +84,6 @@ npm install
 npm run build
 sudo cp -r dist/* /var/www/bivvo/
 ```
-
----
-
-## 🆘 Solução de problemas
-
-| Problema | Solução |
-|----------|---------|
-| Site não abre | `sudo tail -f /var/log/nginx/error.log` |
-| SSL falhou | Confira se o DNS já propagou: `dig +short SEU.DOMINIO` |
-| Pagamento não confirma | Veja os logs em Supabase → Edge Functions → `asaas-webhook` |
-| Atualizar Nginx | `sudo nginx -t && sudo systemctl reload nginx` |
 
 ---
 
