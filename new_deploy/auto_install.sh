@@ -32,75 +32,184 @@ REPO_URL="https://github.com/lcstrindadebr/bivvo-pagamento.git"
 APP_DIR="/opt/bivvo-pagamento"
 WEB_DIR="/var/www/bivvo"
 
+# -----------------------------------------------------------------------------
+# Funções de Apoio
+# -----------------------------------------------------------------------------
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        echo -e "${RED}❌ Execute como root: sudo ./auto_install.sh${NC}"
+        exit 1
+    fi
+}
+
+save_env() {
+    cat > "$APP_DIR/.env" <<EOF
+VITE_SUPABASE_URL=$SUPA_URL
+VITE_SUPABASE_PUBLISHABLE_KEY=$SUPA_KEY
+VITE_SUPABASE_PROJECT_ID=$SUPA_PROJECT_ID
+EOF
+    chmod 600 "$APP_DIR/.env"
+    echo -e "${GREEN}✓ .env atualizado em $APP_DIR/.env${NC}"
+}
+
+save_secrets() {
+    if [ -n "$ASAAS_API_KEY" ] || [ -n "$ASAAS_WEBHOOK_SECRET" ]; then
+        cat > "$APP_DIR/supabase-secrets.env" <<EOF
+# Secrets para cadastrar no Supabase em: Edge Functions → Secrets
+ASAAS_API_KEY=$ASAAS_API_KEY
+ASAAS_BASE_URL=$ASAAS_BASE_URL
+ASAAS_WEBHOOK_SECRET=$ASAAS_WEBHOOK_SECRET
+EOF
+        chmod 600 "$APP_DIR/supabase-secrets.env"
+        echo -e "${GREEN}✓ Arquivo de segredos atualizado em $APP_DIR/supabase-secrets.env${NC}"
+    fi
+}
+
+config_nginx() {
+    cat > "/etc/nginx/sites-available/bivvo" <<EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+    root $WEB_DIR;
+    index index.html;
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)\$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location ~ /\.ht { deny all; }
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
+}
+EOF
+    ln -sf /etc/nginx/sites-available/bivvo /etc/nginx/sites-enabled/
+    rm -f /etc/nginx/sites-enabled/default
+    nginx -t && systemctl restart nginx
+    echo -e "${GREEN}✓ Nginx configurado para $DOMAIN${NC}"
+}
+
+apply_ssl() {
+    echo -e "${BLUE}━━━━━ Gerando certificado SSL ━━━━━${NC}"
+    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$EMAIL" --redirect || echo -e "${RED}⚠️ Erro ao gerar SSL. Verifique se o domínio aponta para este IP.${NC}"
+}
+
+run_build() {
+    echo -e "${BLUE}━━━━━ Gerando Build ━━━━━${NC}"
+    cd "$APP_DIR"
+    npm install
+    npm run build
+    mkdir -p "$WEB_DIR"
+    rm -rf "$WEB_DIR"/*
+    cp -r "$APP_DIR/dist/"* "$WEB_DIR/"
+    chown -R www-data:www-data "$WEB_DIR"
+    echo -e "${GREEN}✓ Build concluído e publicado${NC}"
+}
+
+# -----------------------------------------------------------------------------
+# Menu Principal
+# -----------------------------------------------------------------------------
 clear
 echo -e "${BLUE}=============================================================${NC}"
-echo -e "${BLUE}        🚀 BIVVO - INSTALADOR AUTOMÁTICO COMPLETO 🚀        ${NC}"
+echo -e "${BLUE}        🚀 BIVVO - GERENCIADOR E INSTALADOR 🚀              ${NC}"
 echo -e "${BLUE}=============================================================${NC}"
-echo ""
-echo -e "${YELLOW}Este instalador vai configurar TUDO sozinho.${NC}"
-echo ""
-echo -e "${YELLOW}📋 Tenha em mãos as seguintes credenciais:${NC}"
-echo ""
-echo -e "${BLUE}  FRONTEND (.env da aplicação):${NC}"
-echo "    • URL do Supabase          (Settings → API → Project URL)"
-echo "    • Chave anon do Supabase   (Settings → API → anon public key)"
-echo ""
-echo -e "${BLUE}  BACKEND (Secrets das Edge Functions no Supabase):${NC}"
-echo "    • ASAAS_API_KEY            (Asaas → Integrações → API Key)"
-echo "    • ASAAS_BASE_URL           (produção ou sandbox)"
-echo "    • ASAAS_WEBHOOK_SECRET     (token que VOCÊ inventa)"
-echo ""
-echo -e "${BLUE}  INFRAESTRUTURA:${NC}"
-echo "    • Subdomínio já apontando para o IP desta VPS"
-echo "    • E-mail válido (para o SSL Let's Encrypt)"
-echo ""
-read -p "Pressione ENTER para começar..."
 
-# -----------------------------------------------------------------------------
-# Verificar root
-# -----------------------------------------------------------------------------
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}❌ Execute como root: sudo ./auto_install.sh${NC}"
-    exit 1
+check_root
+
+if [ -d "$APP_DIR" ]; then
+    echo -e "${GREEN}✓ Instalação detectada em $APP_DIR${NC}"
+    echo ""
+    echo "1) 🛠️  Manutenção (Trocar credenciais / Domínio)"
+    echo "2) 🔄 Atualizar Código (Git Pull + Build)"
+    echo "3) 🧹 Reinstalação Completa"
+    echo "4) ❌ Sair"
+    read -p "Escolha uma opção: " OPTION
+else
+    echo -e "${YELLOW}Nenhuma instalação detectada.${NC}"
+    echo ""
+    echo "1) 🚀 Instalação Completa"
+    echo "2) ❌ Sair"
+    read -p "Escolha uma opção: " OPTION
+    [ "$OPTION" == "1" ] && OPTION="3" || exit 0
 fi
 
-# -----------------------------------------------------------------------------
-# 1. Coletar dados
-# -----------------------------------------------------------------------------
-echo ""
-echo -e "${BLUE}━━━━━ ETAPA 1/8: Coletando credenciais ━━━━━${NC}"
-echo ""
-echo -e "${YELLOW}▸ Infraestrutura${NC}"
-read -p "🌐 Subdomínio (ex: app.seudominio.com.br): " DOMAIN
-read -p "📧 Seu e-mail (para SSL Let's Encrypt): " EMAIL
-echo ""
-echo -e "${YELLOW}▸ Supabase (vai para o .env do frontend)${NC}"
-read -p "🔗 VITE_SUPABASE_URL (ex: https://xxxx.supabase.co): " SUPA_URL
-read -p "🔑 VITE_SUPABASE_PUBLISHABLE_KEY (chave anon): " SUPA_KEY
-echo ""
-echo -e "${YELLOW}▸ Asaas (Secrets do Supabase — opcional agora)${NC}"
-echo -e "${BLUE}   Você pode deixar em branco e cadastrar depois no painel.${NC}"
-read -p "💳 ASAAS_API_KEY (Enter para pular): " ASAAS_API_KEY
-read -p "🌍 ASAAS_BASE_URL [https://api.asaas.com/v3]: " ASAAS_BASE_URL
-ASAAS_BASE_URL=${ASAAS_BASE_URL:-https://api.asaas.com/v3}
-read -p "🔐 ASAAS_WEBHOOK_SECRET (Enter para pular): " ASAAS_WEBHOOK_SECRET
+case $OPTION in
+    1)
+        # Manutenção
+        echo -e "${BLUE}━━━━━ MENU DE MANUTENÇÃO ━━━━━${NC}"
+        echo "1) Trocar Credenciais Supabase"
+        echo "2) Trocar Credenciais Asaas"
+        echo "3) Trocar Subdomínio"
+        echo "4) Voltar"
+        read -p "Escolha: " MOPT
+        
+        case $MOPT in
+            1)
+                read -p "🔗 Nova VITE_SUPABASE_URL: " SUPA_URL
+                read -p "🔑 Nova VITE_SUPABASE_PUBLISHABLE_KEY: " SUPA_KEY
+                SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
+                save_env
+                run_build
+                ;;
+            2)
+                read -p "💳 Nova ASAAS_API_KEY: " ASAAS_API_KEY
+                read -p "🌍 Nova ASAAS_BASE_URL: " ASAAS_BASE_URL
+                read -p "🔐 Novo ASAAS_WEBHOOK_SECRET: " ASAAS_WEBHOOK_SECRET
+                save_secrets
+                echo -e "${YELLOW}Lembre-se de atualizar também no painel do Supabase!${NC}"
+                ;;
+            3)
+                read -p "🌐 Novo Subdomínio: " DOMAIN
+                read -p "📧 E-mail para SSL: " EMAIL
+                # Carregar Supabase URL do .env atual se existir
+                if [ -f "$APP_DIR/.env" ]; then
+                    SUPA_URL=$(grep VITE_SUPABASE_URL "$APP_DIR/.env" | cut -d= -f2)
+                    SUPA_KEY=$(grep VITE_SUPABASE_PUBLISHABLE_KEY "$APP_DIR/.env" | cut -d= -f2)
+                    SUPA_PROJECT_ID=$(grep VITE_SUPABASE_PROJECT_ID "$APP_DIR/.env" | cut -d= -f2)
+                fi
+                config_nginx
+                apply_ssl
+                ;;
+            *) exit 0 ;;
+        esac
+        echo -e "${GREEN}✓ Manutenção concluída!${NC}"
+        exit 0
+        ;;
+    2)
+        # Atualizar
+        echo -e "${BLUE}━━━━━ ATUALIZANDO CÓDIGO ━━━━━${NC}"
+        cd "$APP_DIR" && git pull
+        run_build
+        exit 0
+        ;;
+    3)
+        # Instalação Completa (Código original adaptado)
+        echo ""
+        echo -e "${YELLOW}📋 Iniciando Instalação Completa...${NC}"
+        echo ""
+        read -p "🌐 Subdomínio (ex: app.seudominio.com.br): " DOMAIN
+        read -p "📧 Seu e-mail (para SSL Let's Encrypt): " EMAIL
+        read -p "🔗 VITE_SUPABASE_URL (ex: https://xxxx.supabase.co): " SUPA_URL
+        read -p "🔑 VITE_SUPABASE_PUBLISHABLE_KEY (chave anon): " SUPA_KEY
+        read -p "💳 ASAAS_API_KEY (opcional): " ASAAS_API_KEY
+        read -p "🌍 ASAAS_BASE_URL [https://api.asaas.com/v3]: " ASAAS_BASE_URL
+        ASAAS_BASE_URL=${ASAAS_BASE_URL:-https://api.asaas.com/v3}
+        read -p "🔐 ASAAS_WEBHOOK_SECRET (opcional): " ASAAS_WEBHOOK_SECRET
 
-if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ] || [ -z "$SUPA_URL" ] || [ -z "$SUPA_KEY" ]; then
-    echo -e "${RED}❌ Domínio, e-mail e dados Supabase são obrigatórios!${NC}"
-    exit 1
-fi
+        SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
 
-# Extrair PROJECT_ID da URL
-SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
+        if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ] || [ -z "$SUPA_URL" ] || [ -z "$SUPA_KEY" ]; then
+            echo -e "${RED}❌ Campos obrigatórios faltando!${NC}"
+            exit 1
+        fi
+        ;;
+    *) exit 0 ;;
+esac
 
-echo ""
-echo -e "${GREEN}✓ Dados coletados${NC}"
-echo "  Domínio:    $DOMAIN"
-echo "  Project ID: $SUPA_PROJECT_ID"
-echo "  Asaas:      $([ -n "$ASAAS_API_KEY" ] && echo "informado" || echo "será configurado depois")"
-echo ""
-read -p "Confirma? (s/n): " CONFIRM
-[ "$CONFIRM" != "s" ] && exit 1
 
 # -----------------------------------------------------------------------------
 # 2. Atualizar sistema
