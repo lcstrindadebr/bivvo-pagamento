@@ -586,36 +586,35 @@ serve(async (req) => {
 
     console.log('Creating credit card subscription...');
     
-    const subscriptionResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions`, {
+    const subscriptionPayload = {
+      customer: asaasCustomerId,
+      billingType: 'CREDIT_CARD',
+      value: recurringAmount,
+      nextDueDate: nextDueDate.toISOString().split('T')[0],
+      cycle: 'MONTHLY',
+      description: `Plano ${planLabel}`,
+      externalReference: `${userId}_${plan}_subscription`,
+      creditCard,
+      creditCardHolderInfo,
+      discount: amount < recurringAmount ? {
+        value: Math.round((recurringAmount - amount) * 100) / 100,
+        type: 'FIXED',
+        dueDateLimitDays: 0
+      } : undefined,
+    };
+
+    console.log('Creating credit card subscription with payload:', JSON.stringify(subscriptionPayload));
+    
+    paymentResult = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'access_token': ASAAS_API_KEY,
       },
-      body: JSON.stringify({
-        customer: asaasCustomerId,
-        billingType: 'CREDIT_CARD',
-        value: recurringAmount,
-        nextDueDate: nextDueDate.toISOString().split('T')[0],
-        cycle: 'MONTHLY',
-        description: `Plano ${planLabel}`,
-        externalReference: `${userId}_${plan}_subscription`,
-        creditCard,
-        creditCardHolderInfo,
-        discount: amount < recurringAmount ? {
-          value: Math.round((recurringAmount - amount) * 100) / 100,
-          type: 'FIXED',
-          dueDateLimitDays: 0
-        } : undefined,
-      }),
+      body: JSON.stringify(subscriptionPayload),
     });
 
-    paymentResult = await subscriptionResponse.json();
     console.log('Subscription response:', JSON.stringify(paymentResult));
-
-    if (paymentResult.errors) {
-      throw new Error(`Subscription error: ${paymentResult.errors[0]?.description || 'Unknown error'}`);
-    }
 
     const subscriptionId = paymentResult.id;
 
@@ -624,10 +623,9 @@ serve(async (req) => {
     let firstPayment: any = null;
     for (let i = 0; i < 5; i++) {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      const paymentsResponse = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}/payments`, {
+      const paymentsResult = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}/payments`, {
         headers: { 'access_token': ASAAS_API_KEY },
       });
-      const paymentsResult = await paymentsResponse.json();
       if (paymentsResult.data && paymentsResult.data.length > 0) {
         firstPayment = paymentsResult.data[0];
         break;
