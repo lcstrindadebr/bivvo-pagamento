@@ -230,7 +230,8 @@ case $OPTION in
         exit 0
         ;;
 
-    3)
+    4)
+
         # Instalação Completa
         echo ""
         echo -e "${YELLOW}📋 Iniciando Instalação Completa...${NC}"
