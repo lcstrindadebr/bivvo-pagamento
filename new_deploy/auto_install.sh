@@ -156,10 +156,11 @@ check_root
 if [ -d "$APP_DIR" ]; then
     echo -e "${GREEN}✓ Instalação detectada em $APP_DIR${NC}"
     echo ""
-    echo "1) 🛠️  Manutenção (Trocar credenciais / Domínio / Supabase)"
+    echo "1) 🛠️  Manutenção (Trocar credenciais / Domínio)"
     echo "2) 🔄 Atualizar Código (Git Pull + Build)"
-    echo "3) 🧹 Reinstalação Completa"
-    echo "4) ❌ Sair"
+    echo "3) ⚡ Atualizar Supabase (Functions + SQL)"
+    echo "4) 🧹 Reinstalação Completa"
+    echo "5) ❌ Sair"
     echo ""
     read -p "Escolha uma opção: " OPTION
 else
@@ -169,7 +170,7 @@ else
     echo "2) ❌ Sair"
     echo ""
     read -p "Escolha uma opção: " OPTION
-    [ "$OPTION" == "1" ] && OPTION="3" || exit 0
+    [ "$OPTION" == "1" ] && OPTION="4" || exit 0
 fi
 
 case $OPTION in
@@ -177,33 +178,29 @@ case $OPTION in
         # Manutenção
         echo ""
         echo -e "${BLUE}━━━━━ MENU DE MANUTENÇÃO ━━━━━${NC}"
-        echo "1) ⚡ Atualizar Supabase (Functions + SQL)"
-        echo "2) Trocar Credenciais Supabase"
-        echo "3) Trocar Credenciais Asaas"
-        echo "4) Trocar Subdomínio"
-        echo "5) Voltar"
+        echo "1) Trocar Credenciais Supabase"
+        echo "2) Trocar Credenciais Asaas"
+        echo "3) Trocar Subdomínio"
+        echo "4) Voltar"
         echo ""
         read -p "Escolha: " MOPT
         
         case $MOPT in
             1)
-                update_supabase_auto
-                ;;
-            2)
                 read -p "🔗 Nova VITE_SUPABASE_URL: " SUPA_URL
                 read -p "🔑 Nova VITE_SUPABASE_PUBLISHABLE_KEY: " SUPA_KEY
                 SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
                 save_env
                 run_build
                 ;;
-            3)
+            2)
                 read -p "💳 Nova ASAAS_API_KEY: " ASAAS_API_KEY
                 read -p "🌍 Nova ASAAS_BASE_URL: " ASAAS_BASE_URL
                 read -p "🔐 Novo ASAAS_WEBHOOK_SECRET: " ASAAS_WEBHOOK_SECRET
                 save_secrets
                 echo -e "${YELLOW}Lembre-se de atualizar também no painel do Supabase!${NC}"
                 ;;
-            4)
+            3)
                 read -p "🌐 Novo Subdomínio: " DOMAIN
                 read -p "📧 E-mail para SSL: " EMAIL
                 if [ -f "$APP_DIR/.env" ]; then
@@ -220,13 +217,19 @@ case $OPTION in
         exit 0
         ;;
     2)
-        # Atualizar
+        # Atualizar Código
         echo ""
         echo -e "${BLUE}━━━━━ ATUALIZANDO CÓDIGO ━━━━━${NC}"
         cd "$APP_DIR" && git pull
         run_build
         exit 0
         ;;
+    3)
+        # Atualizar Supabase (menu individual)
+        update_supabase_auto
+        exit 0
+        ;;
+
     3)
         # Instalação Completa
         echo ""
