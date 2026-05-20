@@ -262,10 +262,19 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 Assinar agora
               </Button>
               <div className="mt-6 flex items-center justify-center gap-6 opacity-90">
-                <img src="https://logopng.com.br/logos/visa-3.png" alt="Visa" className="h-4 w-auto object-contain" />
+                <svg viewBox="0 0 24 24" className="h-4 w-auto" aria-label="Visa">
+                  <path d="M15.191 14.394h-1.91l1.192-7.394h1.91L15.191 14.394zM21.053 7h-1.848c-.571 0-1 .329-1.246.912l-3.513 8.384h2.006l.399-1.106h2.453l.231 1.106h1.766L21.053 7zm-3.708 6.586l1.049-2.903.601 2.903h-1.65zM8.953 7l-1.82 5.034L6.34 7H4.218L6.444 14.394h1.933L10.873 7H8.953zm-6.191 0L1.442 7.15l-.014.066c1.192.304 2.279.792 3.193 1.45l.449-2.731H1.2c-.3 0-.54.2-.64.51L0 8.847l.019.014c.502-.256 1.051-.387 1.62-.387 1.408 0 2.41 1.066 2.41 2.71 0 1.874-1.258 3.21-2.915 3.21-1.077 0-1.854-.51-2.316-1.106l-.019.014L.43 14.394h1.868l.271-1.659c.28.31.649.526 1.065.626l.014-.066c-.632-.153-1.084-.632-1.084-1.293 0-.749.566-1.352 1.341-1.352.792 0 1.416.591 1.416 1.352 0 .661-.43 1.139-1.051 1.293l.014.066c.416-.1.785-.316 1.065-.626l.354 1.659h1.868L6.417 7H2.762z" fill="#1A1F71"/>
+                </svg>
                 <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-7 w-auto object-contain" />
                 <img src="https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png" alt="Pix" className="h-6 w-auto object-contain" />
-                <img src="https://logopng.com.br/logos/boleto-bancario-4.png" alt="Boleto" className="h-5 w-auto object-contain" />
+                <div className="flex flex-col items-center gap-0.5 border border-border/60 rounded px-1.5 py-0.5 bg-white shadow-sm">
+                  <div className="flex gap-0.5">
+                    {[1,1,1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
+                    {[1,1,1].map((_,i)=><div key={i} className="w-[2px] h-3 bg-black"/>)}
+                    {[1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
+                  </div>
+                  <span className="text-[7px] font-bold text-black leading-none uppercase">Boleto</span>
+                </div>
               </div>
             </div>
           )}
