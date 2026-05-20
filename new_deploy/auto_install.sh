@@ -105,46 +105,28 @@ update_supabase_auto() {
     echo ""
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE AUTOMATICAMENTE ━━━━━${NC}"
     
-    if ! command -v supabase &> /dev/null; then
-        echo -e "${YELLOW}Supabase CLI não encontrado. Instalando agora (aguarde)...${NC}"
-        npm install -g supabase --unsafe-perm || { echo -e "${RED}❌ Falha ao instalar Supabase CLI.${NC}"; exit 1; }
-    fi
-
     # Credenciais fornecidas pelo usuário
-    DEFAULT_TOKEN="sbp_8e99f339f89f30eda805734c6e7c37ffa50859c4"
-    DEFAULT_PROJECT_ID="bcijktxnuzsatvhammpl"
+    USER_TOKEN="sbp_8e99f339f89f30eda805734c6e7c37ffa50859c4"
+    USER_PROJECT_ID="bcijktxnuzsatvhammpl"
 
-    echo -e "${BLUE}Fazendo login no Supabase...${NC}"
-    # Tenta usar o token padrão se nada for passado
-    export SUPABASE_ACCESS_TOKEN="${SUPABASE_ACCESS_TOKEN:-$DEFAULT_TOKEN}"
-    supabase login --token "$SUPABASE_ACCESS_TOKEN"
-
-    # Determina o Project ID
-    if [ -z "$SUPA_PROJECT_ID" ]; then
-        if [ -f "$APP_DIR/.env" ]; then
-            SUPA_URL=$(grep VITE_SUPABASE_URL "$APP_DIR/.env" | cut -d= -f2 | tr -d '"' | tr -d "'")
-            SUPA_PROJECT_ID=$(echo "$SUPA_URL" | sed -E 's|https?://([^.]+)\..*|\1|')
-        fi
-    fi
-    
-    # Fallback para o ID padrão se não encontrou no .env
-    PROJECT_REF="${SUPA_PROJECT_ID:-$DEFAULT_PROJECT_ID}"
-
-    echo -e "${BLUE}Linkando projeto $PROJECT_REF...${NC}"
     cd "$APP_DIR"
-    supabase link --project-ref "$PROJECT_REF"
+
+    echo -e "${BLUE}Efetuando login no Supabase...${NC}"
+    npx supabase login --token "$USER_TOKEN"
+
+    echo -e "${BLUE}Linkando projeto $USER_PROJECT_ID...${NC}"
+    npx supabase link --project-ref "$USER_PROJECT_ID"
 
     echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
     if [ -f "new_deploy/database_schema.sql" ]; then
-        supabase db execute --file "new_deploy/database_schema.sql"
+        npx supabase db execute --file "new_deploy/database_schema.sql" --project-ref "$USER_PROJECT_ID"
         echo -e "${GREEN}✓ Banco de dados atualizado.${NC}"
     fi
 
     echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
     if [ -d "supabase/functions" ]; then
-        # Deploy geral conforme solicitado: npx supabase functions deploy --no-verify-jwt
-        # Isso faz deploy de todas as functions de uma vez se estiver na raiz do projeto
-        supabase functions deploy --project-ref "$PROJECT_REF" --no-verify-jwt
+        # Executa exatamente como o usuário solicitou
+        npx supabase functions deploy --no-verify-jwt --project-ref "$USER_PROJECT_ID"
         echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
     fi
 
