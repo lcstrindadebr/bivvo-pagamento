@@ -116,10 +116,12 @@ if [ -d "$APP_DIR" ]; then
     echo ""
     echo "1) 🛠️  Manutenção (Trocar credenciais / Domínio)"
     echo "2) 🔄 Atualizar Código (Git Pull + Build)"
-    echo "3) 🧹 Reinstalação Completa"
-    echo "4) ❌ Sair"
+    echo "3) ⚡ Atualizar Supabase (Edge Functions + SQL)"
+    echo "4) 🧹 Reinstalação Completa"
+    echo "5) ❌ Sair"
     echo ""
     read -p "Escolha uma opção: " OPTION
+
 else
     echo -e "${YELLOW}Nenhuma instalação detectada.${NC}"
     echo ""
