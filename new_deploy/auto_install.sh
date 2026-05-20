@@ -128,7 +128,7 @@ update_supabase_auto() {
 
     echo -e "${BLUE}Linkando projeto $SUPA_PROJECT_ID...${NC}"
     cd "$APP_DIR"
-    supabase link --project-ref "$SUPA_PROJECT_ID" --non-interactive
+    supabase link --project-ref "$SUPA_PROJECT_ID"
 
     echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
     if [ -f "new_deploy/database_schema.sql" ]; then
