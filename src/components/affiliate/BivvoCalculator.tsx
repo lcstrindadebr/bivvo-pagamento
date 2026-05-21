@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Link2, FileText, Info, Users, Smartphone, Plus, Minus, CheckCircle2 } from 'lucide-react';
+import { Copy, Link2, FileText, Info, Users, Smartphone, Plus, Minus, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -13,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { PLANS, CANAIS_DEF, quoteBivvo, fmtBRL, encodeBivvoConfig, type PlanSlug, type BivvoConfig } from '@/lib/bivvo-calc';
+import { PLANS, CANAIS_DEF, quoteBivvo, fmtBRL, encodeBivvoConfig, type PlanSlug, type BivvoConfig, loadPlansFromDB } from '@/lib/bivvo-calc';
 import { useAppUrl } from '@/hooks/useSiteSettings';
 
 interface Props {
@@ -25,14 +25,36 @@ interface Props {
 export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onCheckout }: Props) {
   const { toast } = useToast();
   const baseUrl = useAppUrl();
+  const [isLoaded, setIsLoaded] = useState(false);
   const [plan, setPlan] = useState<PlanSlug>('silver');
   const [users, setUsers] = useState(6);
   const [protagonista, setProtagonista] = useState(false);
   const [telefonia, setTelefonia] = useState(false);
   const [channelsDiscount, setChannelsDiscount] = useState(0);
-  const [channels, setChannels] = useState<Record<string, number>>(
-    Object.fromEntries(CANAIS_DEF.map(c => [c.id, c.included]))
-  );
+  const [channels, setChannels] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    loadPlansFromDB().then(() => {
+      setIsLoaded(true);
+      setChannels(Object.fromEntries(CANAIS_DEF.map(c => [c.id, c.included])));
+    });
+  }, []);
+
+  // Handle plan auto-switching based on users
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    if (users <= 3 && plan !== 'standard') {
+      setPlan('standard');
+    } else if (users > 3 && users <= 6 && plan !== 'silver') {
+      setPlan('silver');
+    } else if (users > 6 && users <= 12 && plan !== 'pro') {
+      setPlan('pro');
+    } else if (users > 12 && plan !== 'pro') {
+      // If users exceed pro, we keep it as pro (the quote function handles "Plano Personalizado")
+      setPlan('pro');
+    }
+  }, [users, isLoaded]);
 
   const config: BivvoConfig = { plan, users, protagonista, telefonia, channels, channelsDiscount };
   const quote = useMemo(() => {
@@ -63,8 +85,20 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
 
   const copy = (txt: string, label = 'Copiado') => {
     navigator.clipboard.writeText(txt);
-    toast({ title: label });
+    toast({ 
+      title: label,
+      description: "Conteúdo copiado para a área de transferência."
+    });
   };
+
+  if (!isLoaded) return (
+    <div className="min-h-[600px] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <p className="text-sm text-muted-foreground animate-pulse">Carregando planos e preços...</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="grid lg:grid-cols-[1fr_380px] gap-8">
@@ -106,7 +140,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   }`}
                 >
                   {active && (
-                    <div className="absolute top-3 right-3">
+                    <div className="absolute top-3 right-3 z-10">
                       <CheckCircle2 className="h-5 w-5 text-accent" />
                     </div>
                   )}
@@ -119,11 +153,17 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1.5">
                     <Users className="h-3 w-3" />
-                    Até {p.users} usuários inclusos
+                    Até {p.users} usuários
                   </div>
                   <div className="text-[10px] font-semibold mt-1">
                     Recorrência: {fmtBRL(p.full)}
                   </div>
+                  {active && (
+                    <motion.div 
+                      layoutId="plan-active"
+                      className="absolute inset-0 border-2 border-accent rounded-2xl pointer-events-none"
+                    />
+                  )}
                 </button>
               );
             })}
@@ -155,25 +195,32 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   variant="outline" 
                   size="icon" 
                   onClick={() => setUsers(u => Math.max(1, u - 1))}
-                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent"
+                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent shadow-sm"
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
-                <div className="flex flex-col items-center">
-                  <span className="text-4xl font-black tabular-nums">{users}</span>
-                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Total</span>
+                <div className="flex flex-col items-center min-w-[80px]">
+                  <motion.span 
+                    key={users}
+                    initial={{ scale: 1.2, color: '#e94560' }}
+                    animate={{ scale: 1, color: 'currentColor' }}
+                    className="text-5xl font-black tabular-nums tracking-tighter"
+                  >
+                    {users}
+                  </motion.span>
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mt-1">Usuários</span>
                 </div>
                 <Button 
                   variant="outline" 
                   size="icon" 
                   onClick={() => setUsers(u => u + 1)}
-                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent"
+                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent shadow-sm"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
               
-              {users > PLANS[plan].users && (
+              {isLoaded && users > PLANS[plan].users && (
                 <div className="text-[10px] text-center p-2 rounded-lg bg-accent/5 text-accent font-semibold animate-in fade-in zoom-in-95">
                   + {users - PLANS[plan].users} excedentes → {fmtBRL((users - PLANS[plan].users) * 35)}/mês
                 </div>

@@ -27,6 +27,7 @@ interface Plan {
   slug: string;
   name: string;
   price: number;
+  price_recurring: number;
   description: string;
   features: { text: string; included: boolean }[];
   popular: boolean;
@@ -75,7 +76,7 @@ const Admin = () => {
   const [planDialog, setPlanDialog] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [planForm, setPlanForm] = useState({
-    slug: '', name: '', price: '', description: '', popular: false, gradient: 'from-blue-500 to-cyan-500', icon: 'Zap', sort_order: '0',
+    slug: '', name: '', price: '', price_recurring: '', description: '', popular: false, gradient: 'from-blue-500 to-cyan-500', icon: 'Zap', sort_order: '0',
     features: [{ text: '', included: true }],
   });
 
@@ -297,6 +298,7 @@ const Admin = () => {
         slug: planForm.slug.toLowerCase().trim(),
         name: planForm.name.trim(),
         price: parseFloat(planForm.price),
+        price_recurring: parseFloat(planForm.price_recurring) || parseFloat(planForm.price),
         description: planForm.description.trim(),
         popular: planForm.popular,
         gradient: planForm.gradient,
@@ -375,6 +377,7 @@ const Admin = () => {
       slug: plan.slug,
       name: plan.name,
       price: String(plan.price),
+      price_recurring: String(plan.price_recurring || plan.price),
       description: plan.description || '',
       popular: plan.popular,
       gradient: plan.gradient,
@@ -388,7 +391,7 @@ const Admin = () => {
   const openNewPlan = () => {
     setEditingPlan(null);
     setPlanForm({
-      slug: '', name: '', price: '', description: '', popular: false,
+      slug: '', name: '', price: '', price_recurring: '', description: '', popular: false,
       gradient: 'from-blue-500 to-cyan-500', icon: 'Zap', sort_order: '0',
       features: [{ text: '', included: true }],
     });
@@ -491,9 +494,15 @@ const Admin = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Preço (R$)</Label>
+                        <Label>Preço Promo (1º Mês)</Label>
                         <Input type="number" step="0.01" value={planForm.price} onChange={e => setPlanForm(p => ({ ...p, price: e.target.value }))} />
                       </div>
+                      <div className="space-y-2">
+                        <Label>Preço Recorrência (2º Mês+)</Label>
+                        <Input type="number" step="0.01" value={planForm.price_recurring} onChange={e => setPlanForm(p => ({ ...p, price_recurring: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Ordem</Label>
                         <Input type="number" value={planForm.sort_order} onChange={e => setPlanForm(p => ({ ...p, sort_order: e.target.value }))} />

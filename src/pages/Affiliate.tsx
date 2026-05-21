@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
 import { CardMarketingLink, CardMarketingTools } from '@/components/affiliate/MarketingTools';
 import { formatCurrency } from '@/lib/validators';
+import { loadPlansFromDB } from '@/lib/bivvo-calc';
 
 interface Affiliate {
   id: string; name: string; email: string; whatsapp: string | null; document: string | null;
@@ -33,7 +34,12 @@ export default function Affiliate() {
   const [profile, setProfile] = useState({ name: '', whatsapp: '', document: '', pix_key: '', pix_key_type: 'CPF' });
   const [cancellingSale, setCancellingSale] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+  const [isDBLoaded, setIsDBLoaded] = useState(false);
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+
+  useEffect(() => {
+    loadPlansFromDB().then(() => setIsDBLoaded(true));
+  }, []);
 
   const call = useCallback(async (action: string, opts: { method?: 'GET'|'POST'; body?: unknown } = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -181,7 +187,13 @@ export default function Affiliate() {
           </TabsList>
 
           <TabsContent value="calc" className="mt-4">
-            <BivvoCalculator affiliateSlug={me.slug} />
+            {isDBLoaded ? (
+              <BivvoCalculator affiliateSlug={me.slug} />
+            ) : (
+              <div className="min-h-[400px] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-accent" />
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="marketing" className="mt-4">
