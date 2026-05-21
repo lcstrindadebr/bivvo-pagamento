@@ -202,7 +202,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 </Button>
               </div>
               
-              {users > PLANS[plan].users && (
+              {isLoaded && users > PLANS[plan].users && (
                 <div className="text-[10px] text-center p-2 rounded-lg bg-accent/5 text-accent font-semibold animate-in fade-in zoom-in-95">
                   + {users - PLANS[plan].users} excedentes → {fmtBRL((users - PLANS[plan].users) * 35)}/mês
                 </div>
