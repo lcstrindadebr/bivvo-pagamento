@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PLANS, CANAIS_DEF, quoteBivvo, fmtBRL, encodeBivvoConfig, type PlanSlug, type BivvoConfig } from '@/lib/bivvo-calc';
+import { useAppUrl } from '@/hooks/useSiteSettings';
 
 interface Props {
   affiliateSlug?: string;
@@ -23,6 +24,7 @@ interface Props {
 
 export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onCheckout }: Props) {
   const { toast } = useToast();
+  const baseUrl = useAppUrl();
   const [plan, setPlan] = useState<PlanSlug>('silver');
   const [users, setUsers] = useState(6);
   const [protagonista, setProtagonista] = useState(false);
@@ -40,8 +42,8 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
   const checkoutUrl = useMemo(() => {
     if (!affiliateSlug) return '';
     const cfg = encodeBivvoConfig(config);
-    return `${window.location.origin}/checkout/${plan}?aff=${affiliateSlug}&cfg=${cfg}`;
-  }, [affiliateSlug, plan, users, protagonista, telefonia, channels, channelsDiscount]);
+    return `${baseUrl}/checkout/${plan}?aff=${affiliateSlug}&cfg=${cfg}`;
+  }, [affiliateSlug, plan, users, protagonista, telefonia, channels, channelsDiscount, baseUrl]);
 
   const proposalText = useMemo(() => {
     if (!quote) return '';
