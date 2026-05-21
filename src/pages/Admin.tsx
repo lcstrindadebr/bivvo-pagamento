@@ -446,6 +446,7 @@ const Admin = () => {
             <TabsTrigger value="affiliates" className="gap-2"><Handshake className="h-4 w-4" /> Afiliados</TabsTrigger>
             <TabsTrigger value="expenses" className="gap-2"><Receipt className="h-4 w-4" /> Despesas</TabsTrigger>
             <TabsTrigger value="marketing" className="gap-2"><Share2 className="h-4 w-4" /> Marketing</TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2"><Settings className="h-4 w-4" /> Configurações</TabsTrigger>
 
           </TabsList>
 
