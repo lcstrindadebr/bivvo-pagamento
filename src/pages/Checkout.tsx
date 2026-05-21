@@ -26,7 +26,7 @@ import {
   maskPhone,
   formatCurrency,
 } from '@/lib/validators';
-import { quoteBivvo, decodeBivvoConfig, type BivvoConfig } from '@/lib/bivvo-calc';
+import { quoteBivvo, decodeBivvoConfig, loadPlansFromDB, PLANS, type BivvoConfig } from '@/lib/bivvo-calc';
 
 type Step = 'personal' | 'address' | 'payment' | 'processing' | 'success' | 'error' | 'awaiting_payment';
 
