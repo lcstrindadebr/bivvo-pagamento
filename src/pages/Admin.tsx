@@ -298,6 +298,7 @@ const Admin = () => {
         slug: planForm.slug.toLowerCase().trim(),
         name: planForm.name.trim(),
         price: parseFloat(planForm.price),
+        price_recurring: parseFloat(planForm.price_recurring) || parseFloat(planForm.price),
         description: planForm.description.trim(),
         popular: planForm.popular,
         gradient: planForm.gradient,
