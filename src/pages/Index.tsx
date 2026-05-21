@@ -8,7 +8,12 @@ import { encodeBivvoConfig, loadPlansFromDB, type BivvoConfig } from '@/lib/bivv
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [isLoaded, setIsLoaded] = useState(false);
   const aff = searchParams.get('aff');
+
+  useEffect(() => {
+    loadPlansFromDB().then(() => setIsLoaded(true));
+  }, []);
 
   useEffect(() => {
     if (aff) {
