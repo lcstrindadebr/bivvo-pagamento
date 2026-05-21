@@ -141,11 +141,17 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1.5">
                     <Users className="h-3 w-3" />
-                    Até {p.users} usuários inclusos
+                    Até {p.users} usuários
                   </div>
                   <div className="text-[10px] font-semibold mt-1">
                     Recorrência: {fmtBRL(p.full)}
                   </div>
+                  {active && (
+                    <motion.div 
+                      layoutId="plan-active"
+                      className="absolute inset-0 border-2 border-accent rounded-2xl pointer-events-none"
+                    />
+                  )}
                 </button>
               );
             })}
