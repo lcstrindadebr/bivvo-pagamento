@@ -39,6 +39,7 @@ interface Affiliate {
 
 export default function AdminAffiliates() {
   const { adminFetch, adminPost } = useAdmin();
+  const baseUrl = useAppUrl();
   const { toast } = useToast();
   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
   const [sales, setSales] = useState<any[]>([]);
