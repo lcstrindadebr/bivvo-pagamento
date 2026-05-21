@@ -85,8 +85,20 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
 
   const copy = (txt: string, label = 'Copiado') => {
     navigator.clipboard.writeText(txt);
-    toast({ title: label });
+    toast({ 
+      title: label,
+      description: "Conteúdo copiado para a área de transferência."
+    });
   };
+
+  if (!isLoaded) return (
+    <div className="min-h-[600px] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <p className="text-sm text-muted-foreground animate-pulse">Carregando planos e preços...</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="grid lg:grid-cols-[1fr_380px] gap-8">
