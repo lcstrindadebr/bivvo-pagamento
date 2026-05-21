@@ -58,10 +58,16 @@ const Index = () => {
       <section id="pricing" className="relative py-12 px-4 pb-24">
         <div className="max-w-6xl mx-auto">
           <div className="bg-background/40 backdrop-blur-xl border border-border/50 rounded-[2.5rem] p-4 md:p-8 shadow-2xl shadow-accent/5">
-            <BivvoCalculator 
-              mode="customer" 
-              onCheckout={handleCheckout}
-            />
+            {isLoaded ? (
+              <BivvoCalculator 
+                mode="customer" 
+                onCheckout={handleCheckout}
+              />
+            ) : (
+              <div className="min-h-[400px] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-accent" />
+              </div>
+            )}
           </div>
         </div>
       </section>
