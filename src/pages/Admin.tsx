@@ -17,6 +17,7 @@ import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
 import AdminExpenses from '@/components/admin/AdminExpenses';
 import { AdminMarketingMaterials } from '@/components/admin/AdminMarketingMaterials';
+import { AdminSettings } from '@/components/admin/AdminSettings';
 
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import { formatCurrency } from '@/lib/validators';
