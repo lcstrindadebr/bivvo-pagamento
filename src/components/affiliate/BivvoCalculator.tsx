@@ -128,7 +128,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   }`}
                 >
                   {active && (
-                    <div className="absolute top-3 right-3">
+                    <div className="absolute top-3 right-3 z-10">
                       <CheckCircle2 className="h-5 w-5 text-accent" />
                     </div>
                   )}
