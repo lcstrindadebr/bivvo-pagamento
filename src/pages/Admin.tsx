@@ -1088,6 +1088,10 @@ const Admin = () => {
           <TabsContent value="affiliates">
             <AdminAffiliates />
           </TabsContent>
+
+          <TabsContent value="settings">
+            <AdminSettings />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
