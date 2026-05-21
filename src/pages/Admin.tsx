@@ -76,7 +76,7 @@ const Admin = () => {
   const [planDialog, setPlanDialog] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [planForm, setPlanForm] = useState({
-    slug: '', name: '', price: '', description: '', popular: false, gradient: 'from-blue-500 to-cyan-500', icon: 'Zap', sort_order: '0',
+    slug: '', name: '', price: '', price_recurring: '', description: '', popular: false, gradient: 'from-blue-500 to-cyan-500', icon: 'Zap', sort_order: '0',
     features: [{ text: '', included: true }],
   });
 
