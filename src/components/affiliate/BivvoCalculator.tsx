@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PLANS, CANAIS_DEF, quoteBivvo, fmtBRL, encodeBivvoConfig, type PlanSlug, type BivvoConfig } from '@/lib/bivvo-calc';
+import { useAppUrl } from '@/hooks/useSiteSettings';
 
 interface Props {
   affiliateSlug?: string;
