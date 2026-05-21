@@ -377,6 +377,7 @@ const Admin = () => {
       slug: plan.slug,
       name: plan.name,
       price: String(plan.price),
+      price_recurring: String(plan.price_recurring || plan.price),
       description: plan.description || '',
       popular: plan.popular,
       gradient: plan.gradient,
