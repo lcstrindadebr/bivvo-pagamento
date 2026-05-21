@@ -9,8 +9,9 @@ import { useAppUrl } from '@/hooks/useSiteSettings';
 
 export function CardMarketingLink({ slug }: { slug: string }) {
   const { toast } = useToast();
+  const baseUrl = useAppUrl();
   const [copied, setCopied] = useState(false);
-  const affLink = `${window.location.origin}?aff=${slug}`;
+  const affLink = `${baseUrl}?aff=${slug}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(affLink);
