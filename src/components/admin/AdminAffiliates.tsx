@@ -160,7 +160,7 @@ export default function AdminAffiliates() {
   };
 
   const copyLink = (slug: string) => {
-    const url = `${window.location.origin}/?aff=${slug}`;
+    const url = `${baseUrl}/?aff=${slug}`;
     navigator.clipboard.writeText(url);
     toast({ title: 'Link copiado', description: url });
   };
