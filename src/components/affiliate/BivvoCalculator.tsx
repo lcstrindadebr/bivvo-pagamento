@@ -42,8 +42,8 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
   const checkoutUrl = useMemo(() => {
     if (!affiliateSlug) return '';
     const cfg = encodeBivvoConfig(config);
-    return `${window.location.origin}/checkout/${plan}?aff=${affiliateSlug}&cfg=${cfg}`;
-  }, [affiliateSlug, plan, users, protagonista, telefonia, channels, channelsDiscount]);
+    return `${baseUrl}/checkout/${plan}?aff=${affiliateSlug}&cfg=${cfg}`;
+  }, [affiliateSlug, plan, users, protagonista, telefonia, channels, channelsDiscount, baseUrl]);
 
   const proposalText = useMemo(() => {
     if (!quote) return '';
