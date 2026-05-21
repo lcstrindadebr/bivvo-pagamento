@@ -391,7 +391,7 @@ const Admin = () => {
   const openNewPlan = () => {
     setEditingPlan(null);
     setPlanForm({
-      slug: '', name: '', price: '', description: '', popular: false,
+      slug: '', name: '', price: '', price_recurring: '', description: '', popular: false,
       gradient: 'from-blue-500 to-cyan-500', icon: 'Zap', sort_order: '0',
       features: [{ text: '', included: true }],
     });
