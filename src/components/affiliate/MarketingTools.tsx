@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Copy, CheckCircle2, Share2, Download, Image as ImageIcon, FileText, Video, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAppUrl } from '@/hooks/useSiteSettings';
 
 export function CardMarketingLink({ slug }: { slug: string }) {
   const { toast } = useToast();
