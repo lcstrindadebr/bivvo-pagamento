@@ -1,7 +1,7 @@
 // Shared Bivvo pricing calculator.
 import { supabase } from '@/integrations/supabase/client';
 
-export let PLANS: any = {
+export let PLANS: Record<string, { name: string; users: number; promo: number; full: number }> = {
   standard: { name: 'STANDARD', users: 3, promo: 169.90, full: 197.90 },
   silver:   { name: 'SILVER',   users: 6, promo: 287.90, full: 389.90 },
   pro:      { name: 'PRO',      users: 12, promo: 429.90, full: 527.90 },
