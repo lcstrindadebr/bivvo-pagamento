@@ -12,6 +12,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/validators';
 import { supabase } from '@/integrations/supabase/client';
+import { useAppUrl } from '@/hooks/useSiteSettings';
 
 interface Affiliate {
   id: string;
