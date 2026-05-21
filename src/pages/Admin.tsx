@@ -27,6 +27,7 @@ interface Plan {
   slug: string;
   name: string;
   price: number;
+  price_recurring: number;
   description: string;
   features: { text: string; included: boolean }[];
   popular: boolean;
