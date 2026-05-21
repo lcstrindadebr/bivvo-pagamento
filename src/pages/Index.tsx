@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
 import { encodeBivvoConfig, loadPlansFromDB, type BivvoConfig } from '@/lib/bivvo-calc';
