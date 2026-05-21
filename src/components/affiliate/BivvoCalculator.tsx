@@ -24,6 +24,7 @@ interface Props {
 
 export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onCheckout }: Props) {
   const { toast } = useToast();
+  const baseUrl = useAppUrl();
   const [plan, setPlan] = useState<PlanSlug>('silver');
   const [users, setUsers] = useState(6);
   const [protagonista, setProtagonista] = useState(false);
