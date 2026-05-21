@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
-import { encodeBivvoConfig, type BivvoConfig } from '@/lib/bivvo-calc';
+import { encodeBivvoConfig, loadPlansFromDB, type BivvoConfig } from '@/lib/bivvo-calc';
 
 const Index = () => {
   const navigate = useNavigate();
