@@ -187,7 +187,13 @@ export default function Affiliate() {
           </TabsList>
 
           <TabsContent value="calc" className="mt-4">
-            <BivvoCalculator affiliateSlug={me.slug} />
+            {isDBLoaded ? (
+              <BivvoCalculator affiliateSlug={me.slug} />
+            ) : (
+              <div className="min-h-[400px] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-accent" />
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="marketing" className="mt-4">
