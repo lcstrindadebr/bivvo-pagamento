@@ -494,9 +494,15 @@ const Admin = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Preço (R$)</Label>
+                        <Label>Preço Promo (1º Mês)</Label>
                         <Input type="number" step="0.01" value={planForm.price} onChange={e => setPlanForm(p => ({ ...p, price: e.target.value }))} />
                       </div>
+                      <div className="space-y-2">
+                        <Label>Preço Recorrência (2º Mês+)</Label>
+                        <Input type="number" step="0.01" value={planForm.price_recurring} onChange={e => setPlanForm(p => ({ ...p, price_recurring: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Ordem</Label>
                         <Input type="number" value={planForm.sort_order} onChange={e => setPlanForm(p => ({ ...p, sort_order: e.target.value }))} />
