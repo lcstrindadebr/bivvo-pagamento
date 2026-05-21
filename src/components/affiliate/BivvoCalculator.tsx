@@ -25,14 +25,36 @@ interface Props {
 export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onCheckout }: Props) {
   const { toast } = useToast();
   const baseUrl = useAppUrl();
+  const [isLoaded, setIsLoaded] = useState(false);
   const [plan, setPlan] = useState<PlanSlug>('silver');
   const [users, setUsers] = useState(6);
   const [protagonista, setProtagonista] = useState(false);
   const [telefonia, setTelefonia] = useState(false);
   const [channelsDiscount, setChannelsDiscount] = useState(0);
-  const [channels, setChannels] = useState<Record<string, number>>(
-    Object.fromEntries(CANAIS_DEF.map(c => [c.id, c.included]))
-  );
+  const [channels, setChannels] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    loadPlansFromDB().then(() => {
+      setIsLoaded(true);
+      setChannels(Object.fromEntries(CANAIS_DEF.map(c => [c.id, c.included])));
+    });
+  }, []);
+
+  // Handle plan auto-switching based on users
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    if (users <= 3 && plan !== 'standard') {
+      setPlan('standard');
+    } else if (users > 3 && users <= 6 && plan !== 'silver') {
+      setPlan('silver');
+    } else if (users > 6 && users <= 12 && plan !== 'pro') {
+      setPlan('pro');
+    } else if (users > 12 && plan !== 'pro') {
+      // If users exceed pro, we keep it as pro (the quote function handles "Plano Personalizado")
+      setPlan('pro');
+    }
+  }, [users, isLoaded]);
 
   const config: BivvoConfig = { plan, users, protagonista, telefonia, channels, channelsDiscount };
   const quote = useMemo(() => {
