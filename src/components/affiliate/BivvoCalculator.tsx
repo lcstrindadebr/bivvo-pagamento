@@ -177,19 +177,26 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   variant="outline" 
                   size="icon" 
                   onClick={() => setUsers(u => Math.max(1, u - 1))}
-                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent"
+                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent shadow-sm"
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
-                <div className="flex flex-col items-center">
-                  <span className="text-4xl font-black tabular-nums">{users}</span>
-                  <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Total</span>
+                <div className="flex flex-col items-center min-w-[80px]">
+                  <motion.span 
+                    key={users}
+                    initial={{ scale: 1.2, color: '#e94560' }}
+                    animate={{ scale: 1, color: 'currentColor' }}
+                    className="text-5xl font-black tabular-nums tracking-tighter"
+                  >
+                    {users}
+                  </motion.span>
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mt-1">Usuários</span>
                 </div>
                 <Button 
                   variant="outline" 
                   size="icon" 
                   onClick={() => setUsers(u => u + 1)}
-                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent"
+                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent shadow-sm"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
