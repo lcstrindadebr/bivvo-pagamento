@@ -420,15 +420,14 @@ const Checkout = () => {
   // Processing Step
   if (currentStep === 'processing') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center px-4">
-        <div className="absolute inset-0 gradient-mesh opacity-50" />
-        <div className="relative w-full max-w-sm text-center space-y-6 card-glass rounded-2xl p-8">
-          <div className="w-24 h-24 mx-auto rounded-2xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center glow-accent">
-            <Loader2 className="h-12 w-12 animate-spin text-accent" />
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+        <div className="relative w-full max-w-sm text-center space-y-6 bg-white border border-border/30 rounded-xl p-8 transition-all duration-200">
+          <div className="w-24 h-24 mx-auto rounded-xl bg-primary/5 flex items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold">Processando pagamento</h2>
-            <p className="text-muted-foreground text-sm">
+            <h2 className="text-xl font-medium">Processando pagamento</h2>
+            <p className="text-muted-foreground text-sm font-normal">
               {paymentStatus === 'polling'
                 ? 'Verificando status...'
                 : 'Aguarde um momento...'}
