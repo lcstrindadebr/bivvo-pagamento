@@ -1,15 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Link2, FileText, Info, Users, Smartphone, Plus, Minus, 
-  CheckCircle2, Loader2, MessageSquare, Instagram, Facebook, 
-  Mail, Tag, Music2, ShoppingCart, Linkedin, Youtube, ShoppingBag,
-  Zap, ArrowRight, ShieldCheck, TrendingUp, HelpCircle,
-  ChevronRight, Phone, Globe, Layers, Settings2
-} from 'lucide-react';
+import { Copy, Link2, FileText, Info, CreditCard, QrCode } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -18,9 +13,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { PLANS, CANAIS_DEF, quoteBivvo, fmtBRL, encodeBivvoConfig, type PlanSlug, type BivvoConfig, loadPlansFromDB } from '@/lib/bivvo-calc';
-import { useAppUrl } from '@/hooks/useSiteSettings';
-import { cn } from '@/lib/utils';
+import { PLANS, CANAIS_DEF, quoteBivvo, fmtBRL, encodeBivvoConfig, type PlanSlug, type BivvoConfig } from '@/lib/bivvo-calc';
+
 
 interface Props {
   affiliateSlug?: string;
@@ -30,29 +24,14 @@ interface Props {
 
 export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onCheckout }: Props) {
   const { toast } = useToast();
-  const baseUrl = useAppUrl();
-  const [isLoaded, setIsLoaded] = useState(false);
   const [plan, setPlan] = useState<PlanSlug>('silver');
   const [users, setUsers] = useState(6);
   const [protagonista, setProtagonista] = useState(false);
   const [telefonia, setTelefonia] = useState(false);
   const [channelsDiscount, setChannelsDiscount] = useState(0);
-  const [channels, setChannels] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    loadPlansFromDB().then(() => {
-      setIsLoaded(true);
-      setChannels(Object.fromEntries(CANAIS_DEF.map(c => [c.id, c.included])));
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (users <= 3 && plan !== 'standard') setPlan('standard');
-    else if (users > 3 && users <= 6 && plan !== 'silver') setPlan('silver');
-    else if (users > 6 && users <= 12 && plan !== 'pro') setPlan('pro');
-    else if (users > 12 && plan !== 'pro') setPlan('pro');
-  }, [users, isLoaded]);
+  const [channels, setChannels] = useState<Record<string, number>>(
+    Object.fromEntries(CANAIS_DEF.map(c => [c.id, c.included]))
+  );
 
   const config: BivvoConfig = { plan, users, protagonista, telefonia, channels, channelsDiscount };
   const quote = useMemo(() => {
@@ -62,8 +41,8 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
   const checkoutUrl = useMemo(() => {
     if (!affiliateSlug) return '';
     const cfg = encodeBivvoConfig(config);
-    return `${baseUrl}/checkout/${plan}?aff=${affiliateSlug}&cfg=${cfg}`;
-  }, [affiliateSlug, plan, users, protagonista, telefonia, channels, channelsDiscount, baseUrl]);
+    return `${window.location.origin}/checkout/${plan}?aff=${affiliateSlug}&cfg=${cfg}`;
+  }, [affiliateSlug, plan, users, protagonista, telefonia, channels, channelsDiscount]);
 
   const proposalText = useMemo(() => {
     if (!quote) return '';
@@ -73,453 +52,237 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
       : `💰 1º mês: *${fmtBRL(quote.total1m)}*\n↻ A partir do 2º mês: *${fmtBRL(quote.totalRec)}*/mês`;
     const extras = (quote.channelLines.length || quote.telCost)
       ? `\n📡 *Adicionais:*\n${lines}${quote.channelsDiscountPercent > 0 ? `\n  • 📉 Desconto adicional → ${quote.channelsDiscountPercent}%` : ''}${quote.telCost ? '\n  • 📞 Telefonia → R$ 100,00' : ''}` : '';
-    return `📋 *Proposta Comercial — Bivvo*\n━━━━━━━━━━━━━━━━━━━━━━━\n📦 *${quote.planLabel}*\n👥 *Usuários:* ${quote.users}${quote.extraUsers > 0 ? ` (${quote.extraUsers} extras × R$ 35,00)` : ''}${extras}\n━━━━━━━━━━━━━━━━━━━━━━━\n${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
+    return `📋 *Proposta Comercial — Bivvo*
+━━━━━━━━━━━━━━━━━━━━━━━
+📦 *${quote.planLabel}*
+👥 *Usuários:* ${quote.users}${quote.extraUsers > 0 ? ` (${quote.extraUsers} extras × R$ 35,00)` : ''}${extras}
+━━━━━━━━━━━━━━━━━━━━━━━
+${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
   }, [quote, checkoutUrl]);
 
   const copy = (txt: string, label = 'Copiado') => {
     navigator.clipboard.writeText(txt);
-    toast({ title: label, description: "Conteúdo copiado para a área de transferência." });
+    toast({ title: label });
   };
-
-  const getChannelIcon = (id: string) => {
-    switch (id) {
-      case 'waof':
-      case 'wano': return <MessageSquare className="h-5 w-5" />;
-      case 'ig': return <Instagram className="h-5 w-5" />;
-      case 'fb': return <Facebook className="h-5 w-5" />;
-      case 'email': return <Mail className="h-5 w-5" />;
-      case 'olx': return <Tag className="h-5 w-5" />;
-      case 'tiktok': return <Music2 className="h-5 w-5" />;
-      case 'ml': return <ShoppingCart className="h-5 w-5" />;
-      case 'li': return <Linkedin className="h-5 w-5" />;
-      case 'yt': return <Youtube className="h-5 w-5" />;
-      case 'woo': return <ShoppingBag className="h-5 w-5" />;
-      default: return <Globe className="h-5 w-5" />;
-    }
-  };
-
-  if (!isLoaded) return (
-    <div className="min-h-[600px] flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground font-medium">Sincronizando precificação...</p>
-      </div>
-    </div>
-  );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="grid lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column - Configuration */}
-        <div className="lg:col-span-8 space-y-12">
-          
-          {/* Header Section */}
-          <div className="space-y-2 pb-6 border-b">
-            <h2 className="text-3xl font-bold tracking-tight text-primary">Configurador de Soluções</h2>
-            <p className="text-muted-foreground max-w-2xl">Desenhe a estrutura ideal para o seu atendimento multicanal com precisão e transparência.</p>
+    <div className="grid lg:grid-cols-[1fr_360px] gap-6">
+      <div className="space-y-4">
+        {/* PLAN */}
+        <div className="card-glass rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-semibold">📦 Plano base</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">O 1º mês é a oferta inicial e do 2º mês em diante passa a valor cheio recorrente mensal.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.keys(PLANS) as PlanSlug[]).map(k => {
+              const p = PLANS[k];
+              const active = plan === k;
+              return (
+                <button key={k} type="button" onClick={() => { setPlan(k); setUsers(p.users); }}
+                  className={`text-left p-3 rounded-lg border transition ${active ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/40'}`}>
+                  <div className="font-mono text-xs font-semibold">{p.name}</div>
+                  <div className="text-[10px] text-muted-foreground">{p.users} usuários</div>
+                  <div className="text-base font-bold mt-1 text-xs">1º mês: {fmtBRL(p.promo)}</div>
+                  <div className="text-[10px] text-muted-foreground">2º mês: {fmtBRL(p.full)}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-          {/* Step 1: Base Tier */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">1</div>
-              <h3 className="text-xl font-bold text-primary tracking-tight">Escalabilidade da Operação</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {(Object.keys(PLANS) as PlanSlug[]).map(k => {
-                const p = PLANS[k];
-                const active = plan === k;
-                const isSilver = k === 'silver';
-                
-                return (
-                  <button
-                    key={k}
-                    onClick={() => { setPlan(k); setUsers(p.users); }}
-                    className={cn(
-                      "relative flex flex-col p-6 rounded-xl border transition-all duration-300 text-left h-full",
-                      active 
-                        ? "border-primary bg-primary/[0.02] ring-1 ring-primary shadow-lg" 
-                        : "border-border bg-card hover:border-primary/40 hover:bg-slate-50/50 shadow-sm"
-                    )}
-                  >
-                    {isSilver && (
-                      <Badge className="absolute -top-3 right-4 bg-primary text-white font-bold px-3 py-1">RECOMENDADO</Badge>
-                    )}
-                    
-                    <div className="flex justify-between items-start mb-6">
-                      <span className={cn(
-                        "text-[11px] font-black uppercase tracking-[0.2em]",
-                        active ? "text-primary" : "text-muted-foreground"
-                      )}>
-                        {p.name}
-                      </span>
-                      {active && <CheckCircle2 className="h-5 w-5 text-primary" />}
-                    </div>
-                    
-                    <div className="mt-auto space-y-4">
-                      <div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-black text-primary">{fmtBRL(p.promo)}</span>
-                          <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">/1º mês</span>
-                        </div>
-                        <p className="text-[11px] font-semibold text-muted-foreground mt-1 italic">
-                          A partir do 2º mês: {fmtBRL(p.full)}
-                        </p>
-                      </div>
 
-                      <div className="pt-4 border-t border-border/60 flex items-center gap-3">
-                        <Users className="h-4 w-4 text-primary/60" />
-                        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-widest">Inclui {p.users} usuários</span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* Step 2: Customization */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">2</div>
-              <h3 className="text-xl font-bold text-primary tracking-tight">Capacidade e Especialização</h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Users Adjustment */}
-              <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden flex flex-col">
-                <div className="p-6 bg-slate-50/50 border-b flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                      <Users className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-primary uppercase tracking-tight">Expansão de Time</h4>
-                      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Adicione braços à operação</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="border-primary/20 text-primary font-bold">{fmtBRL(35)}/usuário</Badge>
-                </div>
-                
-                <div className="p-8 flex items-center justify-center gap-12">
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={() => setUsers(u => Math.max(1, u - 1))}
-                    className="h-16 w-16 rounded-full border-2 hover:bg-primary hover:text-white transition-all shadow-md group"
-                  >
-                    <Minus className="h-6 w-6 group-hover:scale-110 transition-transform" />
-                  </Button>
-                  
-                  <div className="flex flex-col items-center">
-                    <motion.span 
-                      key={users}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="text-6xl font-black text-primary tracking-tighter tabular-nums"
-                    >
-                      {users}
-                    </motion.span>
-                    <span className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.4em] mt-1">Total Equipe</span>
-                  </div>
-
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={() => setUsers(u => u + 1)}
-                    className="h-16 w-16 rounded-full border-2 hover:bg-primary hover:text-white transition-all shadow-md group"
-                  >
-                    <Plus className="h-6 w-6 group-hover:scale-110 transition-transform" />
-                  </Button>
-                </div>
-                
-                <div className="p-4 bg-primary/[0.02] border-t text-center">
-                   {isLoaded && users > PLANS[plan].users ? (
-                      <span className="text-[10px] font-black text-primary uppercase tracking-widest">
-                        ESTRUTURA: {PLANS[plan].users} inclusos + {users - PLANS[plan].users} adicionais
-                      </span>
-                   ) : (
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Capacidade dentro do plano base</span>
-                   )}
-                </div>
-              </div>
-
-              {/* Telephony Option */}
-              <div className="bg-white rounded-xl border border-border shadow-sm flex flex-col">
-                <div className="p-6 bg-slate-50/50 border-b flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                      <Smartphone className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-primary uppercase tracking-tight">Telefonia WA</h4>
-                      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Voz e vídeo integrados</p>
-                    </div>
-                  </div>
-                  <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-primary" />
-                </div>
-                
-                <div className="p-6 flex-1 space-y-4">
-                  <p className="text-xs text-muted-foreground leading-relaxed font-medium">Habilite chamadas de voz e áudio profissionais diretamente no fluxo de atendimento dos seus colaboradores.</p>
-                  <ul className="space-y-2">
-                    {['Histórico centralizado', 'Monitoria em tempo real', 'Qualidade enterprise'].map((t, i) => (
-                      <li key={i} className="flex items-center gap-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-                        <CheckCircle2 className="h-3 w-3 text-primary" /> {t}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="p-4 border-t flex items-center justify-between">
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Assinatura Mensal</span>
-                  <span className="text-lg font-black text-primary">{fmtBRL(100)}</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Step 3: Channels */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">3</div>
-              <h3 className="text-xl font-bold text-primary tracking-tight">Ecosistema Multicanal</h3>
-            </div>
-
-            <div className="bg-white rounded-xl border border-border shadow-sm p-8">
-              {mode === 'affiliate' && (
-                <div className="mb-10 p-6 rounded-xl bg-slate-50 border border-slate-200 flex flex-col md:flex-row md:items-center gap-8">
-                  <div className="space-y-1 min-w-[200px]">
-                    <Label className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                      <Settings2 className="h-4 w-4" /> Margem de Negociação
-                    </Label>
-                    <p className="text-[10px] text-muted-foreground font-medium uppercase">Desconto comercial aplicado</p>
-                  </div>
-                  <div className="flex-1 flex items-center gap-4">
-                    <input 
-                      type="range" min="0" max="30" step="5"
-                      value={channelsDiscount} 
-                      onChange={e => setChannelsDiscount(parseInt(e.target.value))}
-                      className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary"
-                    />
-                    <Badge className="bg-primary text-white font-black text-base px-4 py-1">{channelsDiscount}%</Badge>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {CANAIS_DEF.map(c => {
-                  const qty = channels[c.id] ?? 0;
-                  return (
-                    <div key={c.id} className="group p-5 rounded-xl border border-border bg-white transition-all hover:border-primary/30 hover:shadow-md flex flex-col">
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="w-12 h-12 rounded-lg bg-slate-50 text-slate-600 border flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                          {getChannelIcon(c.id)}
-                        </div>
-                        <div>
-                          <h5 className="text-[11px] font-black uppercase tracking-widest text-primary leading-tight mb-1">{c.label}</h5>
-                          <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider italic">
-                            {c.included > 0 ? `${c.included} INCLUSO` : 'OPCIONAL'}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-auto flex items-center justify-between gap-4 pt-4 border-t border-dashed">
-                        <div className="flex items-center gap-1 bg-slate-100/50 p-1 rounded-full border">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))}
-                            className="h-8 w-8 rounded-full hover:bg-white hover:shadow-sm transition-all"
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center text-sm font-black tabular-nums text-primary">{qty}</span>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))}
-                            className="h-8 w-8 rounded-full hover:bg-white hover:shadow-sm transition-all"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[9px] text-muted-foreground font-bold uppercase">Unidade Extra</p>
-                          <p className="text-xs font-black text-primary">{fmtBRL(c.unit)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
-          {/* Affiliate Only: Settings */}
+        {/* USERS + PROT */}
+        <div className="card-glass rounded-xl p-4 space-y-3">
+          <div className="text-sm font-semibold">🎯 Negociação</div>
           {mode === 'affiliate' && (
-            <section className="bg-primary/[0.03] border-2 border-dashed border-primary/20 rounded-xl p-8 space-y-6">
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="h-6 w-6 text-primary" />
-                <h3 className="text-lg font-black text-primary uppercase tracking-[0.2em]">Condições de Afiliado</h3>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40">
+              <div>
+                <div className="text-sm font-medium">Preço Protagonista</div>
+                <div className="text-xs text-muted-foreground">Promo vira recorrência</div>
               </div>
-              
-              <div className="bg-white p-6 rounded-xl border border-primary/10 shadow-sm flex items-center justify-between group hover:border-primary/30 transition-all">
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-primary uppercase tracking-tight">Preço Protagonista</h4>
-                  <p className="text-xs text-muted-foreground font-medium italic">Transforma o valor promocional do 1º mês em mensalidade vitalícia.</p>
-                </div>
-                <Switch checked={protagonista} onCheckedChange={setProtagonista} className="data-[state=checked]:bg-primary" />
-              </div>
-            </section>
+              <Switch checked={protagonista} onCheckedChange={setProtagonista} />
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <Label className="flex-1">Nº de usuários</Label>
+            <div className="flex items-center border rounded-md">
+              <button onClick={() => setUsers(u => Math.max(1, u - 1))} className="w-8 h-8 hover:bg-muted">−</button>
+              <Input type="number" value={users} onChange={e => setUsers(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-16 h-8 border-0 text-center" />
+              <button onClick={() => setUsers(u => u + 1)} className="w-8 h-8 hover:bg-muted">+</button>
+            </div>
+          </div>
+          {users > PLANS[plan].users && (
+            <div className="text-xs p-2 rounded bg-amber-500/10 text-amber-700">
+              {PLANS[plan].name} + {users - PLANS[plan].users} extras × R$ 35 = {fmtBRL((users - PLANS[plan].users) * 35)}
+            </div>
           )}
         </div>
 
-        {/* Right Column - Proposal Summary */}
-        <aside className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
-          <div className="bg-primary rounded-2xl shadow-2xl overflow-hidden relative group">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-white/[0.03] rounded-full -mr-24 -mt-24 blur-3xl" />
-            
-            <div className="p-8 relative z-10">
-              <div className="flex items-center justify-between mb-10">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/50">Resumo da Solução</span>
-                <Badge className="bg-white/10 text-white border-white/20 text-[9px] font-black uppercase px-3 py-1">
-                  BIVVO CORE
-                </Badge>
+        {/* CHANNELS */}
+        <div className="card-glass rounded-xl p-4 space-y-2">
+          <div className="text-sm font-semibold">🔌 Canais adicionais</div>
+          <div className="text-xs text-muted-foreground mb-2">Apenas o excedente do incluso é cobrado.</div>
+          
+          {mode === 'affiliate' && (
+            <div className="bg-muted/30 p-3 rounded-lg border border-dashed my-4">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-xs font-semibold">Desconto nos Canais Adicionais</Label>
+                <Badge variant="secondary" className="text-xs">{channelsDiscount}%</Badge>
               </div>
+              <input 
+                type="range" 
+                min="0" 
+                max="30" 
+                step="5"
+                value={channelsDiscount} 
+                onChange={e => setChannelsDiscount(parseInt(e.target.value))}
+                className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-accent"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                <span>0%</span>
+                <span>15%</span>
+                <span>30%</span>
+              </div>
+            </div>
+          )}
 
-              {quote && (
-                <div className="space-y-10">
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/60">Adesão / 1º Mês</p>
-                    <AnimatePresence mode="wait">
-                      <motion.div 
-                        key={quote.total1m}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="text-5xl font-black text-white tracking-tighter tabular-nums"
-                      >
-                        {fmtBRL(quote.total1m)}
-                      </motion.div>
-                    </AnimatePresence>
+
+          <div className="grid sm:grid-cols-2 gap-2">
+            {CANAIS_DEF.map(c => {
+              const qty = channels[c.id] ?? 0;
+              const extra = Math.max(0, qty - c.included);
+              return (
+                <div key={c.id} className="border rounded-lg p-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium">{c.emoji} {c.label}</span>
+                    <span className="text-muted-foreground">{c.included ? `${c.included} incl.` : 'extra'} · {fmtBRL(c.unit)}</span>
                   </div>
-
-                  <div className="pt-8 border-t border-white/10 space-y-2">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/60">Recorrência Mensal</p>
-                    <AnimatePresence mode="wait">
-                      <motion.div 
-                        key={quote.totalRec}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="text-3xl font-bold text-white/90 tracking-tight tabular-nums"
-                      >
-                        {fmtBRL(quote.totalRec)}
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-
-                  <div className="pt-4">
-                    {mode === 'customer' ? (
-                      <Button 
-                        onClick={() => onCheckout?.(config)} 
-                        className="w-full bg-white text-primary hover:bg-slate-100 h-16 text-xl font-black rounded-xl transition-all shadow-xl group"
-                      >
-                        ASSINAR AGORA
-                        <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                      </Button>
-                    ) : (
-                      <div className="space-y-3">
-                        <Button 
-                          onClick={() => copy(checkoutUrl, 'Checkout copiado')} 
-                          className="w-full bg-white text-primary hover:bg-slate-100 h-14 text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg"
-                        >
-                          <Link2 className="mr-2 h-4 w-4" /> COPIAR LINK CHECKOUT
-                        </Button>
-                        <Button 
-                          onClick={() => copy(proposalText, 'Proposta copiada')} 
-                          variant="outline"
-                          className="w-full bg-transparent text-white border-white/20 hover:bg-white/10 h-14 text-xs font-black uppercase tracking-widest rounded-xl transition-all"
-                        >
-                          <FileText className="mr-2 h-4 w-4" /> GERAR PROPOSTA TEXTO
-                        </Button>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))} className="w-6 h-6 border rounded hover:bg-muted">−</button>
+                    <Input type="number" value={qty} onChange={e => setChannels(s => ({ ...s, [c.id]: Math.max(0, parseInt(e.target.value) || 0) }))}
+                      className="w-12 h-7 text-center text-xs" />
+                    <button onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))} className="w-6 h-6 border rounded hover:bg-muted">+</button>
+                    {extra > 0 && (
+                      <div className="ml-auto text-right">
+                        {channelsDiscount > 0 && <div className="text-[10px] text-muted-foreground line-through decoration-destructive/50">{fmtBRL(extra * c.unit)}</div>}
+                        <div className="text-xs font-medium">{fmtBRL(round2(extra * c.unit * (1 - channelsDiscount / 100)))}</div>
                       </div>
                     )}
                   </div>
                 </div>
-              )}
-            </div>
+              );
+            })}
           </div>
+        </div>
 
-          {/* Breakdown Card */}
-          <div className="bg-white rounded-2xl border border-border shadow-sm p-8 space-y-8">
-            <div className="flex items-center gap-3 pb-4 border-b">
-              <Layers className="h-5 w-5 text-primary" />
-              <h4 className="text-xs font-black uppercase tracking-[0.2em] text-primary">Composição do Investimento</h4>
+        {/* TEL */}
+        <div className="card-glass rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold">📞 Telefonia (WhatsApp)</div>
+              <div className="text-xs text-muted-foreground">R$ 100,00/mês · sem desconto</div>
             </div>
+            <Switch checked={telefonia} onCheckedChange={setTelefonia} />
+          </div>
+        </div>
+      </div>
 
-            {quote && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center group">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Base {quote.planSlug}</span>
-                  <span className="text-sm font-black text-primary">{fmtBRL(quote.base1m)}</span>
-                </div>
-
-                {quote.channelLines.length > 0 && (
-                  <div className="space-y-4 pt-4 border-t border-dashed">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-4">Adicionais Multicanal</p>
-                    {quote.channelLines.map(l => (
-                      <div key={l.id} className="flex justify-between items-center group animate-in fade-in slide-in-from-right-2">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary/30" />
-                          {l.label} ({l.qty}x)
-                        </span>
-                        <span className="text-xs font-black text-primary">{fmtBRL(l.amount)}</span>
-                      </div>
-                    ))}
+      {/* SUMMARY */}
+      <div className="space-y-4">
+        <div className="card-glass rounded-xl p-4 sticky top-4">
+          <div className="text-xs font-semibold text-muted-foreground mb-2">RESUMO</div>
+          {quote && (
+            <>
+              <Badge variant="outline" className="mb-2">{quote.planLabel}</Badge>
+              <div className="space-y-1 text-sm border-y py-2 my-2">
+                <div className="flex justify-between"><span>Plano</span><span>{fmtBRL(quote.base1m)}</span></div>
+                {quote.channelLines.map(l => (
+                  <div key={l.id} className="flex justify-between text-xs text-muted-foreground">
+                    <span>{l.emoji} {l.label} ×{l.qty} {quote.channelsDiscountPercent > 0 && <span className="text-[10px] text-accent">(-{quote.channelsDiscountPercent}%)</span>}</span>
+                    <span>{fmtBRL(l.amount)}</span>
                   </div>
-                )}
-
-                {quote.telCost > 0 && (
-                  <div className="flex justify-between items-center pt-4 border-t border-dashed group">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/30" />
-                      Telefonia WhatsApp
-                    </span>
-                    <span className="text-xs font-black text-primary">{fmtBRL(quote.telCost)}</span>
-                  </div>
-                )}
-
-                {quote.protagonista && (
-                  <div className="p-5 rounded-xl bg-primary/5 border border-primary/20 flex gap-4">
-                    <Zap className="h-5 w-5 text-primary shrink-0" />
-                    <div>
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Oferta Protagonista</p>
-                      <p className="text-[10px] text-primary/70 font-bold uppercase leading-relaxed italic">Valor promocional vitalício garantido.</p>
-                    </div>
-                  </div>
-                )}
+                ))}
+                {quote.telCost > 0 && <div className="flex justify-between text-xs text-muted-foreground"><span>📞 Telefonia</span><span>{fmtBRL(quote.telCost)}</span></div>}
               </div>
-            )}
+              <div className="space-y-1">
+                <AnimatePresence mode="wait">
+                  <motion.div 
+                    key={`total1m-${quote.total1m}`}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex justify-between items-baseline"
+                  >
+                    <span className="text-xs text-muted-foreground">1º Mês</span>
+                    <span className="text-xl font-bold text-accent">{fmtBRL(quote.total1m)}</span>
+                  </motion.div>
+                </AnimatePresence>
+                <AnimatePresence mode="wait">
+                  <motion.div 
+                    key={`totalRec-${quote.totalRec}`}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex justify-between items-baseline"
+                  >
+                    <span className="text-xs text-muted-foreground">Recorrente</span>
+                    <span className="text-base font-semibold text-primary">{fmtBRL(quote.totalRec)}</span>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+              {quote.protagonista && <div className="text-xs p-2 rounded bg-green-500/10 text-green-700 mt-2">✅ Cliente paga {fmtBRL(quote.total1m)} para sempre</div>}
+            </>
+          )}
 
-            <div className="pt-6 border-t flex flex-col items-center gap-4">
-               <div className="flex gap-4 opacity-40 grayscale hover:grayscale-0 transition-all cursor-default">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6 w-auto" />
-                  <img src="https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png" alt="Pix" className="h-5 w-auto" />
-                  <div className="h-5 w-12 bg-slate-200 rounded flex flex-col justify-center items-center gap-[1px]">
-                    <div className="flex gap-[1px]">{[1,2,3,4,5,6].map(i=><div key={i} className="w-[1px] h-2 bg-slate-400"/>)}</div>
-                    <div className="text-[4px] font-black text-slate-500 leading-none">BOLETO</div>
-                  </div>
-               </div>
-               <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Tecnologia Certificada Bivvo</p>
+          {mode === 'affiliate' && affiliateSlug && (
+            <div className="mt-4 space-y-2">
+              <Button onClick={() => copy(checkoutUrl, 'Link copiado')} className="w-full" size="sm">
+                <Link2 className="h-4 w-4 mr-2" />Copiar link checkout
+              </Button>
+              <Button onClick={() => copy(proposalText, 'Proposta copiada')} variant="outline" className="w-full" size="sm">
+                <FileText className="h-4 w-4 mr-2" />Copiar proposta
+              </Button>
+              <textarea readOnly value={proposalText} className="w-full mt-2 p-2 text-[11px] rounded border bg-muted/30 h-40 font-mono" />
             </div>
-          </div>
+          )}
 
-          <button className="w-full flex items-center justify-center gap-3 p-6 rounded-2xl border border-dashed border-border hover:bg-slate-50 transition-all group">
-            <HelpCircle className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-            <span className="text-xs font-black text-muted-foreground uppercase tracking-widest group-hover:text-primary transition-colors">Solicitar Suporte Comercial</span>
-          </button>
-        </aside>
+          {mode === 'customer' && (
+            <div className="mt-4">
+              <Button onClick={() => onCheckout?.(config)} className="w-full bg-accent hover:bg-accent/90 text-white py-6 text-lg font-bold shadow-lg shadow-accent/20">
+                Assinar agora
+              </Button>
+              <div className="mt-6 flex items-center justify-center gap-8 grayscale opacity-70">
+                <svg viewBox="0 0 24 24" className="h-4 w-auto fill-current" aria-label="Visa">
+                  <path d="M15.191 14.394h-1.91l1.192-7.394h1.91L15.191 14.394zM21.053 7h-1.848c-.571 0-1 .329-1.246.912l-3.513 8.384h2.006l.399-1.106h2.453l.231 1.106h1.766L21.053 7zm-3.708 6.586l1.049-2.903.601 2.903h-1.65zM8.953 7l-1.82 5.034L6.34 7H4.218L6.444 14.394h1.933L10.873 7H8.953zm-6.191 0L1.442 7.15l-.014.066c1.192.304 2.279.792 3.193 1.45l.449-2.731H1.2c-.3 0-.54.2-.64.51L0 8.847l.019.014c.502-.256 1.051-.387 1.62-.387 1.408 0 2.41 1.066 2.41 2.71 0 1.874-1.258 3.21-2.915 3.21-1.077 0-1.854-.51-2.316-1.106l-.019.014L.43 14.394h1.868l.271-1.659c.28.31.649.526 1.065.626l.014-.066c-.632-.153-1.084-.632-1.084-1.293 0-.749.566-1.352 1.341-1.352.792 0 1.416.591 1.416 1.352 0 .661-.43 1.139-1.051 1.293l.014.066c.416-.1.785-.316 1.065-.626l.354 1.659h1.868L6.417 7H2.762z"/>
+                </svg>
+                <svg viewBox="0 0 24 24" className="h-7 w-auto" aria-label="Mastercard">
+                  <path d="M15.15 12c0-1.92-.93-3.61-2.35-4.66C11.38 6.29 9.79 5.75 8.07 5.75c-3.45 0-6.25 2.8-6.25 6.25s2.8 6.25 6.25 6.25c1.72 0 3.31-.54 4.73-1.59 1.42-1.05 2.35-2.74 2.35-4.66z" fill="#EB001B"/>
+                  <path d="M22.18 12c0 3.45-2.8 6.25-6.25 6.25-1.72 0-3.31-.54-4.73-1.59 1.42-1.05 2.35-2.74 2.35-4.66s-.93-3.61-2.35-4.66c-1.42-1.05-3.01-1.59-4.73-1.59 3.45 0 6.25 2.8 6.25 6.25z" fill="#F79E1B"/>
+                  <path d="M11.2 13.59c.51-.55.82-1.28.82-2.09s-.31-1.54-.82-2.09c-.51.55-.82 1.28-.82 2.09s.31 1.54.82 2.09z" fill="#FF5F00"/>
+                </svg>
+                <svg viewBox="0 0 512 512" className="h-6 w-auto" aria-label="Pix">
+                  <path d="M129.5 0h253c71.5 0 129.5 58 129.5 129.5v253c0 71.5-58 129.5-129.5 129.5h-253C58 512 0 454 0 382.5v-253C0 58 58 0 129.5 0z" fill="#32bcad"/>
+                  <path d="M328.4 121c-40.4 0-73.4 33-73.4 73.4 0 40.4 33 73.4 73.4 73.4 40.4 0 73.4-33 73.4-73.4 0-40.4-33-73.4-73.4-73.4zm0 106.3c-18.1 0-32.9-14.8-32.9-32.9 0-18.1 14.8-32.9 32.9-32.9 18.1 0 32.9 14.8 32.9 32.9 0 18.1-14.8 32.9-32.9 32.9z" fill="#fff"/>
+                  <path d="M183.6 121c-40.4 0-73.4 33-73.4 73.4 0 40.4 33 73.4 73.4 73.4 40.4 0 73.4-33 73.4-73.4 0-40.4-33-73.4-73.4-73.4zm0 106.3c-18.1 0-32.9-14.8-32.9-32.9 0-18.1 14.8-32.9 32.9-32.9 18.1 0 32.9 14.8 32.9 32.9 0 18.1-14.8 32.9-32.9 32.9z" fill="#fff"/>
+                  <path d="M256 226.5c-40.4 0-73.4 33-73.4 73.4 0 40.4 33 73.4 73.4 73.4 40.4 0 73.4-33 73.4-73.4 0-40.4-33-73.4-73.4-73.4zm0 106.3c-18.1 0-32.9-14.8-32.9-32.9 0-18.1 14.8-32.9 32.9-32.9 18.1 0 32.9 14.8 32.9 32.9 0 18.1-14.8 32.9-32.9 32.9z" fill="#fff"/>
+                </svg>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
+function round2(n: number) { return Math.round(n * 100) / 100; }

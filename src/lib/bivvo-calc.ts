@@ -1,32 +1,10 @@
-// Shared Bivvo pricing calculator.
-import { supabase } from '@/integrations/supabase/client';
+// Shared Bivvo pricing calculator. KEEP IN SYNC with edge functions.
 
-export let PLANS: Record<string, { name: string; users: number; promo: number; full: number }> = {
+export const PLANS = {
   standard: { name: 'STANDARD', users: 3, promo: 169.90, full: 197.90 },
   silver:   { name: 'SILVER',   users: 6, promo: 287.90, full: 389.90 },
   pro:      { name: 'PRO',      users: 12, promo: 429.90, full: 527.90 },
-};
-
-export async function loadPlansFromDB() {
-  try {
-    const { data } = await supabase.from('plans').select('*').order('sort_order');
-    if (data && data.length > 0) {
-      const dbPlans: any = {};
-      data.forEach(p => {
-        dbPlans[p.slug] = {
-          name: p.name,
-          users: p.slug === 'standard' ? 3 : p.slug === 'silver' ? 6 : p.slug === 'pro' ? 12 : 0, // Fallback users
-          promo: Number(p.price),
-          full: Number(p.price_recurring || p.price)
-        };
-      });
-      // Try to determine users from features if possible, or keep hardcoded defaults for standard slugs
-      PLANS = dbPlans;
-    }
-  } catch (e) {
-    console.error('Failed to load plans from DB:', e);
-  }
-}
+} as const;
 
 export const EXTRA_USER_PRICE = 35;
 export const TELEFONIA_PRICE = 100;

@@ -1,20 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
-import { encodeBivvoConfig, loadPlansFromDB, type BivvoConfig } from '@/lib/bivvo-calc';
+import { encodeBivvoConfig, type BivvoConfig } from '@/lib/bivvo-calc';
 
 const Index = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [isLoaded, setIsLoaded] = useState(false);
   const aff = searchParams.get('aff');
-
-  useEffect(() => {
-    loadPlansFromDB().then(() => setIsLoaded(true));
-  }, []);
 
   useEffect(() => {
     if (aff) {
@@ -59,16 +53,10 @@ const Index = () => {
       <section id="pricing" className="relative py-12 px-4 pb-24">
         <div className="max-w-6xl mx-auto">
           <div className="bg-background/40 backdrop-blur-xl border border-border/50 rounded-[2.5rem] p-4 md:p-8 shadow-2xl shadow-accent/5">
-            {isLoaded ? (
-              <BivvoCalculator 
-                mode="customer" 
-                onCheckout={handleCheckout}
-              />
-            ) : (
-              <div className="min-h-[400px] flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-accent" />
-              </div>
-            )}
+            <BivvoCalculator 
+              mode="customer" 
+              onCheckout={handleCheckout}
+            />
           </div>
         </div>
       </section>

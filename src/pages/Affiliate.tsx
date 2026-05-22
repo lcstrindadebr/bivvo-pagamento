@@ -8,13 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { LogOut, Loader2, Calculator, ListChecks, DollarSign, User, XCircle, Eye, MousePointerClick, Share2, Copy, CheckCircle2, TrendingUp } from 'lucide-react';
+import { LogOut, Loader2, Calculator, ListChecks, DollarSign, User, XCircle, Eye, MousePointerClick, Share2, Copy, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
 import { CardMarketingLink, CardMarketingTools } from '@/components/affiliate/MarketingTools';
 import { formatCurrency } from '@/lib/validators';
-import { loadPlansFromDB } from '@/lib/bivvo-calc';
-import { cn } from '@/lib/utils';
 
 interface Affiliate {
   id: string; name: string; email: string; whatsapp: string | null; document: string | null;
@@ -35,12 +33,7 @@ export default function Affiliate() {
   const [profile, setProfile] = useState({ name: '', whatsapp: '', document: '', pix_key: '', pix_key_type: 'CPF' });
   const [cancellingSale, setCancellingSale] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
-  const [isDBLoaded, setIsDBLoaded] = useState(false);
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
-
-  useEffect(() => {
-    loadPlansFromDB().then(() => setIsDBLoaded(true));
-  }, []);
 
   const call = useCallback(async (action: string, opts: { method?: 'GET'|'POST'; body?: unknown } = {}) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -143,25 +136,39 @@ export default function Affiliate() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-          {[
-            { label: 'Assinaturas Ativas', val: me.stats?.activeSubscriptions ?? 0, color: 'text-primary', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-            { label: 'Cliques Totais', val: (me.stats as any)?.totalClicks ?? 0, color: 'text-primary', icon: <MousePointerClick className="h-3.5 w-3.5" /> },
-            { label: 'Taxa Conversão', val: `${(me.stats as any)?.conversionRate ?? 0}%`, color: 'text-primary', icon: <TrendingUp className="h-3.5 w-3.5" /> },
-            { label: 'Prev. Próx Mês', val: formatCurrency(nextMonthEstimate), color: 'text-primary', icon: <DollarSign className="h-3.5 w-3.5" /> },
-            { label: 'Saldo Disponível', val: formatCurrency(totalAvailable), color: 'text-green-600', icon: <DollarSign className="h-3.5 w-3.5" /> },
-            { label: 'Em Análise', val: formatCurrency(totalHeld), color: 'text-amber-600', icon: <DollarSign className="h-3.5 w-3.5" /> },
-            { label: 'Total Pago', val: formatCurrency(totalPaid), color: 'text-muted-foreground', icon: <DollarSign className="h-3.5 w-3.5" /> },
-            { label: 'Geral Acumulado', val: formatCurrency(totalGen), color: 'text-primary', icon: <DollarSign className="h-3.5 w-3.5" /> },
-          ].map((s, i) => (
-            <div key={i} className="bg-card rounded-xl p-5 border border-border shadow-sm flex flex-col justify-between group hover:border-primary transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">{s.label}</span>
-                <span className={`${s.color} opacity-40 group-hover:opacity-100 transition-opacity`}>{s.icon}</span>
-              </div>
-              <div className={cn("text-xl font-bold tracking-tight", s.color)}>{s.val}</div>
-            </div>
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Assinaturas Ativas</div>
+            <div className="text-xl font-bold text-accent">{me.stats?.activeSubscriptions ?? 0}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Cliques</div>
+            <div className="text-xl font-bold text-purple-500">{(me.stats as any)?.totalClicks ?? 0}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Conversão</div>
+            <div className="text-xl font-bold text-pink-500">{(me.stats as any)?.conversionRate ?? 0}%</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">A Receber (Mês)</div>
+            <div className="text-xl font-bold text-blue-500">{formatCurrency(nextMonthEstimate)}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Disponível</div>
+            <div className="text-xl font-bold text-green-600">{formatCurrency(totalAvailable)}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Retido (7 dias)</div>
+            <div className="text-xl font-bold text-amber-600">{formatCurrency(totalHeld)}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Já Pagos</div>
+            <div className="text-xl font-bold text-slate-400">{formatCurrency(totalPaid)}</div>
+          </div>
+          <div className="card-glass rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Total Gerado</div>
+            <div className="text-xl font-bold">{formatCurrency(totalGen)}</div>
+          </div>
         </div>
 
         <Tabs defaultValue="calc">
@@ -174,13 +181,7 @@ export default function Affiliate() {
           </TabsList>
 
           <TabsContent value="calc" className="mt-4">
-            {isDBLoaded ? (
-              <BivvoCalculator affiliateSlug={me.slug} />
-            ) : (
-              <div className="min-h-[400px] flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-accent" />
-              </div>
-            )}
+            <BivvoCalculator affiliateSlug={me.slug} />
           </TabsContent>
 
           <TabsContent value="marketing" className="mt-4">
