@@ -375,54 +375,54 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               )}
 
               {/* DETAILS LIST */}
-              <div className="space-y-2 pt-2">
-                <div className="flex justify-between text-[11px] font-medium border-b border-border/40 pb-2">
-                  <span className="text-muted-foreground">Plano Base</span>
-                  <span>{fmtBRL(quote.base1m)}</span>
+              <div className="space-y-3 pt-2">
+                <div className="flex justify-between text-[11px] font-medium border-b border-border/30 pb-2">
+                  <span className="text-muted-foreground font-normal">Plano Base</span>
+                  <span className="text-foreground">{fmtBRL(quote.base1m)}</span>
                 </div>
                 {quote.channelLines.length > 0 && (
-                  <div className="space-y-1.5 py-1">
+                  <div className="space-y-2 py-1">
                     {quote.channelLines.map(l => (
                       <div key={l.id} className="flex justify-between text-[10px]">
-                        <span className="text-muted-foreground flex items-center gap-2">
+                        <span className="text-muted-foreground font-normal flex items-center gap-2">
                           <img src={l.logo} alt={l.label} className="w-3.5 h-3.5 object-contain" /> {l.label} ({l.qty})
                           {quote.channelsDiscountPercent > 0 && (
-                            <span className="bg-accent/10 text-accent px-1 rounded text-[8px]">-{quote.channelsDiscountPercent}%</span>
+                            <span className="bg-primary/10 text-primary px-1.5 rounded-full text-[8px]">-{quote.channelsDiscountPercent}%</span>
                           )}
                         </span>
-                        <span className="font-medium">{fmtBRL(l.amount)}</span>
+                        <span className="font-medium text-foreground">{fmtBRL(l.amount)}</span>
                       </div>
                     ))}
                   </div>
                 )}
                 {quote.telCost > 0 && (
-                  <div className="flex justify-between text-[10px] pt-1 border-t border-border/40">
-                    <span className="text-muted-foreground flex items-center gap-1.5">📞 Telefonia</span>
-                    <span className="font-medium">{fmtBRL(quote.telCost)}</span>
+                  <div className="flex justify-between text-[10px] pt-2 border-t border-border/30">
+                    <span className="text-muted-foreground font-normal flex items-center gap-1.5">📞 Telefonia</span>
+                    <span className="font-medium text-foreground">{fmtBRL(quote.telCost)}</span>
                   </div>
                 )}
               </div>
 
               {/* ACTIONS */}
-              <div className="space-y-3 pt-4">
+              <div className="space-y-3 pt-5">
                 {mode === 'customer' ? (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <Button 
                       onClick={() => onCheckout?.(config)} 
-                      className="w-full bg-accent hover:bg-accent/90 text-white py-8 text-xl font-black rounded-2xl shadow-xl shadow-accent/20 transition-all active:scale-[0.98]"
+                      className="w-full bg-primary hover:bg-primary/90 text-white py-8 text-xl font-medium rounded-lg transition-all duration-200 active:scale-[0.98]"
                     >
                       Assinar Agora
                     </Button>
                     
                     {/* Payment Icons */}
-                    <div className="flex items-center justify-center gap-6 opacity-90 pb-2">
+                    <div className="flex items-center justify-center gap-6 opacity-70 pb-2 grayscale">
                       <svg viewBox="0 0 48 48" className="h-4 w-auto" aria-label="Visa">
-                        <path fill="#1A1F71" d="M35.33,12h-3.33L25.33,28.67l-3.33-16.67H18l-5.33,16.67H16l1.33-4.67h6.67l1.33,4.67H32L35.33,12z M20,20.67l2-7.33l2,7.33H20z M3.33,12L0,36h3.33l3.33-24H3.33z M48,12h-3.33l-3.33,12l-3.33-12H34.67L40,36h3.33L48,12z"/>
-                        <path fill="#F79E1B" d="M11.33,12H8L2.67,36H6L11.33,12z"/>
+                        <path fill="currentColor" d="M35.33,12h-3.33L25.33,28.67l-3.33-16.67H18l-5.33,16.67H16l1.33-4.67h6.67l1.33,4.67H32L35.33,12z M20,20.67l2-7.33l2,7.33H20z M3.33,12L0,36h3.33l3.33-24H3.33z M48,12h-3.33l-3.33,12l-3.33-12H34.67L40,36h3.33L48,12z"/>
+                        <path fill="currentColor" d="M11.33,12H8L2.67,36H6L11.33,12z"/>
                       </svg>
                       <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-7 w-auto object-contain" />
                       <img src="https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png" alt="Pix" className="h-6 w-auto object-contain" />
-                      <div className="flex flex-col items-center gap-0.5 border border-border/60 rounded px-1.5 py-0.5 bg-white shadow-sm">
+                      <div className="flex flex-col items-center gap-0.5 border border-border/40 rounded px-1.5 py-0.5 bg-white">
                         <div className="flex gap-0.5">
                           {[1,1,1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
                           {[1,1,1].map((_,i)=><div key={i} className="w-[2px] h-3 bg-black"/>)}
@@ -436,7 +436,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   <div className="space-y-3">
                     <Button 
                       onClick={() => copy(checkoutUrl, 'Link copiado')} 
-                      className="w-full rounded-xl h-11 font-bold" 
+                      className="w-full rounded-lg h-11 font-medium bg-primary hover:bg-primary/90" 
                       size="sm"
                     >
                       <Link2 className="h-4 w-4 mr-2" />Copiar Link Checkout
@@ -444,7 +444,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                     <Button 
                       onClick={() => copy(proposalText, 'Proposta copiada')} 
                       variant="outline" 
-                      className="w-full rounded-xl h-11 font-bold border-2 hover:bg-accent/5 hover:text-accent" 
+                      className="w-full rounded-lg h-11 font-medium border border-border/30 hover:bg-primary/5 hover:text-primary transition-all duration-200" 
                       size="sm"
                     >
                       <FileText className="h-4 w-4 mr-2" />Copiar Proposta
@@ -452,11 +452,12 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                     <textarea 
                       readOnly 
                       value={proposalText} 
-                      className="w-full mt-2 p-3 text-[10px] rounded-xl border border-border/60 bg-muted/20 h-32 font-mono leading-relaxed" 
+                      className="w-full mt-2 p-3 text-[10px] rounded-lg border border-border/30 bg-muted/20 h-32 font-mono leading-relaxed focus:outline-none" 
                     />
                   </div>
                 )}
               </div>
+            </div>
             </div>
           )}
         </div>
