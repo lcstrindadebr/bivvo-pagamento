@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Link2, FileText, Info, Users, Smartphone, Plus, Minus, CheckCircle2, Loader2 } from 'lucide-react';
+import { Copy, Link2, FileText, Info, Users, Smartphone, Plus, Minus, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -51,7 +51,6 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
     } else if (users > 6 && users <= 12 && plan !== 'pro') {
       setPlan('pro');
     } else if (users > 12 && plan !== 'pro') {
-      // If users exceed pro, we keep it as pro (the quote function handles "Plano Personalizado")
       setPlan('pro');
     }
   }, [users, isLoaded]);
@@ -204,11 +203,11 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                     key={users}
                     initial={{ scale: 1.2, color: '#e94560' }}
                     animate={{ scale: 1, color: 'currentColor' }}
-                    className="text-5xl font-black tabular-nums tracking-tighter"
+                    className="text-5xl font-bold tabular-nums tracking-tighter"
                   >
                     {users}
                   </motion.span>
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mt-1">Usuários</span>
+                  <span className="text-xs text-muted-foreground font-bold uppercase tracking-[0.2em] mt-1">Usuários</span>
                 </div>
                 <Button 
                   variant="outline" 
@@ -221,7 +220,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               </div>
               
               {isLoaded && users > PLANS[plan].users && (
-                <div className="text-[10px] text-center p-2 rounded-lg bg-accent/5 text-accent font-semibold animate-in fade-in zoom-in-95">
+                <div className="text-xs text-center p-2 rounded-lg bg-accent/5 text-accent font-semibold animate-in fade-in zoom-in-95">
                   + {users - PLANS[plan].users} excedentes → {fmtBRL((users - PLANS[plan].users) * 35)}/mês
                 </div>
               )}
@@ -232,7 +231,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Smartphone className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-bold">Telefonia WhatsApp</span>
+                  <span className="text-sm font-medium">Telefonia WhatsApp</span>
                 </div>
                 <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-accent" />
               </div>
@@ -240,8 +239,8 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 Adicione recursos de telefonia diretamente no seu WhatsApp para uma comunicação profissional.
               </p>
               <div className="flex items-center justify-between pt-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
-                <span className="text-sm font-bold">{fmtBRL(100)}<span className="text-[10px] text-muted-foreground font-normal">/mês</span></span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
+                <span className="text-sm font-bold">{fmtBRL(100)}<span className="text-xs text-muted-foreground font-normal ml-1">/mês</span></span>
               </div>
             </div>
           </div>
@@ -249,7 +248,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
 
         {/* SECTION: CHANNELS */}
         <section className="space-y-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
+          <h3 className="text-xl font-bold flex items-center gap-2">
             <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">3</span>
             Canais de Atendimento
           </h3>
@@ -273,14 +272,13 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {CANAIS_DEF.map(c => {
                 const qty = channels[c.id] ?? 0;
-                const extra = Math.max(0, qty - c.included);
                 return (
                   <div key={c.id} className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-background/30 hover:bg-background/50 transition-colors">
                     <div className="flex flex-col">
                       <span className="text-xs font-bold flex items-center gap-2">
                         <img src={c.logo} alt={c.label} className="w-5 h-5 object-contain" /> {c.label}
                       </span>
-                      <span className="text-[10px] text-muted-foreground mt-0.5">
+                      <span className="text-xs text-muted-foreground mt-0.5">
                         {c.included} incl. · {fmtBRL(c.unit)}/extra
                       </span>
                     </div>
@@ -291,7 +289,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                       >
                         <Minus className="h-3 w-3" />
                       </button>
-                      <span className="w-6 text-center text-xs font-black tabular-nums">{qty}</span>
+                      <span className="w-6 text-center text-xs font-bold tabular-nums">{qty}</span>
                       <button 
                         onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))}
                         className="w-6 h-6 flex items-center justify-center hover:text-accent transition-colors"
@@ -308,12 +306,12 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
 
         {mode === 'affiliate' && (
           <section className="space-y-4 p-5 rounded-2xl border-2 border-dashed border-border/60">
-            <h3 className="text-sm font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-widest">
+            <h3 className="text-xs font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-widest">
               Modo Afiliado
             </h3>
             <div className="flex items-center justify-between p-4 rounded-xl bg-accent/5 border border-accent/10">
               <div className="space-y-0.5">
-                <div className="text-sm font-bold">Preço Protagonista</div>
+                <div className="text-sm font-medium">Preço Protagonista</div>
                 <div className="text-xs text-muted-foreground">Valor promocional torna-se a recorrência fixa.</div>
               </div>
               <Switch checked={protagonista} onCheckedChange={setProtagonista} className="data-[state=checked]:bg-accent" />
@@ -329,8 +327,8 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
           <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
           
           <div className="flex items-center justify-between relative z-10">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Resumo do Investimento</span>
-            <Badge variant="outline" className="text-[10px] font-bold border-accent/30 text-accent uppercase tracking-wider px-2 py-0">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Resumo</span>
+            <Badge variant="outline" className="text-xs font-bold border-accent/30 text-accent uppercase tracking-wider px-2 py-0">
               {quote?.planLabel}
             </Badge>
           </div>
@@ -341,7 +339,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <div className="space-y-4">
                 <div className="flex justify-between items-end">
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total 1º Mês</span>
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total 1º Mês</span>
                     <span className="text-xs text-muted-foreground font-medium italic">Valor promocional</span>
                   </div>
                   <AnimatePresence mode="wait">
@@ -349,7 +347,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                       key={quote.total1m}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="text-3xl font-black text-accent tabular-nums"
+                      className="text-3xl font-bold text-accent tabular-nums"
                     >
                       {fmtBRL(quote.total1m)}
                     </motion.span>
@@ -357,13 +355,13 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 </div>
 
                 <div className="flex justify-between items-center pt-4 border-t border-border/50">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Recorrência Mensal</span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Recorrência</span>
                   <AnimatePresence mode="wait">
                     <motion.span 
                       key={quote.totalRec}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="text-lg font-bold tabular-nums"
+                      className="text-xl font-bold tabular-nums"
                     >
                       {fmtBRL(quote.totalRec)}
                     </motion.span>
@@ -374,24 +372,24 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               {quote.protagonista && (
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/5 border border-green-500/20 text-green-700">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span className="text-[11px] font-bold leading-tight">Valor fixo de {fmtBRL(quote.total1m)} garantido para sempre!</span>
+                  <span className="text-xs font-bold leading-tight">Valor fixo de {fmtBRL(quote.total1m)} garantido!</span>
                 </div>
               )}
 
               {/* DETAILS LIST */}
               <div className="space-y-2 pt-2">
-                <div className="flex justify-between text-[11px] font-medium border-b border-border/40 pb-2">
+                <div className="flex justify-between text-xs font-medium border-b border-border/40 pb-2">
                   <span className="text-muted-foreground">Plano Base</span>
                   <span>{fmtBRL(quote.base1m)}</span>
                 </div>
                 {quote.channelLines.length > 0 && (
                   <div className="space-y-1.5 py-1">
                     {quote.channelLines.map(l => (
-                      <div key={l.id} className="flex justify-between text-[10px]">
+                      <div key={l.id} className="flex justify-between text-xs">
                         <span className="text-muted-foreground flex items-center gap-2">
                           <img src={l.logo} alt={l.label} className="w-3.5 h-3.5 object-contain" /> {l.label} ({l.qty})
                           {quote.channelsDiscountPercent > 0 && (
-                            <span className="bg-accent/10 text-accent px-1 rounded text-[8px]">-{quote.channelsDiscountPercent}%</span>
+                            <span className="bg-accent/10 text-accent px-1 rounded text-[10px]">-{quote.channelsDiscountPercent}%</span>
                           )}
                         </span>
                         <span className="font-medium">{fmtBRL(l.amount)}</span>
@@ -400,7 +398,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   </div>
                 )}
                 {quote.telCost > 0 && (
-                  <div className="flex justify-between text-[10px] pt-1 border-t border-border/40">
+                  <div className="flex justify-between text-xs pt-1 border-t border-border/40">
                     <span className="text-muted-foreground flex items-center gap-1.5">📞 Telefonia</span>
                     <span className="font-medium">{fmtBRL(quote.telCost)}</span>
                   </div>
@@ -413,8 +411,9 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   <div className="space-y-4">
                     <Button 
                       onClick={() => onCheckout?.(config)} 
-                      className="w-full bg-accent hover:bg-accent/90 text-white py-8 text-xl font-black rounded-2xl shadow-xl shadow-accent/20 transition-all active:scale-[0.98]"
+                      className="w-full h-14 bg-gradient-to-r from-accent to-primary hover:opacity-90 text-white text-lg font-bold rounded-xl shadow-lg shadow-accent/20 transition-all active:scale-[0.98]"
                     >
+                      <Sparkles className="mr-2 h-4 w-4" />
                       Assinar Agora
                     </Button>
                     
@@ -456,7 +455,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                     <textarea 
                       readOnly 
                       value={proposalText} 
-                      className="w-full mt-2 p-3 text-[10px] rounded-xl border border-border/60 bg-muted/20 h-32 font-mono leading-relaxed" 
+                      className="w-full mt-2 p-3 text-xs rounded-xl border border-border/60 bg-muted/20 h-32 font-mono leading-relaxed" 
                     />
                   </div>
                 )}
@@ -468,5 +467,3 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
     </div>
   );
 }
-
-function round2(n: number) { return Math.round(n * 100) / 100; }
