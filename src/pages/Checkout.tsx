@@ -968,7 +968,7 @@ const Checkout = () => {
             <Button
               onClick={handleSubmit}
               disabled={paymentLoading || generatingPayment}
-              className="w-full h-14 text-base font-medium bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-all shadow-lg shadow-accent/30 rounded-xl"
+              className="w-full h-14 text-base font-medium bg-primary hover:opacity-90 transition-all  rounded-xl"
             >
               {paymentLoading || generatingPayment ? (
                 <>
@@ -988,7 +988,7 @@ const Checkout = () => {
               )}
             </Button>
           ) : (
-            <Button onClick={goToNextStep} className="w-full h-14 text-base font-medium bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-all shadow-lg shadow-accent/30 rounded-xl">
+            <Button onClick={goToNextStep} className="w-full h-14 text-base font-medium bg-primary hover:opacity-90 transition-all  rounded-xl">
               Continuar
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
