@@ -442,22 +442,21 @@ const Checkout = () => {
   // Awaiting PIX/Boleto payment
   if (currentStep === 'awaiting_payment') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center px-4">
-        <div className="absolute inset-0 gradient-mesh opacity-50" />
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
         <div className="relative w-full max-w-sm space-y-6">
           {/* Header */}
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto rounded-xl bg-primary/5 flex items-center justify-center">
               {paymentMethod === 'PIX' ? (
-                <QrCode className="h-8 w-8 text-accent" />
+                <QrCode className="h-8 w-8 text-primary" />
               ) : (
-                <Barcode className="h-8 w-8 text-accent" />
+                <Barcode className="h-8 w-8 text-primary" />
               )}
             </div>
-            <h2 className="text-xl font-bold">
+            <h2 className="text-xl font-medium">
               {paymentMethod === 'PIX' ? 'Pague com PIX' : 'Pague com Boleto'}
             </h2>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-sm font-normal">
               {plan.name} - {formatCurrency(plan.price)} {quote && quote.total1m !== quote.totalRec ? `(1º mês, depois ${formatCurrency(quote.totalRec)}/mês)` : '/mês'}
             </p>
           </div>
@@ -481,15 +480,14 @@ const Checkout = () => {
           <div className="space-y-3">
             <Button
               onClick={() => navigate('/')}
-              className="w-full h-12 bg-gradient-to-r from-accent to-primary hover:opacity-90 rounded-xl"
+              className="w-full h-12 bg-primary hover:bg-primary/90 rounded-lg font-medium"
             >
-              <Sparkles className="mr-2 h-4 w-4" />
               Voltar ao início
             </Button>
             <Button
               onClick={handleRetry}
               variant="outline"
-              className="w-full h-12 rounded-xl"
+              className="w-full h-12 rounded-lg border border-border/30 font-medium"
             >
               Escolher outra forma de pagamento
             </Button>
