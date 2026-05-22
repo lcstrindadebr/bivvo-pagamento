@@ -432,30 +432,60 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               )}
 
               {/* DETAILS LIST */}
-              <div className="space-y-2 pt-2">
-                <div className="flex justify-between text-[11px] font-medium border-b border-border/40 pb-2">
-                  <span className="text-muted-foreground">Plano Base</span>
+              <div className="space-y-3 pt-2">
+                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest border-b border-border/40 pb-3">
+                  <span className="text-muted-foreground">Detalhamento</span>
+                  <span className="text-accent">Subtotal</span>
+                </div>
+                
+                <div className="flex justify-between text-[11px] font-bold">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <ShieldCheck className="h-3 w-3" /> Plano Base
+                  </span>
                   <span>{fmtBRL(quote.base1m)}</span>
                 </div>
+
                 {quote.channelLines.length > 0 && (
-                  <div className="space-y-1.5 py-1">
-                    {quote.channelLines.map(l => (
-                      <div key={l.id} className="flex justify-between text-[10px]">
-                        <span className="text-muted-foreground flex items-center gap-1.5">
-                          {l.emoji} {l.label} ({l.qty})
-                          {quote.channelsDiscountPercent > 0 && (
-                            <span className="bg-accent/10 text-accent px-1 rounded text-[8px]">-{quote.channelsDiscountPercent}%</span>
-                          )}
-                        </span>
-                        <span className="font-medium">{fmtBRL(l.amount)}</span>
-                      </div>
-                    ))}
+                  <div className="space-y-2 py-1">
+                    {quote.channelLines.map(l => {
+                      const getIcon = (id: string) => {
+                        switch (id) {
+                          case 'waof':
+                          case 'wano': return <MessageSquare className="h-3 w-3" />;
+                          case 'ig': return <Instagram className="h-3 w-3" />;
+                          case 'fb': return <Facebook className="h-3 w-3" />;
+                          case 'email': return <Mail className="h-3 w-3" />;
+                          case 'olx': return <Tag className="h-3 w-3" />;
+                          case 'tiktok': return <Music2 className="h-3 w-3" />;
+                          case 'ml': return <ShoppingCart className="h-3 w-3" />;
+                          case 'li': return <Linkedin className="h-3 w-3" />;
+                          case 'yt': return <Youtube className="h-3 w-3" />;
+                          case 'woo': return <ShoppingBag className="h-3 w-3" />;
+                          default: return <MessageSquare className="h-3 w-3" />;
+                        }
+                      };
+
+                      return (
+                        <div key={l.id} className="flex justify-between text-[10px] font-medium animate-in fade-in slide-in-from-right-2">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            {getIcon(l.id)} {l.label} ({l.qty}x)
+                            {quote.channelsDiscountPercent > 0 && (
+                              <Badge variant="outline" className="text-[7px] h-3 px-1 border-accent/20 text-accent bg-accent/5">-{quote.channelsDiscountPercent}%</Badge>
+                            )}
+                          </span>
+                          <span>{fmtBRL(l.amount)}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
+                
                 {quote.telCost > 0 && (
-                  <div className="flex justify-between text-[10px] pt-1 border-t border-border/40">
-                    <span className="text-muted-foreground flex items-center gap-1.5">📞 Telefonia</span>
-                    <span className="font-medium">{fmtBRL(quote.telCost)}</span>
+                  <div className="flex justify-between text-[11px] font-bold pt-2 border-t border-border/40">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Smartphone className="h-3 w-3" /> Telefonia
+                    </span>
+                    <span>{fmtBRL(quote.telCost)}</span>
                   </div>
                 )}
               </div>
