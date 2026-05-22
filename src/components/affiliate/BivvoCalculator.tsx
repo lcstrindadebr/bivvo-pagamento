@@ -388,8 +388,8 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   <div className="space-y-1.5 py-1">
                     {quote.channelLines.map(l => (
                       <div key={l.id} className="flex justify-between text-[10px]">
-                        <span className="text-muted-foreground flex items-center gap-1.5">
-                          {l.emoji} {l.label} ({l.qty})
+                        <span className="text-muted-foreground flex items-center gap-2">
+                          <img src={l.logo} alt={l.label} className="w-3.5 h-3.5 object-contain" /> {l.label} ({l.qty})
                           {quote.channelsDiscountPercent > 0 && (
                             <span className="bg-accent/10 text-accent px-1 rounded text-[8px]">-{quote.channelsDiscountPercent}%</span>
                           )}
