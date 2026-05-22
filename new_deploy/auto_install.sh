@@ -228,7 +228,7 @@ case $OPTION in
             *) exit 0 ;;
         esac
         
-        echo -e "${BLUE}Limprocessando limpeza de cache...${NC}"
+        echo -e "${BLUE}Limpando cache do servidor...${NC}"
         # Força o recarregamento do Nginx e garante que o diretório web esteja limpo se necessário
         systemctl reload nginx
         # Se houve troca de domínio ou build, o run_build já cuida disso, 
