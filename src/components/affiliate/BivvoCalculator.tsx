@@ -323,13 +323,10 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
 
       {/* SUMMARY PANEL */}
       <aside className="relative">
-        <div className="card-glass rounded-[2rem] p-6 border-2 border-accent/20 sticky top-24 space-y-6 shadow-2xl shadow-accent/5 overflow-hidden">
-          {/* Decorative background element */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
-          
+        <div className="bg-white rounded-xl p-[1.25rem] md:p-[1.5rem] border border-border/30 sticky top-24 space-y-6 transition-all duration-200">
           <div className="flex items-center justify-between relative z-10">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Resumo do Investimento</span>
-            <Badge variant="outline" className="text-[10px] font-bold border-accent/30 text-accent uppercase tracking-wider px-2 py-0">
+            <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Resumo do Investimento</span>
+            <Badge variant="outline" className="text-[10px] font-medium border-primary/20 text-primary uppercase tracking-wider px-2 py-0.5 rounded-full">
               {quote?.planLabel}
             </Badge>
           </div>
@@ -340,29 +337,29 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <div className="space-y-4">
                 <div className="flex justify-between items-end">
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total 1º Mês</span>
-                    <span className="text-xs text-muted-foreground font-medium italic">Valor promocional</span>
+                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">Total 1º Mês</span>
+                    <span className="text-[10px] text-muted-foreground font-normal italic">Valor promocional</span>
                   </div>
                   <AnimatePresence mode="wait">
                     <motion.span 
                       key={quote.total1m}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="text-3xl font-black text-accent tabular-nums"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-3xl font-medium text-primary tabular-nums"
                     >
                       {fmtBRL(quote.total1m)}
                     </motion.span>
                   </AnimatePresence>
                 </div>
 
-                <div className="flex justify-between items-center pt-4 border-t border-border/50">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Recorrência Mensal</span>
+                <div className="flex justify-between items-center pt-5 border-t border-border/30">
+                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">Recorrência Mensal</span>
                   <AnimatePresence mode="wait">
                     <motion.span 
                       key={quote.totalRec}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="text-lg font-bold tabular-nums"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-lg font-medium tabular-nums text-foreground"
                     >
                       {fmtBRL(quote.totalRec)}
                     </motion.span>
@@ -371,9 +368,9 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               </div>
 
               {quote.protagonista && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/5 border border-green-500/20 text-green-700">
+                <div className="flex items-center gap-2 p-3.5 rounded-lg bg-[hsl(var(--selected-bg))] border border-primary/10 text-primary">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span className="text-[11px] font-bold leading-tight">Valor fixo de {fmtBRL(quote.total1m)} garantido para sempre!</span>
+                  <span className="text-[11px] font-medium leading-tight">Valor fixo de {fmtBRL(quote.total1m)} garantido para sempre!</span>
                 </div>
               )}
 
