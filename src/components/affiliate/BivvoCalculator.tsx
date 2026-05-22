@@ -136,13 +136,8 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                     active 
                     ? 'border-accent bg-accent/5 ring-4 ring-accent/5' 
                     : 'border-border/50 hover:border-accent/30 bg-background/50'
-                  } ${k === 'silver' ? 'pt-7' : ''}`}
+                  }`}
                 >
-                  {k === 'silver' && (
-                    <div className="absolute top-0 left-0 right-0 h-6 bg-accent flex items-center justify-center rounded-t-[14px]">
-                      <span className="text-[10px] text-white font-bold uppercase tracking-wider">Mais Popular</span>
-                    </div>
-                  )}
                   {active && (
                     <div className="absolute top-3 right-3 z-10">
                       <CheckCircle2 className="h-5 w-5 text-accent" />
