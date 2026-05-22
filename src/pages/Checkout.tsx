@@ -645,7 +645,7 @@ const Checkout = () => {
         {currentStep === 'personal' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+              <h1 className="text-2xl font-medium bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
                 Seus dados
               </h1>
               <p className="text-muted-foreground text-sm">
@@ -712,7 +712,7 @@ const Checkout = () => {
         {currentStep === 'address' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold">Endereço de cobrança</h1>
+              <h1 className="text-2xl font-medium">Endereço de cobrança</h1>
               <p className="text-muted-foreground text-sm">
                 Informe o endereço para faturamento
               </p>
@@ -829,7 +829,7 @@ const Checkout = () => {
         {currentStep === 'payment' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold">Pagamento</h1>
+              <h1 className="text-2xl font-medium">Pagamento</h1>
               <p className="text-muted-foreground text-sm">
                 Escolha a forma de pagamento
               </p>
@@ -851,7 +851,7 @@ const Checkout = () => {
                     </p>
                   </div>
                 </div>
-                <span className="text-2xl font-bold text-accent">{formatCurrency(plan.price)}</span>
+                <span className="text-2xl font-medium text-accent">{formatCurrency(plan.price)}</span>
               </div>
             </div>
 
@@ -925,7 +925,7 @@ const Checkout = () => {
                   <QrCode className="h-8 w-8 text-accent" />
                 </div>
                 <div className="space-y-2">
-                  <p className="font-semibold">Pagamento via PIX</p>
+                  <p className="font-medium">Pagamento via PIX</p>
                   <p className="text-sm text-muted-foreground">
                     Após confirmar, você receberá um QR Code para pagamento instantâneo
                   </p>
@@ -940,7 +940,7 @@ const Checkout = () => {
                   <Barcode className="h-8 w-8 text-accent" />
                 </div>
                 <div className="space-y-2">
-                  <p className="font-semibold">Pagamento via Boleto</p>
+                  <p className="font-medium">Pagamento via Boleto</p>
                   <p className="text-sm text-muted-foreground">
                     O boleto será gerado com vencimento em 3 dias úteis
                   </p>
@@ -968,7 +968,7 @@ const Checkout = () => {
             <Button
               onClick={handleSubmit}
               disabled={paymentLoading || generatingPayment}
-              className="w-full h-14 text-base font-semibold bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-all shadow-lg shadow-accent/30 rounded-xl"
+              className="w-full h-14 text-base font-medium bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-all shadow-lg shadow-accent/30 rounded-xl"
             >
               {paymentLoading || generatingPayment ? (
                 <>
@@ -988,7 +988,7 @@ const Checkout = () => {
               )}
             </Button>
           ) : (
-            <Button onClick={goToNextStep} className="w-full h-14 text-base font-semibold bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-all shadow-lg shadow-accent/30 rounded-xl">
+            <Button onClick={goToNextStep} className="w-full h-14 text-base font-medium bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-all shadow-lg shadow-accent/30 rounded-xl">
               Continuar
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

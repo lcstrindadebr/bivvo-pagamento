@@ -133,7 +133,7 @@ export default function Affiliate() {
       <header className="sticky top-0 z-50 glass border-b">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="font-bold">Bivvo</span>
+            <span className="font-medium">Bivvo</span>
             <Badge variant="outline">Afiliado</Badge>
             <span className="text-sm text-muted-foreground hidden sm:inline">{me.name}</span>
           </div>

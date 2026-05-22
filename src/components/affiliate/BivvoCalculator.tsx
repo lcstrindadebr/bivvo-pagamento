@@ -106,7 +106,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         {/* SECTION: PLAN SELECTION */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold flex items-center gap-2">
+            <h3 className="text-lg font-medium flex items-center gap-2">
               <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">1</span>
               Selecione seu Plano Base
             </h3>
@@ -172,7 +172,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
 
         {/* SECTION: CUSTOMIZATION */}
         <section className="space-y-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
+          <h3 className="text-lg font-medium flex items-center gap-2">
             <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">2</span>
             Personalize sua Experiência
           </h3>
@@ -249,7 +249,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
 
         {/* SECTION: CHANNELS */}
         <section className="space-y-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
+          <h3 className="text-lg font-medium flex items-center gap-2">
             <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">3</span>
             Canais de Atendimento
           </h3>
@@ -428,7 +428,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                           {[1,1,1].map((_,i)=><div key={i} className="w-[2px] h-3 bg-black"/>)}
                           {[1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
                         </div>
-                        <span className="text-[7px] font-bold text-black leading-none uppercase">Boleto</span>
+                        <span className="text-[7px] font-medium text-black leading-none uppercase">Boleto</span>
                       </div>
                     </div>
                   </div>
