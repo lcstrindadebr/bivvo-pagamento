@@ -21,6 +21,7 @@ import { AdminSettings } from '@/components/admin/AdminSettings';
 
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import { formatCurrency } from '@/lib/validators';
+import { CANAIS_DEF } from '@/lib/bivvo-calc';
 
 interface Plan {
   id: string;
