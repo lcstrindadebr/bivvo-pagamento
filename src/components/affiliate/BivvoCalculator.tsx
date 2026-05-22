@@ -129,44 +129,59 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
             </TooltipProvider>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {(Object.keys(PLANS) as PlanSlug[]).map(k => {
               const p = PLANS[k];
               const active = plan === k;
+              const isSilver = k === 'silver';
+              
               return (
                 <button
                   key={k}
                   type="button"
                   onClick={() => { setPlan(k); setUsers(p.users); }}
-                  className={`relative flex flex-col p-4 rounded-2xl border-2 text-left transition-all duration-300 ${
+                  className={`relative flex flex-col p-6 rounded-xl border-2 text-left transition-all duration-300 ${
                     active 
-                    ? 'border-accent bg-accent/5 ring-4 ring-accent/5' 
-                    : 'border-border/50 hover:border-accent/30 bg-background/50'
-                  }`}
+                    ? 'border-accent bg-accent/5 ring-4 ring-accent/5 shadow-lg' 
+                    : 'border-border/40 hover:border-accent/30 bg-card/50'
+                  } ${isSilver && !active ? 'ring-2 ring-accent/10 shadow-sm' : ''}`}
                 >
+                  {isSilver && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md z-20">
+                      Mais Popular
+                    </div>
+                  )}
+                  
                   {active && (
-                    <div className="absolute top-3 right-3 z-10">
+                    <div className="absolute top-4 right-4 z-10">
                       <CheckCircle2 className="h-5 w-5 text-accent" />
                     </div>
                   )}
-                  <span className={`text-[10px] uppercase font-bold tracking-wider mb-1 ${active ? 'text-accent' : 'text-muted-foreground'}`}>
+                  
+                  <span className={`text-[10px] uppercase font-black tracking-[0.2em] mb-3 ${active ? 'text-accent' : 'text-muted-foreground'}`}>
                     {p.name}
                   </span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-xl font-black">{fmtBRL(p.promo)}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium">/1º mês</span>
+                  
+                  <div className="flex flex-col mb-4">
+                    <span className="text-3xl font-black tracking-tight">{fmtBRL(p.promo)}</span>
+                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest mt-1">Primeiro Mês</span>
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1.5">
-                    <Users className="h-3 w-3" />
-                    Até {p.users} usuários
+
+                  <div className="space-y-2 pt-4 border-t border-border/40">
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-2">
+                      <Users className="h-3 w-3 text-accent" />
+                      <span className="font-semibold">Até {p.users} usuários</span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-2">
+                      <TrendingUp className="h-3 w-3 text-accent" />
+                      <span className="font-semibold">Recorrência: {fmtBRL(p.full)}</span>
+                    </div>
                   </div>
-                  <div className="text-[10px] font-semibold mt-1">
-                    Recorrência: {fmtBRL(p.full)}
-                  </div>
+
                   {active && (
                     <motion.div 
                       layoutId="plan-active"
-                      className="absolute inset-0 border-2 border-accent rounded-2xl pointer-events-none"
+                      className="absolute inset-0 border-2 border-accent rounded-xl pointer-events-none"
                     />
                   )}
                 </button>
