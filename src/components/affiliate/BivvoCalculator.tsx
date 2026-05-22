@@ -124,47 +124,47 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
             </TooltipProvider>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {(Object.keys(PLANS) as PlanSlug[]).map(k => {
               const p = PLANS[k];
               const active = plan === k;
+              const isPopular = k === 'silver';
+              
               return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => { setPlan(k); setUsers(p.users); }}
-                  className={`relative flex flex-col p-4 rounded-2xl border-2 text-left transition-all duration-300 ${
-                    active 
-                    ? 'border-accent bg-accent/5 ring-4 ring-accent/5' 
-                    : 'border-border/50 hover:border-accent/30 bg-background/50'
-                  }`}
-                >
-                  {active && (
-                    <div className="absolute top-3 right-3 z-10">
-                      <CheckCircle2 className="h-5 w-5 text-accent" />
+                <div key={k} className="relative pt-3">
+                  {isPopular && (
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
+                      <Badge className="bg-primary text-white text-[10px] font-medium px-3 py-0.5 rounded-full border-none shadow-none uppercase tracking-wider">
+                        Mais popular
+                      </Badge>
                     </div>
                   )}
-                  <span className={`text-[10px] uppercase font-bold tracking-wider mb-1 ${active ? 'text-accent' : 'text-muted-foreground'}`}>
-                    {p.name}
-                  </span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-xl font-black">{fmtBRL(p.promo)}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium">/1º mês</span>
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1.5">
-                    <Users className="h-3 w-3" />
-                    Até {p.users} usuários
-                  </div>
-                  <div className="text-[10px] font-semibold mt-1">
-                    Recorrência: {fmtBRL(p.full)}
-                  </div>
-                  {active && (
-                    <motion.div 
-                      layoutId="plan-active"
-                      className="absolute inset-0 border-2 border-accent rounded-2xl pointer-events-none"
-                    />
-                  )}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => { setPlan(k); setUsers(p.users); }}
+                    className={`relative w-full flex flex-col p-[1.25rem] md:p-[1.5rem] rounded-xl border transition-all duration-200 text-left ${
+                      active 
+                      ? 'border-primary border-2 bg-[hsl(var(--selected-bg))]' 
+                      : 'border-border/30 hover:border-primary/50 bg-white'
+                    }`}
+                    style={{ borderWidth: active ? '2px' : '0.5px' }}
+                  >
+                    <span className={`text-[11px] uppercase font-medium tracking-wider mb-2 ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {p.name}
+                    </span>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-2xl font-medium text-foreground">{fmtBRL(p.promo)}</span>
+                      <span className="text-[11px] text-muted-foreground font-normal">/1º mês</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-3 flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5" />
+                      Até {p.users} usuários
+                    </div>
+                    <div className="text-[11px] font-medium mt-2">
+                      Recorrência: {fmtBRL(p.full)}
+                    </div>
+                  </button>
+                </div>
               );
             })}
           </div>
