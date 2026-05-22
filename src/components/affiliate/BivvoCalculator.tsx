@@ -7,7 +7,8 @@ import {
   Link2, FileText, Info, Users, Smartphone, Plus, Minus, 
   CheckCircle2, Loader2, MessageSquare, Instagram, Facebook, 
   Mail, Tag, Music2, ShoppingCart, Linkedin, Youtube, ShoppingBag,
-  Zap, ArrowRight, ShieldCheck, TrendingUp, HelpCircle
+  Zap, ArrowRight, ShieldCheck, TrendingUp, HelpCircle, 
+  ChevronRight, Phone, Globe, Layers, Settings2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
