@@ -108,10 +108,10 @@ run_build() {
     cp -r "$APP_DIR/dist/"* "$WEB_DIR/"
     chown -R www-data:www-data "$WEB_DIR"
     
-    # Recarrega o nginx para garantir que as mudanças sejam servidas
+    # Recarrega o nginx para garantir que as mudanças sejam servidas e limpa cache
     systemctl reload nginx || systemctl restart nginx
     
-    echo -e "${GREEN}✓ Build concluído e publicado. Cache do servidor limpo.${NC}"
+    echo -e "${GREEN}✓ Build concluído. Cache do servidor limpo e Nginx atualizado.${NC}"
 }
 
 update_supabase_auto() {
