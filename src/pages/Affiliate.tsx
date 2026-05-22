@@ -258,7 +258,7 @@ export default function Affiliate() {
           </TabsContent>
 
           <TabsContent value="comm" className="mt-4">
-            <div className="card-glass rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl border border-border/30 overflow-hidden transition-all duration-200">
               <Table>
                 <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Venda</TableHead><TableHead>%</TableHead><TableHead>Comissão</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Comprovante</TableHead></TableRow></TableHeader>
                 <TableBody>
