@@ -42,8 +42,8 @@ const BoletoPayment = ({ boletoUrl, barCode, dueDate, loading }: BoletoPaymentPr
 
   if (loading) {
     return (
-      <div className="card-glass rounded-xl p-8 text-center space-y-4">
-        <div className="w-16 h-16 mx-auto rounded-xl bg-accent/10 flex items-center justify-center">
+      <div className="card-glass rounded-2xl p-8 text-center space-y-4">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-accent" />
         </div>
         <p className="text-muted-foreground">Gerando boleto...</p>
@@ -53,8 +53,8 @@ const BoletoPayment = ({ boletoUrl, barCode, dueDate, loading }: BoletoPaymentPr
 
   if (!boletoUrl && !barCode) {
     return (
-      <div className="card-glass rounded-xl p-8 text-center space-y-4">
-        <div className="w-16 h-16 mx-auto rounded-xl bg-accent/10 flex items-center justify-center">
+      <div className="card-glass rounded-2xl p-8 text-center space-y-4">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
           <Barcode className="h-8 w-8 text-accent" />
         </div>
         <div className="space-y-2">
@@ -79,8 +79,8 @@ const BoletoPayment = ({ boletoUrl, barCode, dueDate, loading }: BoletoPaymentPr
         </div>
       )}
 
-      <div className="card-glass rounded-xl p-6 text-center space-y-4">
-        <div className="w-16 h-16 mx-auto rounded-xl bg-success/10 flex items-center justify-center">
+      <div className="card-glass rounded-2xl p-6 text-center space-y-4">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-success/10 flex items-center justify-center">
           <CheckCircle2 className="h-8 w-8 text-success" />
         </div>
 

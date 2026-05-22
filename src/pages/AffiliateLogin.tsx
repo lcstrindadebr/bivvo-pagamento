@@ -48,7 +48,7 @@ export default function AffiliateLogin() {
           <p className="text-white/70 text-lg leading-relaxed mb-8">
             Acesse seu dashboard de parceiro para acompanhar conversões, gerenciar links e otimizar suas campanhas em tempo real.
           </p>
-          <div className="flex items-center gap-4 py-4 px-6 bg-white/5 border border-white/10 rounded-xl backdrop-blur-sm">
+          <div className="flex items-center gap-4 py-4 px-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-sm">
             <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
               <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
             </div>

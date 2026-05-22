@@ -144,8 +144,8 @@ const Checkout = () => {
   // Loading state
   if (planLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center px-4">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
   }
@@ -153,18 +153,18 @@ const Checkout = () => {
   // Redirect if invalid plan
   if (!plan) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="w-full max-w-sm text-center space-y-6 bg-white border border-border/30 rounded-xl p-8 transition-all duration-200">
-          <div className="w-20 h-20 mx-auto rounded-xl bg-destructive/5 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center space-y-6 card-glass rounded-2xl p-8">
+          <div className="w-20 h-20 mx-auto rounded-2xl bg-destructive/10 flex items-center justify-center">
             <XCircle className="h-10 w-10 text-destructive" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-medium">Plano não encontrado</h2>
-            <p className="text-muted-foreground text-sm font-normal">
+            <h2 className="text-xl font-bold">Plano não encontrado</h2>
+            <p className="text-muted-foreground text-sm">
               O plano selecionado não existe
             </p>
           </div>
-          <Button onClick={() => navigate('/')} className="w-full h-12 rounded-lg bg-primary hover:bg-primary/90 font-medium">
+          <Button onClick={() => navigate('/')} className="w-full h-12">
             Voltar ao início
           </Button>
         </div>
@@ -420,14 +420,15 @@ const Checkout = () => {
   // Processing Step
   if (currentStep === 'processing') {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="relative w-full max-w-sm text-center space-y-6 bg-white border border-border/30 rounded-xl p-8 transition-all duration-200">
-          <div className="w-24 h-24 mx-auto rounded-xl bg-primary/5 flex items-center justify-center">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center px-4">
+        <div className="absolute inset-0 gradient-mesh opacity-50" />
+        <div className="relative w-full max-w-sm text-center space-y-6 card-glass rounded-2xl p-8">
+          <div className="w-24 h-24 mx-auto rounded-2xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center glow-accent">
+            <Loader2 className="h-12 w-12 animate-spin text-accent" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-medium">Processando pagamento</h2>
-            <p className="text-muted-foreground text-sm font-normal">
+            <h2 className="text-xl font-bold">Processando pagamento</h2>
+            <p className="text-muted-foreground text-sm">
               {paymentStatus === 'polling'
                 ? 'Verificando status...'
                 : 'Aguarde um momento...'}
@@ -442,21 +443,22 @@ const Checkout = () => {
   // Awaiting PIX/Boleto payment
   if (currentStep === 'awaiting_payment') {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center px-4">
+        <div className="absolute inset-0 gradient-mesh opacity-50" />
         <div className="relative w-full max-w-sm space-y-6">
           {/* Header */}
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 mx-auto rounded-xl bg-primary/5 flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center">
               {paymentMethod === 'PIX' ? (
-                <QrCode className="h-8 w-8 text-primary" />
+                <QrCode className="h-8 w-8 text-accent" />
               ) : (
-                <Barcode className="h-8 w-8 text-primary" />
+                <Barcode className="h-8 w-8 text-accent" />
               )}
             </div>
-            <h2 className="text-xl font-medium">
+            <h2 className="text-xl font-bold">
               {paymentMethod === 'PIX' ? 'Pague com PIX' : 'Pague com Boleto'}
             </h2>
-            <p className="text-muted-foreground text-sm font-normal">
+            <p className="text-muted-foreground text-sm">
               {plan.name} - {formatCurrency(plan.price)} {quote && quote.total1m !== quote.totalRec ? `(1º mês, depois ${formatCurrency(quote.totalRec)}/mês)` : '/mês'}
             </p>
           </div>
@@ -480,14 +482,15 @@ const Checkout = () => {
           <div className="space-y-3">
             <Button
               onClick={() => navigate('/')}
-              className="w-full h-12 bg-primary hover:bg-primary/90 rounded-lg font-medium"
+              className="w-full h-12 bg-gradient-to-r from-accent to-primary hover:opacity-90 rounded-xl"
             >
+              <Sparkles className="mr-2 h-4 w-4" />
               Voltar ao início
             </Button>
             <Button
               onClick={handleRetry}
               variant="outline"
-              className="w-full h-12 rounded-lg border border-border/30 font-medium"
+              className="w-full h-12 rounded-xl"
             >
               Escolher outra forma de pagamento
             </Button>
@@ -502,18 +505,20 @@ const Checkout = () => {
   // Success Step
   if (currentStep === 'success') {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="relative w-full max-w-sm text-center space-y-6 bg-white border border-border/30 rounded-xl p-8 transition-all duration-200">
-          <div className="w-24 h-24 mx-auto rounded-xl bg-success/5 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-success/5 flex items-center justify-center px-4">
+        <div className="absolute inset-0 gradient-mesh opacity-50" />
+        <div className="relative w-full max-w-sm text-center space-y-6 card-glass rounded-2xl p-8">
+          <div className="w-24 h-24 mx-auto rounded-2xl bg-gradient-to-br from-success/20 to-accent/20 flex items-center justify-center">
             <CheckCircle2 className="h-12 w-12 text-success" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-medium">Pagamento aprovado!</h2>
-            <p className="text-muted-foreground text-sm font-normal">
-              Sua assinatura do plano <span className="font-medium text-primary">{plan.name}</span> foi ativada
+            <h2 className="text-xl font-bold">Pagamento aprovado!</h2>
+            <p className="text-muted-foreground text-sm">
+              Sua assinatura do plano <span className="font-semibold text-accent">{plan.name}</span> foi ativada
             </p>
           </div>
-          <Button onClick={() => navigate('/')} className="w-full h-12 bg-primary hover:bg-primary/90 rounded-lg font-medium transition-all duration-200">
+          <Button onClick={() => navigate('/')} className="w-full h-12 bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-opacity">
+            <Sparkles className="mr-2 h-4 w-4" />
             Continuar
           </Button>
         </div>
@@ -524,18 +529,19 @@ const Checkout = () => {
   // Error Step
   if (currentStep === 'error') {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="relative w-full max-w-sm text-center space-y-6 bg-white border border-border/30 rounded-xl p-8 transition-all duration-200">
-          <div className="w-24 h-24 mx-auto rounded-xl bg-destructive/5 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-destructive/5 flex items-center justify-center px-4">
+        <div className="absolute inset-0 gradient-mesh opacity-50" />
+        <div className="relative w-full max-w-sm text-center space-y-6 card-glass rounded-2xl p-8">
+          <div className="w-24 h-24 mx-auto rounded-2xl bg-gradient-to-br from-destructive/20 to-destructive/10 flex items-center justify-center">
             <XCircle className="h-12 w-12 text-destructive" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-medium">Pagamento não aprovado</h2>
-            <p className="text-muted-foreground text-sm font-normal">
+            <h2 className="text-xl font-bold">Pagamento não aprovado</h2>
+            <p className="text-muted-foreground text-sm">
               {paymentError || 'Tente novamente com outro cartão'}
             </p>
           </div>
-          <Button onClick={handleRetry} className="w-full h-12 rounded-lg font-medium" variant="outline">
+          <Button onClick={handleRetry} className="w-full h-12" variant="outline">
             Tentar novamente
           </Button>
         </div>
@@ -572,51 +578,54 @@ const Checkout = () => {
       </header>
 
       {/* Plan Info Bar */}
-      <div className="relative bg-primary text-primary-foreground py-6 overflow-hidden">
+      <div className="relative bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground py-4 overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50" />
         <div className="relative max-w-lg mx-auto px-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center">
-              <Check className="h-6 w-6" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center">
+              <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest opacity-70">Assinatura selecionada</p>
-              <p className="text-lg font-medium">{plan.name}</p>
+              <p className="text-xs opacity-80">Assinatura</p>
+              <p className="font-semibold">{plan.name}</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-[10px] uppercase tracking-widest opacity-70">Valor total</p>
-            <p className="text-3xl font-medium">{formatCurrency(plan.price)}</p>
+            <p className="text-xs opacity-80">Total</p>
+            <p className="text-2xl font-bold">{formatCurrency(plan.price)}</p>
             {quote && quote.total1m !== quote.totalRec && (
-              <p className="text-[10px] opacity-70 mt-1 font-normal">Depois {formatCurrency(quote.totalRec)}/mês</p>
+              <p className="text-[10px] opacity-70">Depois {formatCurrency(quote.totalRec)}/mês</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Progress */}
-      <div className="relative max-w-lg mx-auto px-4 pt-10 pb-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="relative max-w-lg mx-auto px-4 pt-6 pb-4">
+        <div className="flex items-center justify-between mb-2">
           {STEPS.map((step, index) => (
             <div key={step.id} className="flex items-center">
               <div
-                className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium transition-all duration-200 ${
-                  index <= currentStepIndex
-                    ? 'bg-primary text-white'
-                    : 'bg-white text-muted-foreground border border-border/30'
+                className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
+                  index < currentStepIndex
+                    ? 'bg-gradient-to-br from-accent to-primary text-white shadow-lg shadow-accent/30'
+                    : index === currentStepIndex
+                    ? 'bg-gradient-to-br from-accent to-primary text-white shadow-lg shadow-accent/30 scale-110'
+                    : 'bg-muted/50 text-muted-foreground border border-border'
                 }`}
               >
                 {index < currentStepIndex ? (
-                  <Check className="h-4 w-4" />
+                  <Check className="h-5 w-5" />
                 ) : (
                   index + 1
                 )}
               </div>
               {index < STEPS.length - 1 && (
                 <div
-                  className={`w-12 sm:w-20 h-0.5 mx-2 rounded-full transition-colors duration-200 ${
+                  className={`w-12 sm:w-20 h-1 mx-2 rounded-full transition-colors duration-300 ${
                     index < currentStepIndex 
-                      ? 'bg-primary' 
-                      : 'bg-border/30'
+                      ? 'bg-gradient-to-r from-accent to-primary' 
+                      : 'bg-muted/50'
                   }`}
                 />
               )}
@@ -627,10 +636,12 @@ const Checkout = () => {
           {STEPS.map((step, index) => (
             <span
               key={step.id}
-              className={`text-[11px] uppercase tracking-widest transition-colors duration-200 ${
-                index <= currentStepIndex 
-                  ? 'text-primary font-medium' 
-                  : 'text-muted-foreground font-normal'
+              className={`text-xs transition-colors ${
+                index === currentStepIndex 
+                  ? 'text-accent font-semibold' 
+                  : index < currentStepIndex
+                  ? 'text-foreground'
+                  : 'text-muted-foreground'
               }`}
             >
               {step.label}
@@ -645,7 +656,7 @@ const Checkout = () => {
         {currentStep === 'personal' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-medium bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
                 Seus dados
               </h1>
               <p className="text-muted-foreground text-sm">
@@ -653,7 +664,7 @@ const Checkout = () => {
               </p>
             </div>
 
-            <div className="card-glass rounded-xl p-5 space-y-4">
+            <div className="card-glass rounded-2xl p-5 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-sm font-medium">Nome completo</Label>
                 <Input
@@ -712,13 +723,13 @@ const Checkout = () => {
         {currentStep === 'address' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-medium">Endereço de cobrança</h1>
+              <h1 className="text-2xl font-bold">Endereço de cobrança</h1>
               <p className="text-muted-foreground text-sm">
                 Informe o endereço para faturamento
               </p>
             </div>
 
-            <div className="card-glass rounded-xl p-5 space-y-4">
+            <div className="card-glass rounded-2xl p-5 space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="billingName" className="text-sm font-medium">Nome para faturamento</Label>
                 <Input
@@ -829,14 +840,14 @@ const Checkout = () => {
         {currentStep === 'payment' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-medium">Pagamento</h1>
+              <h1 className="text-2xl font-bold">Pagamento</h1>
               <p className="text-muted-foreground text-sm">
                 Escolha a forma de pagamento
               </p>
             </div>
 
             {/* Order Summary */}
-            <div className="card-glass rounded-xl p-4 border-accent/20">
+            <div className="card-glass rounded-2xl p-4 border-accent/20">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
@@ -851,7 +862,7 @@ const Checkout = () => {
                     </p>
                   </div>
                 </div>
-                <span className="text-2xl font-medium text-accent">{formatCurrency(plan.price)}</span>
+                <span className="text-2xl font-bold text-accent">{formatCurrency(plan.price)}</span>
               </div>
             </div>
 
@@ -862,7 +873,7 @@ const Checkout = () => {
             {paymentMethod === 'CREDIT_CARD' && (
               <>
                 <CardBrands />
-                <div className="card-glass rounded-xl p-5 space-y-4">
+                <div className="card-glass rounded-2xl p-5 space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="cardName" className="text-sm font-medium">Nome no cartão</Label>
                     <Input
@@ -920,12 +931,12 @@ const Checkout = () => {
 
             {/* PIX Info */}
             {paymentMethod === 'PIX' && (
-              <div className="card-glass rounded-xl p-5 space-y-4 text-center">
-                <div className="w-16 h-16 mx-auto rounded-xl bg-accent/10 flex items-center justify-center">
+              <div className="card-glass rounded-2xl p-5 space-y-4 text-center">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
                   <QrCode className="h-8 w-8 text-accent" />
                 </div>
                 <div className="space-y-2">
-                  <p className="font-medium">Pagamento via PIX</p>
+                  <p className="font-semibold">Pagamento via PIX</p>
                   <p className="text-sm text-muted-foreground">
                     Após confirmar, você receberá um QR Code para pagamento instantâneo
                   </p>
@@ -935,12 +946,12 @@ const Checkout = () => {
 
             {/* Boleto Info */}
             {paymentMethod === 'BOLETO' && (
-              <div className="card-glass rounded-xl p-5 space-y-4 text-center">
-                <div className="w-16 h-16 mx-auto rounded-xl bg-accent/10 flex items-center justify-center">
+              <div className="card-glass rounded-2xl p-5 space-y-4 text-center">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
                   <Barcode className="h-8 w-8 text-accent" />
                 </div>
                 <div className="space-y-2">
-                  <p className="font-medium">Pagamento via Boleto</p>
+                  <p className="font-semibold">Pagamento via Boleto</p>
                   <p className="text-sm text-muted-foreground">
                     O boleto será gerado com vencimento em 3 dias úteis
                   </p>
@@ -968,7 +979,7 @@ const Checkout = () => {
             <Button
               onClick={handleSubmit}
               disabled={paymentLoading || generatingPayment}
-              className="w-full h-14 text-base font-medium bg-primary hover:opacity-90 transition-all  rounded-xl"
+              className="w-full h-14 text-base font-semibold bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-all shadow-lg shadow-accent/30 rounded-xl"
             >
               {paymentLoading || generatingPayment ? (
                 <>
@@ -988,7 +999,7 @@ const Checkout = () => {
               )}
             </Button>
           ) : (
-            <Button onClick={goToNextStep} className="w-full h-14 text-base font-medium bg-primary hover:opacity-90 transition-all  rounded-xl">
+            <Button onClick={goToNextStep} className="w-full h-14 text-base font-semibold bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-all shadow-lg shadow-accent/30 rounded-xl">
               Continuar
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
