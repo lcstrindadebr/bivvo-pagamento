@@ -290,31 +290,51 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {CANAIS_DEF.map(c => {
                 const qty = channels[c.id] ?? 0;
-                const extra = Math.max(0, qty - c.included);
+                
+                const getIcon = (id: string) => {
+                  switch (id) {
+                    case 'waof':
+                    case 'wano': return <MessageSquare className="h-4 w-4" />;
+                    case 'ig': return <Instagram className="h-4 w-4" />;
+                    case 'fb': return <Facebook className="h-4 w-4" />;
+                    case 'email': return <Mail className="h-4 w-4" />;
+                    case 'olx': return <Tag className="h-4 w-4" />;
+                    case 'tiktok': return <Music2 className="h-4 w-4" />;
+                    case 'ml': return <ShoppingCart className="h-4 w-4" />;
+                    case 'li': return <Linkedin className="h-4 w-4" />;
+                    case 'yt': return <Youtube className="h-4 w-4" />;
+                    case 'woo': return <ShoppingBag className="h-4 w-4" />;
+                    default: return <MessageSquare className="h-4 w-4" />;
+                  }
+                };
+
                 return (
-                  <div key={c.id} className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-background/30 hover:bg-background/50 transition-colors">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold flex items-center gap-1.5">
-                        <span className="text-base">{c.emoji}</span> {c.label}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground mt-0.5">
-                        {c.included} incl. · {fmtBRL(c.unit)}/extra
-                      </span>
+                  <div key={c.id} className="flex items-center justify-between p-4 rounded-xl border border-border/40 bg-background/40 hover:bg-background/60 transition-all group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-background border flex items-center justify-center text-muted-foreground group-hover:text-accent group-hover:border-accent/30 transition-colors">
+                        {getIcon(c.id)}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold uppercase tracking-wider">{c.label}</span>
+                        <span className="text-[10px] text-muted-foreground font-medium">
+                          {c.included} incl. · {fmtBRL(c.unit)}/extra
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 bg-background/50 rounded-lg p-1 border">
+                    <div className="flex items-center gap-2 bg-background/80 rounded-full p-1 border shadow-sm">
                       <button 
                         onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))}
-                        className="w-6 h-6 flex items-center justify-center hover:text-accent transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent/10 hover:text-accent transition-colors"
                       >
                         <Minus className="h-3 w-3" />
                       </button>
                       <span className="w-6 text-center text-xs font-black tabular-nums">{qty}</span>
                       <button 
                         onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))}
-                        className="w-6 h-6 flex items-center justify-center hover:text-accent transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent/10 hover:text-accent transition-colors"
                       >
                         <Plus className="h-3 w-3" />
                       </button>
