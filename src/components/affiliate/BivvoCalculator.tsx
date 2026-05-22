@@ -274,30 +274,42 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
           </div>
         </section>
 
-        {/* SECTION: CHANNELS */}
-        <section className="space-y-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">3</span>
-            Canais de Atendimento
-          </h3>
+        {/* SECTION 3: CHANNELS */}
+        <section className="space-y-6">
+          <div className="flex items-end justify-between border-b pb-4 border-border/60">
+            <div className="space-y-1">
+              <h3 className="text-xl font-semibold tracking-tight text-primary">Canais Adicionais</h3>
+              <p className="text-sm text-muted-foreground font-medium">Expanda sua presença multicanal</p>
+            </div>
+          </div>
           
-          <div className="card-glass rounded-2xl p-6 border border-border/50 space-y-6">
+          <div className="bg-card rounded-xl p-8 border border-border shadow-sm">
             {mode === 'affiliate' && (
-              <div className="bg-accent/5 p-4 rounded-xl border border-accent/20 space-y-3">
+              <div className="mb-8 p-6 rounded-xl bg-primary/[0.02] border border-primary/10 space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-accent">Desconto nos Canais</Label>
-                  <Badge className="bg-accent text-white font-mono">{channelsDiscount}%</Badge>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-black uppercase tracking-[0.2em] text-primary">Desconto nos Canais</Label>
+                    <p className="text-[10px] text-muted-foreground font-medium">Aplicar desconto comercial exclusivo para o cliente</p>
+                  </div>
+                  <Badge className="bg-primary text-white font-bold h-7 px-3">{channelsDiscount}%</Badge>
                 </div>
-                <input 
-                  type="range" min="0" max="30" step="5"
-                  value={channelsDiscount} 
-                  onChange={e => setChannelsDiscount(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-accent/20 rounded-lg appearance-none cursor-pointer accent-accent"
-                />
+                <div className="relative pt-2">
+                  <input 
+                    type="range" min="0" max="30" step="5"
+                    value={channelsDiscount} 
+                    onChange={e => setChannelsDiscount(parseInt(e.target.value))}
+                    className="w-full h-2 bg-primary/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                  />
+                  <div className="flex justify-between mt-2">
+                    {[0, 5, 10, 15, 20, 25, 30].map(val => (
+                      <span key={val} className="text-[8px] font-black text-muted-foreground uppercase">{val}%</span>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {CANAIS_DEF.map(c => {
                 const qty = channels[c.id] ?? 0;
                 
@@ -319,32 +331,45 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 };
 
                 return (
-                  <div key={c.id} className="flex items-center justify-between p-4 rounded-xl border border-border/40 bg-background/40 hover:bg-background/60 transition-all group">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-background border flex items-center justify-center text-muted-foreground group-hover:text-accent group-hover:border-accent/30 transition-colors">
+                  <div key={c.id} className="flex flex-col p-5 rounded-xl border border-border bg-background transition-all hover:border-primary/20 hover:shadow-sm group">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="w-10 h-10 rounded-lg bg-primary/5 text-primary flex items-center justify-center border border-primary/5 group-hover:bg-primary/10 transition-colors">
                         {getIcon(c.id)}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold uppercase tracking-wider">{c.label}</span>
-                        <span className="text-[10px] text-muted-foreground font-medium">
+                        <span className="text-xs font-bold uppercase tracking-widest text-primary">{c.label}</span>
+                        <span className="text-[10px] text-muted-foreground font-semibold">
                           {c.included} incl. · {fmtBRL(c.unit)}/extra
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 bg-background/80 rounded-full p-1 border shadow-sm">
-                      <button 
-                        onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))}
-                        className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent/10 hover:text-accent transition-colors"
-                      >
-                        <Minus className="h-3 w-3" />
-                      </button>
-                      <span className="w-6 text-center text-xs font-black tabular-nums">{qty}</span>
-                      <button 
-                        onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))}
-                        className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent/10 hover:text-accent transition-colors"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </button>
+                    
+                    <div className="mt-auto flex items-center justify-between pt-4 border-t border-border/40">
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))}
+                          className="h-8 w-8 rounded-full hover:bg-primary/5 hover:text-primary"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <span className="w-8 text-center text-sm font-bold tabular-nums text-primary">{qty}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))}
+                          className="h-8 w-8 rounded-full hover:bg-primary/5 hover:text-primary"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      {qty > c.included && (
+                        <div className="text-[10px] font-bold text-primary">
+                          +{qty - c.included} extra
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
