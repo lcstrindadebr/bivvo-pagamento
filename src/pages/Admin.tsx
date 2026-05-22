@@ -988,12 +988,26 @@ const Admin = () => {
                           <div className="space-y-2">
                             <p className="text-[10px] text-muted-foreground uppercase">Canais Contratados</p>
                             <div className="flex flex-wrap gap-2">
-                              {Object.entries(internalSub.channels_config || {}).map(([key, val]: [string, any]) => (
-                                <Badge key={key} variant="secondary" className="text-[10px] py-0 px-2">
-                                  {key}: {val}
+                              {Object.entries(internalSub.channels_config || {}).map(([key, val]: [string, any]) => {
+                                const channel = CANAIS_DEF.find(c => c.id === key);
+                                if (!val || val === 0) return null;
+                                return (
+                                  <Badge key={key} variant="secondary" className="text-[10px] py-0.5 px-2 flex items-center gap-1">
+                                    {channel?.logo ? (
+                                      <img src={channel.logo} alt={channel.label} className="w-3 h-3 object-contain" />
+                                    ) : (
+                                      <span>{channel?.emoji || '•'}</span>
+                                    )}
+                                    {channel?.label || key}: {val}
+                                  </Badge>
+                                );
+                              })}
+                              {internalSub.has_telefonia && (
+                                <Badge variant="secondary" className="text-[10px] py-0.5 px-2 flex items-center gap-1">
+                                  <Smartphone className="h-3 w-3 text-accent" />
+                                  Telefonia: Sim
                                 </Badge>
-                              ))}
-                              {internalSub.has_telefonia && <Badge variant="secondary" className="text-[10px] py-0 px-2">Telefonia: Sim</Badge>}
+                              )}
                             </div>
                           </div>
 
