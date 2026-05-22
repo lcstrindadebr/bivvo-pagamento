@@ -104,10 +104,10 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
     <div className="grid lg:grid-cols-[1fr_380px] gap-8">
       <div className="space-y-8">
         {/* SECTION: PLAN SELECTION */}
-        <section className="space-y-6">
+        <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center text-xs">1</span>
+              <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">1</span>
               Selecione seu Plano Base
             </h3>
             <TooltipProvider>
@@ -133,31 +133,36 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   key={k}
                   type="button"
                   onClick={() => { setPlan(k); setUsers(p.users); }}
-                  className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 transition-all duration-300 ${
+                  className={`relative flex flex-col p-4 rounded-2xl border-2 text-left transition-all duration-300 ${
                     active 
-                      ? 'border-accent bg-accent/10 shadow-lg shadow-accent/10' 
-                      : 'border-border/50 bg-background/50 hover:border-accent/50 hover:bg-accent/5'
+                    ? 'border-accent bg-accent/5 ring-4 ring-accent/5' 
+                    : 'border-border/50 hover:border-accent/30 bg-background/50'
                   }`}
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                    active ? 'bg-accent/20 text-accent' : 'bg-muted/50 text-muted-foreground'
-                  }`}>
-                    <Users className="h-5 w-5" />
+                  {active && (
+                    <div className="absolute top-3 right-3 z-10">
+                      <CheckCircle2 className="h-5 w-5 text-accent" />
+                    </div>
+                  )}
+                  <span className={`text-[10px] uppercase font-bold tracking-wider mb-1 ${active ? 'text-accent' : 'text-muted-foreground'}`}>
+                    {p.name}
+                  </span>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-xl font-black">{fmtBRL(p.promo)}</span>
+                    <span className="text-[10px] text-muted-foreground font-medium">/1º mês</span>
                   </div>
-                  <div className="text-center">
-                    <p className={`text-xs font-semibold ${active ? 'text-accent' : 'text-foreground'}`}>
-                      {p.name}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      Até {p.users} usuários
-                    </p>
+                  <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1.5">
+                    <Users className="h-3 w-3" />
+                    Até {p.users} usuários
+                  </div>
+                  <div className="text-[10px] font-semibold mt-1">
+                    Recorrência: {fmtBRL(p.full)}
                   </div>
                   {active && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent flex items-center justify-center">
-                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
+                    <motion.div 
+                      layoutId="plan-active"
+                      className="absolute inset-0 border-2 border-accent rounded-2xl pointer-events-none"
+                    />
                   )}
                 </button>
               );
@@ -166,9 +171,9 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         </section>
 
         {/* SECTION: CUSTOMIZATION */}
-        <section className="space-y-6">
+        <section className="space-y-4">
           <h3 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center text-xs">2</span>
+            <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">2</span>
             Personalize sua Experiência
           </h3>
 
@@ -234,7 +239,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Adicione recursos de telefonia diretamente no seu WhatsApp para uma comunicação profissional.
               </p>
-              <div className="flex items-center justify-between pt-2 border-t border-border/30">
+              <div className="flex items-center justify-between pt-2">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
                 <span className="text-sm font-bold">{fmtBRL(100)}<span className="text-[10px] text-muted-foreground font-normal">/mês</span></span>
               </div>
@@ -243,9 +248,9 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         </section>
 
         {/* SECTION: CHANNELS */}
-        <section className="space-y-6">
+        <section className="space-y-4">
           <h3 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center text-xs">3</span>
+            <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">3</span>
             Canais de Atendimento
           </h3>
           
@@ -268,30 +273,28 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {CANAIS_DEF.map(c => {
                 const qty = channels[c.id] ?? 0;
+                const extra = Math.max(0, qty - c.included);
                 return (
-                  <div key={c.id} className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-background/50 hover:border-accent/30 transition-all duration-200">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center">
-                        <img src={c.logo} alt={c.label} className="w-6 h-6 object-contain" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-foreground">{c.label}</span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {c.included} incl. · {fmtBRL(c.unit)}/extra
-                        </span>
-                      </div>
+                  <div key={c.id} className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-background/30 hover:bg-background/50 transition-colors">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold flex items-center gap-2">
+                        <img src={c.logo} alt={c.label} className="w-5 h-5 object-contain" /> {c.label}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground mt-0.5">
+                        {c.included} incl. · {fmtBRL(c.unit)}/extra
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 bg-background/50 rounded-lg p-1 border">
                       <button 
                         onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))}
-                        className="w-7 h-7 flex items-center justify-center hover:bg-accent/10 hover:text-accent rounded-md transition-all"
+                        className="w-6 h-6 flex items-center justify-center hover:text-accent transition-colors"
                       >
                         <Minus className="h-3 w-3" />
                       </button>
                       <span className="w-6 text-center text-xs font-black tabular-nums">{qty}</span>
                       <button 
                         onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))}
-                        className="w-7 h-7 flex items-center justify-center hover:bg-accent/10 hover:text-accent rounded-md transition-all"
+                        className="w-6 h-6 flex items-center justify-center hover:text-accent transition-colors"
                       >
                         <Plus className="h-3 w-3" />
                       </button>
@@ -362,7 +365,6 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                       animate={{ opacity: 1, x: 0 }}
                       className="text-lg font-bold tabular-nums"
                     >
-
                       {fmtBRL(quote.totalRec)}
                     </motion.span>
                   </AnimatePresence>
