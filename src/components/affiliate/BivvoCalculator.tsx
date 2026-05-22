@@ -277,8 +277,8 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 return (
                   <div key={c.id} className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-background/30 hover:bg-background/50 transition-colors">
                     <div className="flex flex-col">
-                      <span className="text-xs font-bold flex items-center gap-1.5">
-                        <span className="text-base">{c.emoji}</span> {c.label}
+                      <span className="text-xs font-bold flex items-center gap-2">
+                        <img src={c.logo} alt={c.label} className="w-5 h-5 object-contain" /> {c.label}
                       </span>
                       <span className="text-[10px] text-muted-foreground mt-0.5">
                         {c.included} incl. · {fmtBRL(c.unit)}/extra
@@ -388,8 +388,8 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   <div className="space-y-1.5 py-1">
                     {quote.channelLines.map(l => (
                       <div key={l.id} className="flex justify-between text-[10px]">
-                        <span className="text-muted-foreground flex items-center gap-1.5">
-                          {l.emoji} {l.label} ({l.qty})
+                        <span className="text-muted-foreground flex items-center gap-2">
+                          <img src={l.logo} alt={l.label} className="w-3.5 h-3.5 object-contain" /> {l.label} ({l.qty})
                           {quote.channelsDiscountPercent > 0 && (
                             <span className="bg-accent/10 text-accent px-1 rounded text-[8px]">-{quote.channelsDiscountPercent}%</span>
                           )}
