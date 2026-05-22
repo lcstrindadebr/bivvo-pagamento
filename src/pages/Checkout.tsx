@@ -502,20 +502,18 @@ const Checkout = () => {
   // Success Step
   if (currentStep === 'success') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-success/5 flex items-center justify-center px-4">
-        <div className="absolute inset-0 gradient-mesh opacity-50" />
-        <div className="relative w-full max-w-sm text-center space-y-6 card-glass rounded-2xl p-8">
-          <div className="w-24 h-24 mx-auto rounded-2xl bg-gradient-to-br from-success/20 to-accent/20 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+        <div className="relative w-full max-w-sm text-center space-y-6 bg-white border border-border/30 rounded-xl p-8 transition-all duration-200">
+          <div className="w-24 h-24 mx-auto rounded-xl bg-success/5 flex items-center justify-center">
             <CheckCircle2 className="h-12 w-12 text-success" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold">Pagamento aprovado!</h2>
-            <p className="text-muted-foreground text-sm">
-              Sua assinatura do plano <span className="font-semibold text-accent">{plan.name}</span> foi ativada
+            <h2 className="text-xl font-medium">Pagamento aprovado!</h2>
+            <p className="text-muted-foreground text-sm font-normal">
+              Sua assinatura do plano <span className="font-medium text-primary">{plan.name}</span> foi ativada
             </p>
           </div>
-          <Button onClick={() => navigate('/')} className="w-full h-12 bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-opacity">
-            <Sparkles className="mr-2 h-4 w-4" />
+          <Button onClick={() => navigate('/')} className="w-full h-12 bg-primary hover:bg-primary/90 rounded-lg font-medium transition-all duration-200">
             Continuar
           </Button>
         </div>
@@ -526,19 +524,18 @@ const Checkout = () => {
   // Error Step
   if (currentStep === 'error') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-destructive/5 flex items-center justify-center px-4">
-        <div className="absolute inset-0 gradient-mesh opacity-50" />
-        <div className="relative w-full max-w-sm text-center space-y-6 card-glass rounded-2xl p-8">
-          <div className="w-24 h-24 mx-auto rounded-2xl bg-gradient-to-br from-destructive/20 to-destructive/10 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+        <div className="relative w-full max-w-sm text-center space-y-6 bg-white border border-border/30 rounded-xl p-8 transition-all duration-200">
+          <div className="w-24 h-24 mx-auto rounded-xl bg-destructive/5 flex items-center justify-center">
             <XCircle className="h-12 w-12 text-destructive" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold">Pagamento não aprovado</h2>
-            <p className="text-muted-foreground text-sm">
+            <h2 className="text-xl font-medium">Pagamento não aprovado</h2>
+            <p className="text-muted-foreground text-sm font-normal">
               {paymentError || 'Tente novamente com outro cartão'}
             </p>
           </div>
-          <Button onClick={handleRetry} className="w-full h-12" variant="outline">
+          <Button onClick={handleRetry} className="w-full h-12 rounded-lg font-medium" variant="outline">
             Tentar novamente
           </Button>
         </div>
