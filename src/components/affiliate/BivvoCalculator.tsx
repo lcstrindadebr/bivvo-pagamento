@@ -306,16 +306,16 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         </section>
 
         {mode === 'affiliate' && (
-          <section className="space-y-4 p-5 rounded-2xl border-2 border-dashed border-border/60">
-            <h3 className="text-sm font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-widest">
+          <section className="space-y-4 p-6 rounded-xl border border-dashed border-border/40 transition-all duration-200">
+            <h3 className="text-[11px] font-medium flex items-center gap-2 text-muted-foreground uppercase tracking-widest">
               Modo Afiliado
             </h3>
-            <div className="flex items-center justify-between p-4 rounded-xl bg-accent/5 border border-accent/10">
-              <div className="space-y-0.5">
-                <div className="text-sm font-bold">Preço Protagonista</div>
-                <div className="text-xs text-muted-foreground">Valor promocional torna-se a recorrência fixa.</div>
+            <div className="flex items-center justify-between p-4 rounded-lg bg-[hsl(var(--selected-bg))] border border-primary/10 transition-all duration-200">
+              <div className="space-y-1">
+                <div className="text-sm font-medium text-foreground">Preço Protagonista</div>
+                <div className="text-[11px] text-muted-foreground font-normal">Valor promocional torna-se a recorrência fixa.</div>
               </div>
-              <Switch checked={protagonista} onCheckedChange={setProtagonista} className="data-[state=checked]:bg-accent" />
+              <Switch checked={protagonista} onCheckedChange={setProtagonista} className="data-[state=checked]:bg-primary" />
             </div>
           </section>
         )}
