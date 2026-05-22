@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS public.plans (
     slug text NOT NULL UNIQUE,
     name text NOT NULL,
     price numeric NOT NULL,
+    price_recurring numeric NOT NULL DEFAULT 0,
     description text,
     features jsonb NOT NULL DEFAULT '[]',
     popular boolean DEFAULT false,
@@ -107,6 +108,20 @@ CREATE TABLE IF NOT EXISTS public.plans (
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );
+
+-- Settings
+CREATE TABLE IF NOT EXISTS public.settings (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    key text NOT NULL UNIQUE,
+    value text,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+);
+
+-- Insert default settings
+INSERT INTO public.settings (key, value)
+VALUES ('site_url', '')
+ON CONFLICT (key) DO NOTHING;
 
 -- Coupons
 CREATE TABLE IF NOT EXISTS public.coupons (
@@ -392,6 +407,7 @@ ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.asaas_webhooks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marketing_materials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
 -- ADMIN POLICIES (Simplified)
 CREATE POLICY "Admins manage everything" ON public.customers FOR ALL USING (public.is_admin());
@@ -407,6 +423,8 @@ CREATE POLICY "Admins manage everything" ON public.affiliate_commissions FOR ALL
 CREATE POLICY "Admins manage everything" ON public.expenses FOR ALL USING (public.is_admin());
 CREATE POLICY "Admins manage everything" ON public.audit_logs FOR ALL USING (public.is_admin());
 CREATE POLICY "Admins manage everything" ON public.asaas_webhooks FOR ALL USING (public.is_admin());
+CREATE POLICY "Admins manage everything" ON public.settings FOR ALL USING (public.is_admin());
+CREATE POLICY "Public can view settings" ON public.settings FOR SELECT USING (true);
 
 -- USER/AFFILIATE POLICIES
 CREATE POLICY "Users can view own profile" ON public.users FOR SELECT USING (id = auth.uid());

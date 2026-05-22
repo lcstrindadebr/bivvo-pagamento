@@ -15,7 +15,7 @@ set -e
 # Cores
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\133[1;33m'
+YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
@@ -64,10 +64,13 @@ server {
     root $WEB_DIR;
     index index.html;
 
+    # Proteção contra cache do index.html (solução definitiva para atualizações)
     location / {
         try_files \$uri \$uri/ /index.html;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
     }
 
+    # Cache agressivo para assets estáticos (com hash no nome)
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)\$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
@@ -80,8 +83,8 @@ server {
 EOF
     ln -sf /etc/nginx/sites-available/bivvo /etc/nginx/sites-enabled/
     rm -f /etc/nginx/sites-enabled/default
-    nginx -t && systemctl restart nginx
-    echo -e "${GREEN}✓ Nginx configurado para $DOMAIN${NC}"
+    nginx -t && systemctl reload nginx
+    echo -e "${GREEN}✓ Nginx configurado e cache limpo para $DOMAIN${NC}"
 }
 
 apply_ssl() {
@@ -92,30 +95,61 @@ apply_ssl() {
 run_build() {
     echo -e "${BLUE}━━━━━ Gerando Build ━━━━━${NC}"
     cd "$APP_DIR"
+    
+    # Limpeza de cache do npm se necessário (opcional, mas ajuda em erros de build)
+    # npm cache clean --force 
+
     npm install
     npm run build
     mkdir -p "$WEB_DIR"
+    
+    echo -e "${YELLOW}Limpando diretório web e publicando novo build...${NC}"
     rm -rf "$WEB_DIR"/*
     cp -r "$APP_DIR/dist/"* "$WEB_DIR/"
     chown -R www-data:www-data "$WEB_DIR"
-    echo -e "${GREEN}✓ Build concluído e publicado${NC}"
+    
+    # Recarrega o nginx para garantir que as mudanças sejam servidas
+    systemctl reload nginx || systemctl restart nginx
+    
+    echo -e "${GREEN}✓ Build concluído e publicado. Cache do servidor limpo.${NC}"
 }
 
 update_supabase_auto() {
     echo ""
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE AUTOMATICAMENTE ━━━━━${NC}"
     
-    # Credenciais fornecidas pelo usuário
-    USER_TOKEN="sbp_8e99f339f89f30eda805734c6e7c37ffa50859c4"
-    USER_PROJECT_ID="bcijktxnuzsatvhammpl"
+    # Solicita token se não estiver logado
+    if ! npx supabase status &>/dev/null; then
+        echo -e "${YELLOW}Atenção: Você precisa de um Access Token do Supabase.${NC}"
+        echo "Gere um em: https://supabase.com/dashboard/account/tokens"
+        read -p "🎫 Digite seu Supabase Access Token: " USER_TOKEN
+        if [ -z "$USER_TOKEN" ]; then
+            echo -e "${RED}❌ Token não informado. Pulando atualização do Supabase.${NC}"
+            return
+        fi
+        npx supabase login --token "$USER_TOKEN"
+    fi
+
+    # Tenta obter o project ID do .env se não for passado
+    if [ -z "$USER_PROJECT_ID" ]; then
+        if [ -f "$APP_DIR/.env" ]; then
+            USER_PROJECT_ID=$(grep VITE_SUPABASE_PROJECT_ID "$APP_DIR/.env" | cut -d= -f2)
+        fi
+    fi
+
+    if [ -z "$USER_PROJECT_ID" ]; then
+        read -p "🔗 Digite o Project ID do Supabase (ex: bcijkt...): " USER_PROJECT_ID
+    fi
+
+    if [ -z "$USER_PROJECT_ID" ]; then
+        echo -e "${RED}❌ Project ID não informado. Pulando atualização.${NC}"
+        return
+    fi
 
     cd "$APP_DIR"
 
-    echo -e "${BLUE}Efetuando login no Supabase...${NC}"
-    npx supabase login --token "$USER_TOKEN"
-
     echo -e "${BLUE}Linkando projeto $USER_PROJECT_ID...${NC}"
-    npx supabase link --project-ref "$USER_PROJECT_ID"
+    npx supabase link --project-ref "$USER_PROJECT_ID" --non-interactive || true
 
     echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
     if [ -f "new_deploy/database_schema.sql" ]; then
@@ -125,7 +159,6 @@ update_supabase_auto() {
 
     echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
     if [ -d "supabase/functions" ]; then
-        # Executa exatamente como o usuário solicitou
         npx supabase functions deploy --no-verify-jwt --project-ref "$USER_PROJECT_ID"
         echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
     fi
@@ -218,6 +251,8 @@ case $OPTION in
             *) exit 0 ;;
         esac
         echo -e "${GREEN}✓ Manutenção concluída!${NC}"
+        systemctl reload nginx
+        echo -e "${BLUE}Nginx recarregado e cache de arquivos limpo.${NC}"
         exit 0
         ;;
     2)
