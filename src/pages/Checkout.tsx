@@ -144,8 +144,8 @@ const Checkout = () => {
   // Loading state
   if (planLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center px-4">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -153,18 +153,18 @@ const Checkout = () => {
   // Redirect if invalid plan
   if (!plan) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5 flex items-center justify-center px-4">
-        <div className="w-full max-w-sm text-center space-y-6 card-glass rounded-2xl p-8">
-          <div className="w-20 h-20 mx-auto rounded-2xl bg-destructive/10 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center space-y-6 bg-white border border-border/30 rounded-xl p-8 transition-all duration-200">
+          <div className="w-20 h-20 mx-auto rounded-xl bg-destructive/5 flex items-center justify-center">
             <XCircle className="h-10 w-10 text-destructive" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold">Plano não encontrado</h2>
-            <p className="text-muted-foreground text-sm">
+            <h2 className="text-xl font-medium">Plano não encontrado</h2>
+            <p className="text-muted-foreground text-sm font-normal">
               O plano selecionado não existe
             </p>
           </div>
-          <Button onClick={() => navigate('/')} className="w-full h-12">
+          <Button onClick={() => navigate('/')} className="w-full h-12 rounded-lg bg-primary hover:bg-primary/90 font-medium">
             Voltar ao início
           </Button>
         </div>
