@@ -379,16 +379,20 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         </section>
 
         {mode === 'affiliate' && (
-          <section className="space-y-4 p-5 rounded-2xl border-2 border-dashed border-border/60">
-            <h3 className="text-sm font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-widest">
-              Modo Afiliado
-            </h3>
-            <div className="flex items-center justify-between p-4 rounded-xl bg-accent/5 border border-accent/10">
-              <div className="space-y-0.5">
-                <div className="text-sm font-bold">Preço Protagonista</div>
-                <div className="text-xs text-muted-foreground">Valor promocional torna-se a recorrência fixa.</div>
+          <section className="p-8 rounded-xl border border-dashed border-border bg-primary/[0.01] space-y-6">
+            <div className="flex items-center gap-3 border-b pb-4 border-border/40">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <h3 className="text-sm font-black text-primary uppercase tracking-[0.2em]">Painel do Afiliado</h3>
+            </div>
+            
+            <div className="flex items-center justify-between p-6 rounded-xl bg-white border border-border shadow-sm group hover:border-primary/30 transition-all">
+              <div className="space-y-1">
+                <div className="text-sm font-bold text-primary uppercase tracking-tight">Preço Protagonista</div>
+                <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                  Fixar o valor promocional como mensalidade vitalícia.
+                </p>
               </div>
-              <Switch checked={protagonista} onCheckedChange={setProtagonista} className="data-[state=checked]:bg-accent" />
+              <Switch checked={protagonista} onCheckedChange={setProtagonista} className="data-[state=checked]:bg-primary" />
             </div>
           </section>
         )}
