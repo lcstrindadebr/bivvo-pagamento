@@ -9,8 +9,8 @@
 @layer base {
   :root {
     /* Paleta baseada na imagem Bivvo - tons de azul escuro */
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    --background: 210 50% 98%;
+    --foreground: 210 50% 11%;
 
     --card: 0 0% 100%;
     --card-foreground: 210 50% 11%;
@@ -19,8 +19,8 @@
     --popover-foreground: 210 50% 11%;
 
     /* Azul escuro principal (#00203a) */
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 207 100% 11%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 210 40% 96%;
     --secondary-foreground: 207 100% 11%;
@@ -29,8 +29,8 @@
     --muted-foreground: 210 25% 45%;
 
     /* Azul accent (#1976d2) */
-    --accent: 142 71% 45%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 210 79% 46%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -57,9 +57,9 @@
     /* Glassmorphism tokens */
     --glass-bg: 210 50% 98% / 0.7;
     --glass-border: 210 30% 90% / 0.5;
-    --gradient-primary: 221 83% 53%;
-    --gradient-accent: 142 71% 45%;
-    --glow-accent: 142 71% 45% / 0.3;
+    --gradient-primary: 207 100% 11%;
+    --gradient-accent: 210 79% 46%;
+    --glow-accent: 210 79% 46% / 0.3;
   }
 
   .dark {
