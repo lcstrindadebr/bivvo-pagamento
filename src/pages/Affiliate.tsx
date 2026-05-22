@@ -142,23 +142,23 @@ export default function Affiliate() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
           {[
-            { label: 'Assinaturas Ativas', val: me.stats?.activeSubscriptions ?? 0, color: 'text-accent', icon: <CheckCircle2 className="h-3 w-3" /> },
-            { label: 'Cliques', val: (me.stats as any)?.totalClicks ?? 0, color: 'text-purple-500', icon: <MousePointerClick className="h-3 w-3" /> },
-            { label: 'Conversão', val: `${(me.stats as any)?.conversionRate ?? 0}%`, color: 'text-pink-500', icon: <TrendingUp className="h-3 w-3" /> },
-            { label: 'A Receber (Mês)', val: formatCurrency(nextMonthEstimate), color: 'text-blue-500', icon: <DollarSign className="h-3 w-3" /> },
-            { label: 'Disponível', val: formatCurrency(totalAvailable), color: 'text-green-600', icon: <DollarSign className="h-3 w-3" /> },
-            { label: 'Retido (7 dias)', val: formatCurrency(totalHeld), color: 'text-amber-600', icon: <DollarSign className="h-3 w-3" /> },
-            { label: 'Já Pagos', val: formatCurrency(totalPaid), color: 'text-slate-400', icon: <DollarSign className="h-3 w-3" /> },
-            { label: 'Total Gerado', val: formatCurrency(totalGen), color: 'text-foreground', icon: <DollarSign className="h-3 w-3" /> },
+            { label: 'Assinaturas Ativas', val: me.stats?.activeSubscriptions ?? 0, color: 'text-primary', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
+            { label: 'Cliques Totais', val: (me.stats as any)?.totalClicks ?? 0, color: 'text-primary', icon: <MousePointerClick className="h-3.5 w-3.5" /> },
+            { label: 'Taxa Conversão', val: `${(me.stats as any)?.conversionRate ?? 0}%`, color: 'text-primary', icon: <TrendingUp className="h-3.5 w-3.5" /> },
+            { label: 'Prev. Próx Mês', val: formatCurrency(nextMonthEstimate), color: 'text-primary', icon: <DollarSign className="h-3.5 w-3.5" /> },
+            { label: 'Saldo Disponível', val: formatCurrency(totalAvailable), color: 'text-green-600', icon: <DollarSign className="h-3.5 w-3.5" /> },
+            { label: 'Em Análise', val: formatCurrency(totalHeld), color: 'text-amber-600', icon: <DollarSign className="h-3.5 w-3.5" /> },
+            { label: 'Total Pago', val: formatCurrency(totalPaid), color: 'text-muted-foreground', icon: <DollarSign className="h-3.5 w-3.5" /> },
+            { label: 'Geral Acumulado', val: formatCurrency(totalGen), color: 'text-primary', icon: <DollarSign className="h-3.5 w-3.5" /> },
           ].map((s, i) => (
-            <div key={i} className="card-glass rounded-xl p-4 border border-border/40 shadow-sm flex flex-col justify-between group hover:border-accent/30 transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[9px] uppercase font-black tracking-[0.15em] text-muted-foreground line-clamp-1">{s.label}</span>
-                <span className={`${s.color} opacity-60 group-hover:opacity-100 transition-opacity`}>{s.icon}</span>
+            <div key={i} className="bg-card rounded-xl p-5 border border-border shadow-sm flex flex-col justify-between group hover:border-primary transition-all duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">{s.label}</span>
+                <span className={`${s.color} opacity-40 group-hover:opacity-100 transition-opacity`}>{s.icon}</span>
               </div>
-              <div className={`text-lg font-black tracking-tight ${s.color}`}>{s.val}</div>
+              <div className={cn("text-xl font-bold tracking-tight", s.color)}>{s.val}</div>
             </div>
           ))}
         </div>
