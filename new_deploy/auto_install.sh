@@ -95,13 +95,23 @@ apply_ssl() {
 run_build() {
     echo -e "${BLUE}━━━━━ Gerando Build ━━━━━${NC}"
     cd "$APP_DIR"
+    
+    # Limpeza de cache do npm se necessário (opcional, mas ajuda em erros de build)
+    # npm cache clean --force 
+
     npm install
     npm run build
     mkdir -p "$WEB_DIR"
+    
+    echo -e "${YELLOW}Limpando diretório web e publicando novo build...${NC}"
     rm -rf "$WEB_DIR"/*
     cp -r "$APP_DIR/dist/"* "$WEB_DIR/"
     chown -R www-data:www-data "$WEB_DIR"
-    echo -e "${GREEN}✓ Build concluído e publicado${NC}"
+    
+    # Recarrega o nginx para garantir que as mudanças sejam servidas
+    systemctl reload nginx || systemctl restart nginx
+    
+    echo -e "${GREEN}✓ Build concluído e publicado. Cache do servidor limpo.${NC}"
 }
 
 update_supabase_auto() {
