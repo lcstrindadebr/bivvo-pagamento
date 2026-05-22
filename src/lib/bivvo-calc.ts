@@ -99,7 +99,7 @@ export function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
     if (extra > 0) {
       const amount = round2(extra * c.unit * discountFactor);
       channelsTotal += amount;
-      channelLines.push({ id: c.id, label: c.label, emoji: c.emoji, qty: extra, amount });
+      channelLines.push({ id: c.id, label: c.label, emoji: c.emoji, logo: c.logo, qty: extra, amount });
     }
   }
   const telCost = cfg.telefonia ? TELEFONIA_PRICE : 0;
