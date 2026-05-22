@@ -542,6 +542,7 @@ export type Database = {
           name: string
           popular: boolean
           price: number
+          price_recurring: number | null
           slug: string
           sort_order: number
           updated_at: string
@@ -557,6 +558,7 @@ export type Database = {
           name: string
           popular?: boolean
           price: number
+          price_recurring?: number | null
           slug: string
           sort_order?: number
           updated_at?: string
@@ -572,9 +574,28 @@ export type Database = {
           name?: string
           popular?: boolean
           price?: number
+          price_recurring?: number | null
           slug?: string
           sort_order?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: string
         }
         Relationships: []
       }

@@ -12,6 +12,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/validators';
 import { supabase } from '@/integrations/supabase/client';
+import { useAppUrl } from '@/hooks/useSiteSettings';
 
 interface Affiliate {
   id: string;
@@ -38,6 +39,7 @@ interface Affiliate {
 
 export default function AdminAffiliates() {
   const { adminFetch, adminPost } = useAdmin();
+  const baseUrl = useAppUrl();
   const { toast } = useToast();
   const [affiliates, setAffiliates] = useState<Affiliate[]>([]);
   const [sales, setSales] = useState<any[]>([]);
@@ -158,7 +160,7 @@ export default function AdminAffiliates() {
   };
 
   const copyLink = (slug: string) => {
-    const url = `${window.location.origin}/?aff=${slug}`;
+    const url = `${baseUrl}/?aff=${slug}`;
     navigator.clipboard.writeText(url);
     toast({ title: 'Link copiado', description: url });
   };

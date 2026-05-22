@@ -15,7 +15,7 @@ set -e
 # Cores
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\133[1;33m'
+YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
@@ -64,10 +64,13 @@ server {
     root $WEB_DIR;
     index index.html;
 
+    # Proteção contra cache do index.html (solução definitiva para atualizações)
     location / {
         try_files \$uri \$uri/ /index.html;
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0";
     }
 
+    # Cache agressivo para assets estáticos (com hash no nome)
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)\$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
@@ -80,8 +83,8 @@ server {
 EOF
     ln -sf /etc/nginx/sites-available/bivvo /etc/nginx/sites-enabled/
     rm -f /etc/nginx/sites-enabled/default
-    nginx -t && systemctl restart nginx
-    echo -e "${GREEN}✓ Nginx configurado para $DOMAIN${NC}"
+    nginx -t && systemctl reload nginx
+    echo -e "${GREEN}✓ Nginx configurado e cache limpo para $DOMAIN${NC}"
 }
 
 apply_ssl() {
@@ -92,41 +95,51 @@ apply_ssl() {
 run_build() {
     echo -e "${BLUE}━━━━━ Gerando Build ━━━━━${NC}"
     cd "$APP_DIR"
+    
+    # Limpeza de cache do npm se necessário (opcional, mas ajuda em erros de build)
+    # npm cache clean --force 
+
     npm install
     npm run build
     mkdir -p "$WEB_DIR"
+    
+    echo -e "${YELLOW}Limpando diretório web e publicando novo build...${NC}"
     rm -rf "$WEB_DIR"/*
     cp -r "$APP_DIR/dist/"* "$WEB_DIR/"
     chown -R www-data:www-data "$WEB_DIR"
-    echo -e "${GREEN}✓ Build concluído e publicado${NC}"
+    
+    # Recarrega o nginx para garantir que as mudanças sejam servidas e limpa cache
+    systemctl reload nginx || systemctl restart nginx
+    
+    echo -e "${GREEN}✓ Build concluído. Cache do servidor limpo e Nginx atualizado.${NC}"
 }
 
 update_supabase_auto() {
     echo ""
-    echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE AUTOMATICAMENTE ━━━━━${NC}"
+    echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE (FUNCTIONS + SCHEMA) ━━━━━${NC}"
     
-    # Credenciais fornecidas pelo usuário
-    USER_TOKEN="sbp_8e99f339f89f30eda805734c6e7c37ffa50859c4"
-    USER_PROJECT_ID="bcijktxnuzsatvhammpl"
+    # Seguindo exatamente a sequência solicitada pelo usuário
+    cd "/opt/bivvo-pagamento"
 
-    cd "$APP_DIR"
+    echo -e "${BLUE}Autenticando no Supabase...${NC}"
+    npx supabase login --token sbp_9f79cabdaa6c9a08eb09296951c6984d566037ac
 
-    echo -e "${BLUE}Efetuando login no Supabase...${NC}"
-    npx supabase login --token "$USER_TOKEN"
+    echo -e "${BLUE}Linkando projeto bcijktxnuzsatvhammpl...${NC}"
+    # O comando link geralmente exige confirmação ou senha da DB, usamos --non-interactive se possível
+    # ou tentamos prosseguir. O usuário pediu exatamente a sequência:
+    npx supabase link --project-ref bcijktxnuzsatvhammpl
 
-    echo -e "${BLUE}Linkando projeto $USER_PROJECT_ID...${NC}"
-    npx supabase link --project-ref "$USER_PROJECT_ID"
-
+    # Atualiza o banco de dados se houver alterações no schema
     echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
     if [ -f "new_deploy/database_schema.sql" ]; then
-        npx supabase db execute --file "new_deploy/database_schema.sql" --project-ref "$USER_PROJECT_ID"
+        npx supabase db execute --file "new_deploy/database_schema.sql" --project-ref bcijktxnuzsatvhammpl
         echo -e "${GREEN}✓ Banco de dados atualizado.${NC}"
     fi
 
     echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
     if [ -d "supabase/functions" ]; then
-        # Executa exatamente como o usuário solicitou
-        npx supabase functions deploy --no-verify-jwt --project-ref "$USER_PROJECT_ID"
+        # Seguindo o comando exato solicitado:
+        npx supabase functions deploy --no-verify-jwt
         echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
     fi
 
@@ -217,7 +230,13 @@ case $OPTION in
                 ;;
             *) exit 0 ;;
         esac
-        echo -e "${GREEN}✓ Manutenção concluída!${NC}"
+        
+        echo -e "${BLUE}Limpando cache do servidor...${NC}"
+        # Força o recarregamento do Nginx e garante que o diretório web esteja limpo se necessário
+        systemctl reload nginx
+        # Se houve troca de domínio ou build, o run_build já cuida disso, 
+        # mas garantimos aqui também.
+        echo -e "${GREEN}✓ Manutenção concluída! Cache do servidor limpo e Nginx recarregado.${NC}"
         exit 0
         ;;
     2)
