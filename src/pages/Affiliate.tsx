@@ -14,6 +14,7 @@ import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
 import { CardMarketingLink, CardMarketingTools } from '@/components/affiliate/MarketingTools';
 import { formatCurrency } from '@/lib/validators';
 import { loadPlansFromDB } from '@/lib/bivvo-calc';
+import { cn } from '@/lib/utils';
 
 interface Affiliate {
   id: string; name: string; email: string; whatsapp: string | null; document: string | null;
