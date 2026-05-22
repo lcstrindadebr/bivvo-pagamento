@@ -106,7 +106,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         {/* SECTION: PLAN SELECTION */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold flex items-center gap-2">
+            <h3 className="text-xl font-bold flex items-center gap-2">
               <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">1</span>
               Selecione seu Plano Base
             </h3>
@@ -144,18 +144,18 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                       <CheckCircle2 className="h-5 w-5 text-accent" />
                     </div>
                   )}
-                  <span className={`text-[10px] uppercase font-bold tracking-wider mb-1 ${active ? 'text-accent' : 'text-muted-foreground'}`}>
+                  <span className={`text-xs uppercase font-bold tracking-wider mb-1 ${active ? 'text-accent' : 'text-muted-foreground'}`}>
                     {p.name}
                   </span>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-xl font-black">{fmtBRL(p.promo)}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium">/1º mês</span>
+                    <span className="text-2xl font-bold">{fmtBRL(p.promo)}</span>
+                    <span className="text-xs text-muted-foreground font-medium">/1º mês</span>
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1.5">
+                  <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
                     <Users className="h-3 w-3" />
                     Até {p.users} usuários
                   </div>
-                  <div className="text-[10px] font-semibold mt-1">
+                  <div className="text-xs font-semibold mt-1">
                     Recorrência: {fmtBRL(p.full)}
                   </div>
                   {active && (
@@ -172,7 +172,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
 
         {/* SECTION: CUSTOMIZATION */}
         <section className="space-y-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
+          <h3 className="text-xl font-bold flex items-center gap-2">
             <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">2</span>
             Personalize sua Experiência
           </h3>
@@ -183,9 +183,9 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-bold">Usuários Adicionais</span>
+                  <span className="text-sm font-medium">Usuários Adicionais</span>
                 </div>
-                <Badge variant="secondary" className="font-mono text-[10px]">
+                <Badge variant="secondary" className="font-mono text-xs">
                   R$ 35,00/cada
                 </Badge>
               </div>
