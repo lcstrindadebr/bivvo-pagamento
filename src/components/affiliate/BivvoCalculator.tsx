@@ -395,160 +395,73 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
       </div>
 
       {/* SUMMARY PANEL */}
-      <aside className="relative">
-        <div className="card-glass rounded-[2rem] p-6 border-2 border-accent/20 sticky top-24 space-y-6 shadow-2xl shadow-accent/5 overflow-hidden">
-          {/* Decorative background element */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
-          
-          <div className="flex items-center justify-between relative z-10">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Resumo do Investimento</span>
-            <Badge variant="outline" className="text-[10px] font-bold border-accent/30 text-accent uppercase tracking-wider px-2 py-0">
-              {quote?.planLabel}
-            </Badge>
-          </div>
-
-          {quote && (
-            <div className="space-y-6 relative z-10">
-              {/* PRICE BREAKDOWN */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total 1º Mês</span>
-                    <span className="text-xs text-muted-foreground font-medium italic">Valor promocional</span>
-                  </div>
-                  <AnimatePresence mode="wait">
-                    <motion.span 
-                      key={quote.total1m}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="text-3xl font-black text-accent tabular-nums"
-                    >
-                      {fmtBRL(quote.total1m)}
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t border-border/50">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Recorrência Mensal</span>
-                  <AnimatePresence mode="wait">
-                    <motion.span 
-                      key={quote.totalRec}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="text-lg font-bold tabular-nums"
-                    >
-                      {fmtBRL(quote.totalRec)}
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
+      <aside className="relative lg:h-full">
+        <div className="sticky top-24 space-y-6">
+          <div className="bg-primary rounded-2xl p-8 text-white shadow-2xl shadow-primary/20 overflow-hidden relative group transition-all">
+            {/* Decorative element */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/10 transition-all pointer-events-none" />
+            
+            <div className="relative z-10 space-y-8">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Investimento Total</span>
+                <Badge className="bg-white/10 text-white border-white/20 text-[10px] font-bold uppercase tracking-widest px-2 py-0">
+                  {quote?.planLabel.split(' ')[1]}
+                </Badge>
               </div>
 
-              {quote.protagonista && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/5 border border-green-500/20 text-green-700">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span className="text-[11px] font-bold leading-tight">Valor fixo de {fmtBRL(quote.total1m)} garantido para sempre!</span>
+              {quote && (
+                <div className="space-y-6">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Primeiro Mês</p>
+                    <AnimatePresence mode="wait">
+                      <motion.div 
+                        key={quote.total1m}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-4xl font-black tracking-tighter"
+                      >
+                        {fmtBRL(quote.total1m)}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/10 space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Recorrência Mensal</p>
+                    <AnimatePresence mode="wait">
+                      <motion.div 
+                        key={quote.totalRec}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-2xl font-bold tracking-tight text-white/90"
+                      >
+                        {fmtBRL(quote.totalRec)}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
                 </div>
               )}
 
-              {/* DETAILS LIST */}
-              <div className="space-y-3 pt-2">
-                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest border-b border-border/40 pb-3">
-                  <span className="text-muted-foreground">Detalhamento</span>
-                  <span className="text-accent">Subtotal</span>
-                </div>
-                
-                <div className="flex justify-between text-[11px] font-bold">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <ShieldCheck className="h-3 w-3" /> Plano Base
-                  </span>
-                  <span>{fmtBRL(quote.base1m)}</span>
-                </div>
-
-                {quote.channelLines.length > 0 && (
-                  <div className="space-y-2 py-1">
-                    {quote.channelLines.map(l => {
-                      const getIcon = (id: string) => {
-                        switch (id) {
-                          case 'waof':
-                          case 'wano': return <MessageSquare className="h-3 w-3" />;
-                          case 'ig': return <Instagram className="h-3 w-3" />;
-                          case 'fb': return <Facebook className="h-3 w-3" />;
-                          case 'email': return <Mail className="h-3 w-3" />;
-                          case 'olx': return <Tag className="h-3 w-3" />;
-                          case 'tiktok': return <Music2 className="h-3 w-3" />;
-                          case 'ml': return <ShoppingCart className="h-3 w-3" />;
-                          case 'li': return <Linkedin className="h-3 w-3" />;
-                          case 'yt': return <Youtube className="h-3 w-3" />;
-                          case 'woo': return <ShoppingBag className="h-3 w-3" />;
-                          default: return <MessageSquare className="h-3 w-3" />;
-                        }
-                      };
-
-                      return (
-                        <div key={l.id} className="flex justify-between text-[10px] font-medium animate-in fade-in slide-in-from-right-2">
-                          <span className="text-muted-foreground flex items-center gap-2">
-                            {getIcon(l.id)} {l.label} ({l.qty}x)
-                            {quote.channelsDiscountPercent > 0 && (
-                              <Badge variant="outline" className="text-[7px] h-3 px-1 border-accent/20 text-accent bg-accent/5">-{quote.channelsDiscountPercent}%</Badge>
-                            )}
-                          </span>
-                          <span>{fmtBRL(l.amount)}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                
-                {quote.telCost > 0 && (
-                  <div className="flex justify-between text-[11px] font-bold pt-2 border-t border-border/40">
-                    <span className="text-muted-foreground flex items-center gap-2">
-                      <Smartphone className="h-3 w-3" /> Telefonia
-                    </span>
-                    <span>{fmtBRL(quote.telCost)}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* ACTIONS */}
-              <div className="space-y-4 pt-6">
+              <div className="pt-2">
                 {mode === 'customer' ? (
-                  <div className="space-y-6">
-                    <Button 
-                      onClick={() => onCheckout?.(config)} 
-                      className="w-full bg-accent hover:bg-accent/90 text-white h-16 text-lg font-black rounded-xl shadow-lg shadow-accent/20 transition-all hover:scale-[1.02] active:scale-[0.98] group"
-                    >
-                      <span>Ativar Plataforma</span>
-                      <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                    
-                    {/* Payment Icons */}
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Pagamento Seguro</div>
-                      <div className="flex items-center justify-center gap-6 opacity-70 grayscale hover:grayscale-0 transition-all">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6 w-auto object-contain" />
-                        <img src="https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png" alt="Pix" className="h-5 w-auto object-contain" />
-                        <div className="flex flex-col items-center gap-0.5 border border-border/60 rounded px-1.5 py-0.5 bg-white shadow-sm">
-                          <div className="flex gap-0.5">
-                            {[1,1,1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
-                            {[1,1,1].map((_,i)=><div key={i} className="w-[2px] h-3 bg-black"/>)}
-                          </div>
-                          <span className="text-[7px] font-bold text-black leading-none uppercase">Boleto</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : affiliateSlug && (
-                  <div className="space-y-4">
+                  <Button 
+                    onClick={() => onCheckout?.(config)} 
+                    className="w-full bg-white text-primary hover:bg-white/90 h-16 text-lg font-black rounded-xl transition-all shadow-xl group"
+                  >
+                    <span>Assinar Agora</span>
+                    <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
                     <Button 
                       onClick={() => copy(checkoutUrl, 'Link copiado')} 
-                      className="w-full rounded-xl h-14 font-black uppercase tracking-wider text-xs shadow-md shadow-accent/10" 
+                      className="w-full bg-white text-primary hover:bg-white/90 h-14 text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-md"
                     >
-                      <Link2 className="h-4 w-4 mr-2" />Copiar Link Checkout
+                      <Link2 className="h-4 w-4 mr-2" />Copiar Checkout
                     </Button>
                     <Button 
                       onClick={() => copy(proposalText, 'Proposta copiada')} 
-                      variant="outline" 
-                      className="w-full rounded-xl h-14 font-black uppercase tracking-wider text-xs border-2 hover:bg-accent/5 hover:text-accent shadow-sm" 
+                      variant="outline"
+                      className="w-full bg-transparent text-white border-white/20 hover:bg-white/10 h-14 text-xs font-black uppercase tracking-widest rounded-xl transition-all"
                     >
                       <FileText className="h-4 w-4 mr-2" />Copiar Proposta
                     </Button>
@@ -556,7 +469,73 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 )}
               </div>
             </div>
-          )}
+          </div>
+
+          {/* DETAILED SUMMARY CARD */}
+          <div className="bg-card rounded-2xl p-8 border border-border shadow-sm space-y-6">
+            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-primary border-b pb-4 border-border/60 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" /> Detalhamento
+            </h4>
+            
+            {quote && (
+              <div className="space-y-5">
+                <div className="flex justify-between items-center group">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-primary/40 group-hover:text-primary transition-colors" />
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Plano Base</span>
+                  </div>
+                  <span className="text-sm font-bold text-primary">{fmtBRL(quote.base1m)}</span>
+                </div>
+
+                {quote.channelLines.length > 0 && (
+                  <div className="space-y-3 pt-2 border-t border-border/40">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Canais Extras</p>
+                    {quote.channelLines.map(l => (
+                      <div key={l.id} className="flex justify-between items-center animate-in fade-in slide-in-from-right-2">
+                        <span className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                          {l.label} ({l.qty}x)
+                        </span>
+                        <span className="text-sm font-bold text-primary">{fmtBRL(l.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {quote.telCost > 0 && (
+                  <div className="flex justify-between items-center pt-2 border-t border-border/40 group">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="h-3.5 w-3.5 text-primary/40 group-hover:text-primary transition-colors" />
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Telefonia</span>
+                    </div>
+                    <span className="text-sm font-bold text-primary">{fmtBRL(quote.telCost)}</span>
+                  </div>
+                )}
+
+                {quote.protagonista && (
+                  <div className="p-4 rounded-xl bg-primary/[0.03] border border-primary/10 flex items-start gap-3">
+                    <Zap className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-primary">Preço Protagonista</p>
+                      <p className="text-[10px] text-primary/70 font-medium leading-relaxed italic">
+                        Valor promocional de {fmtBRL(quote.total1m)} fixado permanentemente como sua recorrência mensal.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* HELP CARD */}
+          <div className="bg-primary/[0.01] rounded-2xl p-6 border border-dashed border-border flex items-center gap-4 group hover:bg-primary/[0.03] transition-all cursor-help">
+            <div className="h-10 w-10 rounded-full bg-primary/5 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <HelpCircle className="h-5 w-5" />
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs font-bold text-primary uppercase tracking-widest">Dúvidas?</p>
+              <p className="text-[10px] text-muted-foreground font-medium">Consulte os termos de uso ou fale com um consultor.</p>
+            </div>
+          </div>
         </div>
       </aside>
     </div>
