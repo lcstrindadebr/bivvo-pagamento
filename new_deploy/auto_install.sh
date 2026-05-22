@@ -118,14 +118,16 @@ update_supabase_auto() {
     echo ""
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE (FUNCTIONS + SCHEMA) ━━━━━${NC}"
     
-    # Seguindo exatamente a sequência solicitada
+    # Seguindo exatamente a sequência solicitada pelo usuário
     cd "/opt/bivvo-pagamento"
 
     echo -e "${BLUE}Autenticando no Supabase...${NC}"
     npx supabase login --token sbp_9f79cabdaa6c9a08eb09296951c6984d566037ac
 
     echo -e "${BLUE}Linkando projeto bcijktxnuzsatvhammpl...${NC}"
-    npx supabase link --project-ref bcijktxnuzsatvhammpl --non-interactive || true
+    # O comando link geralmente exige confirmação ou senha da DB, usamos --non-interactive se possível
+    # ou tentamos prosseguir. O usuário pediu exatamente a sequência:
+    npx supabase link --project-ref bcijktxnuzsatvhammpl
 
     # Atualiza o banco de dados se houver alterações no schema
     echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
@@ -136,6 +138,7 @@ update_supabase_auto() {
 
     echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
     if [ -d "supabase/functions" ]; then
+        # Seguindo o comando exato solicitado:
         npx supabase functions deploy --no-verify-jwt
         echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
     fi
