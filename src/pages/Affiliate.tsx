@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { LogOut, Loader2, Calculator, ListChecks, DollarSign, User, XCircle, Eye, MousePointerClick, Share2, Copy, CheckCircle2 } from 'lucide-react';
+import { LogOut, Loader2, Calculator, ListChecks, DollarSign, User, XCircle, Eye, MousePointerClick, Share2, Copy, CheckCircle2, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import BivvoCalculator from '@/components/affiliate/BivvoCalculator';
 import { CardMarketingLink, CardMarketingTools } from '@/components/affiliate/MarketingTools';
