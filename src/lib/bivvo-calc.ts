@@ -37,7 +37,7 @@ export const CANAIS_DEF = [
   { id: 'ig',     label: 'Instagram',                included: 1, unit: 50,  emoji: '📸', logo: 'https://cdn.simpleicons.org/instagram/%23E4405F' },
   { id: 'fb',     label: 'Facebook',                 included: 1, unit: 50,  emoji: '📘', logo: 'https://cdn.simpleicons.org/facebook/%231877F2' },
   { id: 'email',  label: 'E-mail',                   included: 1, unit: 50,  emoji: '✉️',  logo: 'https://cdn.simpleicons.org/gmail/%23EA4335' },
-  { id: 'olx',    label: 'OLX',                      included: 0, unit: 100, emoji: '🏷️', logo: 'https://www.olx.com.br/favicon.ico' },
+  { id: 'olx',    label: 'OLX',                      included: 0, unit: 100, emoji: '🏷️', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/OLX_logo.svg/1200px-OLX_logo.svg.png' },
   { id: 'tiktok', label: 'TikTok',                   included: 0, unit: 100, emoji: '🎵', logo: 'https://cdn.simpleicons.org/tiktok/%23000000' },
   { id: 'ml',     label: 'Mercado Livre',            included: 0, unit: 100, emoji: '🛒', logo: 'https://http2.mlstatic.com/frontend-assets/ui-navigation/5.21.22/mercadolibre/logo__small.png' },
   { id: 'li',     label: 'LinkedIn',                 included: 0, unit: 100, emoji: '💼', logo: 'https://cdn.simpleicons.org/linkedin/%230A66C2' },
