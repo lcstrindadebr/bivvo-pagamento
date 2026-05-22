@@ -308,7 +308,7 @@ export default function Affiliate() {
           </TabsContent>
 
           <TabsContent value="profile" className="mt-4">
-            <div className="card-glass rounded-xl p-6 max-w-xl space-y-4">
+            <div className="bg-white rounded-xl p-6 border border-border/30 max-w-xl space-y-4 transition-all duration-200">
               <div><Label>Nome</Label><Input value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>WhatsApp</Label><Input value={profile.whatsapp} onChange={e => setProfile(p => ({ ...p, whatsapp: e.target.value }))} /></div>
