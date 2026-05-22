@@ -106,30 +106,18 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
   );
 
   return (
-    <div className="grid lg:grid-cols-[1fr_380px] gap-8">
-      <div className="space-y-8">
-        {/* SECTION: PLAN SELECTION */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">1</span>
-              Selecione seu Plano Base
-            </h3>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs text-xs">O 1º mês possui valor promocional. A partir do 2º mês vigora o valor integral.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+    <div className="grid lg:grid-cols-[1fr_400px] gap-8 max-w-7xl mx-auto">
+      <div className="space-y-10">
+        {/* SECTION 1: PLAN SELECTION */}
+        <section className="space-y-6">
+          <div className="flex items-end justify-between border-b pb-4 border-border/60">
+            <div className="space-y-1">
+              <h3 className="text-xl font-semibold tracking-tight text-primary">Plano Base</h3>
+              <p className="text-sm text-muted-foreground font-medium">Escolha o ponto de partida ideal para sua operação</p>
+            </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {(Object.keys(PLANS) as PlanSlug[]).map(k => {
               const p = PLANS[k];
               const active = plan === k;
@@ -140,50 +128,43 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   key={k}
                   type="button"
                   onClick={() => { setPlan(k); setUsers(p.users); }}
-                  className={`relative flex flex-col p-6 rounded-xl border-2 text-left transition-all duration-300 ${
+                  className={cn(
+                    "relative flex flex-col p-6 rounded-xl border transition-all duration-300 text-left",
                     active 
-                    ? 'border-accent bg-accent/5 ring-4 ring-accent/5 shadow-lg' 
-                    : 'border-border/40 hover:border-accent/30 bg-card/50'
-                  } ${isSilver && !active ? 'ring-2 ring-accent/10 shadow-sm' : ''}`}
+                      ? "border-primary bg-primary/[0.02] shadow-[0_0_0_1px_rgba(0,32,58,1)]" 
+                      : "border-border bg-card hover:border-primary/30 hover:shadow-md"
+                  )}
                 >
                   {isSilver && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md z-20">
-                      Mais Popular
+                    <div className="absolute -top-3 left-6 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-sm uppercase tracking-widest shadow-sm">
+                      Recomendado
                     </div>
                   )}
                   
-                  {active && (
-                    <div className="absolute top-4 right-4 z-10">
-                      <CheckCircle2 className="h-5 w-5 text-accent" />
+                  <div className="flex items-center justify-between mb-4">
+                    <span className={cn(
+                      "text-xs font-bold uppercase tracking-widest",
+                      active ? "text-primary" : "text-muted-foreground"
+                    )}>
+                      {p.name}
+                    </span>
+                    {active && <CheckCircle2 className="h-4 w-4 text-primary fill-primary/10" />}
+                  </div>
+                  
+                  <div className="mt-auto space-y-1">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold tracking-tight text-primary">{fmtBRL(p.promo)}</span>
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase">/1º Mês</span>
                     </div>
-                  )}
-                  
-                  <span className={`text-[10px] uppercase font-black tracking-[0.2em] mb-3 ${active ? 'text-accent' : 'text-muted-foreground'}`}>
-                    {p.name}
-                  </span>
-                  
-                  <div className="flex flex-col mb-4">
-                    <span className="text-3xl font-black tracking-tight">{fmtBRL(p.promo)}</span>
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest mt-1">Primeiro Mês</span>
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                      Recorrência: {fmtBRL(p.full)}
+                    </p>
                   </div>
 
-                  <div className="space-y-2 pt-4 border-t border-border/40">
-                    <div className="text-[10px] text-muted-foreground flex items-center gap-2">
-                      <Users className="h-3 w-3 text-accent" />
-                      <span className="font-semibold">Até {p.users} usuários</span>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground flex items-center gap-2">
-                      <TrendingUp className="h-3 w-3 text-accent" />
-                      <span className="font-semibold">Recorrência: {fmtBRL(p.full)}</span>
-                    </div>
+                  <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[11px] font-semibold text-muted-foreground italic">Inclui {p.users} usuários</span>
                   </div>
-
-                  {active && (
-                    <motion.div 
-                      layoutId="plan-active"
-                      className="absolute inset-0 border-2 border-accent rounded-xl pointer-events-none"
-                    />
-                  )}
                 </button>
               );
             })}
