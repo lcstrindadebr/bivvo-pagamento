@@ -458,7 +458,6 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 )}
               </div>
             </div>
-            </div>
           )}
         </div>
       </aside>
