@@ -1,14 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Copy, Link2, FileText, Info, Users, Smartphone, Plus, Minus, 
+  Link2, FileText, Info, Users, Smartphone, Plus, Minus, 
   CheckCircle2, Loader2, MessageSquare, Instagram, Facebook, 
   Mail, Tag, Music2, ShoppingCart, Linkedin, Youtube, ShoppingBag,
-  Zap, ArrowRight, ShieldCheck, TrendingUp
+  Zap, ArrowRight, ShieldCheck, TrendingUp, HelpCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/tooltip";
 import { PLANS, CANAIS_DEF, quoteBivvo, fmtBRL, encodeBivvoConfig, type PlanSlug, type BivvoConfig, loadPlansFromDB } from '@/lib/bivvo-calc';
 import { useAppUrl } from '@/hooks/useSiteSettings';
+import { cn } from '@/lib/utils';
 
 interface Props {
   affiliateSlug?: string;
@@ -106,30 +106,18 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
   );
 
   return (
-    <div className="grid lg:grid-cols-[1fr_380px] gap-8">
-      <div className="space-y-8">
-        {/* SECTION: PLAN SELECTION */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">1</span>
-              Selecione seu Plano Base
-            </h3>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs text-xs">O 1º mês possui valor promocional. A partir do 2º mês vigora o valor integral.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+    <div className="grid lg:grid-cols-[1fr_400px] gap-8 max-w-7xl mx-auto">
+      <div className="space-y-10">
+        {/* SECTION 1: PLAN SELECTION */}
+        <section className="space-y-6">
+          <div className="flex items-end justify-between border-b pb-4 border-border/60">
+            <div className="space-y-1">
+              <h3 className="text-xl font-semibold tracking-tight text-primary">Plano Base</h3>
+              <p className="text-sm text-muted-foreground font-medium">Escolha o ponto de partida ideal para sua operação</p>
+            </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {(Object.keys(PLANS) as PlanSlug[]).map(k => {
               const p = PLANS[k];
               const active = plan === k;
@@ -140,170 +128,188 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   key={k}
                   type="button"
                   onClick={() => { setPlan(k); setUsers(p.users); }}
-                  className={`relative flex flex-col p-6 rounded-xl border-2 text-left transition-all duration-300 ${
+                  className={cn(
+                    "relative flex flex-col p-6 rounded-xl border transition-all duration-300 text-left",
                     active 
-                    ? 'border-accent bg-accent/5 ring-4 ring-accent/5 shadow-lg' 
-                    : 'border-border/40 hover:border-accent/30 bg-card/50'
-                  } ${isSilver && !active ? 'ring-2 ring-accent/10 shadow-sm' : ''}`}
+                      ? "border-primary bg-primary/[0.02] shadow-[0_0_0_1px_rgba(0,32,58,1)]" 
+                      : "border-border bg-card hover:border-primary/30 hover:shadow-md"
+                  )}
                 >
                   {isSilver && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md z-20">
-                      Mais Popular
+                    <div className="absolute -top-3 left-6 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-sm uppercase tracking-widest shadow-sm">
+                      Recomendado
                     </div>
                   )}
                   
-                  {active && (
-                    <div className="absolute top-4 right-4 z-10">
-                      <CheckCircle2 className="h-5 w-5 text-accent" />
+                  <div className="flex items-center justify-between mb-4">
+                    <span className={cn(
+                      "text-xs font-bold uppercase tracking-widest",
+                      active ? "text-primary" : "text-muted-foreground"
+                    )}>
+                      {p.name}
+                    </span>
+                    {active && <CheckCircle2 className="h-4 w-4 text-primary fill-primary/10" />}
+                  </div>
+                  
+                  <div className="mt-auto space-y-1">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold tracking-tight text-primary">{fmtBRL(p.promo)}</span>
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase">/1º Mês</span>
                     </div>
-                  )}
-                  
-                  <span className={`text-[10px] uppercase font-black tracking-[0.2em] mb-3 ${active ? 'text-accent' : 'text-muted-foreground'}`}>
-                    {p.name}
-                  </span>
-                  
-                  <div className="flex flex-col mb-4">
-                    <span className="text-3xl font-black tracking-tight">{fmtBRL(p.promo)}</span>
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest mt-1">Primeiro Mês</span>
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                      Recorrência: {fmtBRL(p.full)}
+                    </p>
                   </div>
 
-                  <div className="space-y-2 pt-4 border-t border-border/40">
-                    <div className="text-[10px] text-muted-foreground flex items-center gap-2">
-                      <Users className="h-3 w-3 text-accent" />
-                      <span className="font-semibold">Até {p.users} usuários</span>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground flex items-center gap-2">
-                      <TrendingUp className="h-3 w-3 text-accent" />
-                      <span className="font-semibold">Recorrência: {fmtBRL(p.full)}</span>
-                    </div>
+                  <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[11px] font-semibold text-muted-foreground italic">Inclui {p.users} usuários</span>
                   </div>
-
-                  {active && (
-                    <motion.div 
-                      layoutId="plan-active"
-                      className="absolute inset-0 border-2 border-accent rounded-xl pointer-events-none"
-                    />
-                  )}
                 </button>
               );
             })}
           </div>
         </section>
 
-        {/* SECTION: CUSTOMIZATION */}
-        <section className="space-y-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">2</span>
-            Personalize sua Experiência
-          </h3>
+        {/* SECTION 2: CUSTOMIZATION */}
+        <section className="space-y-6">
+          <div className="flex items-end justify-between border-b pb-4 border-border/60">
+            <div className="space-y-1">
+              <h3 className="text-xl font-semibold tracking-tight text-primary">Configurações e Adicionais</h3>
+              <p className="text-sm text-muted-foreground font-medium">Personalize a capacidade e recursos extras</p>
+            </div>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* USERS CARD */}
-            <div className="card-glass rounded-xl p-6 border border-border/40 space-y-5 bg-background/20">
+            <div className="bg-card rounded-xl p-8 border border-border shadow-sm space-y-8">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
-                    <Users className="h-4 w-4" />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-bold uppercase tracking-widest text-primary">Equipe de Atendimento</span>
                   </div>
-                  <span className="text-sm font-bold uppercase tracking-tight">Usuários Extras</span>
+                  <p className="text-[11px] text-muted-foreground font-medium">Adicione mais usuários à sua operação</p>
                 </div>
-                <Badge variant="outline" className="text-[10px] font-bold border-accent/20 text-accent">
-                  {fmtBRL(35)}/cada
+                <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 font-bold px-3 py-1">
+                  {fmtBRL(35)}/u
                 </Badge>
               </div>
               
-              <div className="flex items-center justify-between gap-4 bg-background/40 p-4 rounded-xl border border-border/40">
+              <div className="flex items-center justify-center gap-10">
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="icon" 
                   onClick={() => setUsers(u => Math.max(1, u - 1))}
-                  className="h-12 w-12 rounded-full border bg-background hover:bg-accent/5 hover:text-accent transition-all"
+                  className="h-14 w-14 rounded-full border-2 hover:bg-primary/5 hover:text-primary transition-all shadow-sm"
                 >
-                  <Minus className="h-5 w-5" />
+                  <Minus className="h-6 w-6" />
                 </Button>
                 
                 <div className="flex flex-col items-center">
                   <motion.span 
                     key={users}
-                    initial={{ scale: 1.1, opacity: 0 }}
+                    initial={{ scale: 1.1, opacity: 0.8 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="text-4xl font-black tabular-nums"
+                    className="text-6xl font-black text-primary tabular-nums tracking-tighter"
                   >
                     {users}
                   </motion.span>
-                  <span className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em]">Total</span>
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.3em] mt-1">Colaboradores</span>
                 </div>
 
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="icon" 
                   onClick={() => setUsers(u => u + 1)}
-                  className="h-12 w-12 rounded-full border bg-background hover:bg-accent/5 hover:text-accent transition-all"
+                  className="h-14 w-14 rounded-full border-2 hover:bg-primary/5 hover:text-primary transition-all shadow-sm"
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus className="h-6 w-6" />
                 </Button>
               </div>
               
-              {isLoaded && users > PLANS[plan].users && (
-                <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-accent bg-accent/5 py-2 rounded-lg border border-accent/10">
-                  <Zap className="h-3 w-3" />
-                  <span>+{users - PLANS[plan].users} usuários excedentes</span>
-                </div>
-              )}
+              <div className="pt-6 border-t border-border/40">
+                {isLoaded && users > PLANS[plan].users ? (
+                  <div className="flex items-center gap-3 text-[11px] font-bold text-primary bg-primary/[0.03] p-4 rounded-lg border border-primary/10">
+                    <Zap className="h-4 w-4 fill-primary/10" />
+                    <span>+{users - PLANS[plan].users} usuários extras inclusos na proposta</span>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-center text-muted-foreground font-medium">Utilizando capacidade padrão do plano</p>
+                )}
+              </div>
             </div>
 
             {/* TELEPHONY CARD */}
-            <div className="card-glass rounded-xl p-6 border border-border/40 space-y-5 bg-background/20 flex flex-col justify-between">
-              <div className="space-y-4">
+            <div className="bg-card rounded-xl p-8 border border-border shadow-sm flex flex-col justify-between">
+              <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
-                      <Smartphone className="h-4 w-4" />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-bold uppercase tracking-widest text-primary">Telefonia WA</span>
                     </div>
-                    <span className="text-sm font-bold uppercase tracking-tight">Telefonia WA</span>
+                    <p className="text-[11px] text-muted-foreground font-medium">Chamadas profissionais integradas</p>
                   </div>
-                  <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-accent" />
+                  <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-primary" />
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                  Ative chamadas de voz e áudio profissionais integradas ao seu painel.
-                </p>
+                
+                <div className="bg-primary/[0.01] rounded-lg border border-border/60 p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /></div>
+                    <p className="text-[11px] font-medium leading-relaxed text-muted-foreground">Chamadas de áudio e vídeo ilimitadas para seus atendentes.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /></div>
+                    <p className="text-[11px] font-medium leading-relaxed text-muted-foreground">Gravação de chamadas disponível no histórico do cliente.</p>
+                  </div>
+                </div>
               </div>
               
-              <div className="flex items-center justify-between pt-4 border-t border-border/40">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Custo Fixo</span>
-                  <span className="text-[10px] text-accent font-bold">Incluso no checkout</span>
-                </div>
-                <div className="text-xl font-black">{fmtBRL(100)}<span className="text-[10px] text-muted-foreground font-medium">/mês</span></div>
+              <div className="flex items-center justify-between pt-6 border-t border-border/40 mt-auto">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Investimento Mensal</span>
+                <div className="text-2xl font-bold text-primary">{fmtBRL(100)}</div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* SECTION: CHANNELS */}
-        <section className="space-y-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">3</span>
-            Canais de Atendimento
-          </h3>
+        {/* SECTION 3: CHANNELS */}
+        <section className="space-y-6">
+          <div className="flex items-end justify-between border-b pb-4 border-border/60">
+            <div className="space-y-1">
+              <h3 className="text-xl font-semibold tracking-tight text-primary">Canais Adicionais</h3>
+              <p className="text-sm text-muted-foreground font-medium">Expanda sua presença multicanal</p>
+            </div>
+          </div>
           
-          <div className="card-glass rounded-2xl p-6 border border-border/50 space-y-6">
+          <div className="bg-card rounded-xl p-8 border border-border shadow-sm">
             {mode === 'affiliate' && (
-              <div className="bg-accent/5 p-4 rounded-xl border border-accent/20 space-y-3">
+              <div className="mb-8 p-6 rounded-xl bg-primary/[0.02] border border-primary/10 space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-accent">Desconto nos Canais</Label>
-                  <Badge className="bg-accent text-white font-mono">{channelsDiscount}%</Badge>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-black uppercase tracking-[0.2em] text-primary">Desconto nos Canais</Label>
+                    <p className="text-[10px] text-muted-foreground font-medium">Aplicar desconto comercial exclusivo para o cliente</p>
+                  </div>
+                  <Badge className="bg-primary text-white font-bold h-7 px-3">{channelsDiscount}%</Badge>
                 </div>
-                <input 
-                  type="range" min="0" max="30" step="5"
-                  value={channelsDiscount} 
-                  onChange={e => setChannelsDiscount(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-accent/20 rounded-lg appearance-none cursor-pointer accent-accent"
-                />
+                <div className="relative pt-2">
+                  <input 
+                    type="range" min="0" max="30" step="5"
+                    value={channelsDiscount} 
+                    onChange={e => setChannelsDiscount(parseInt(e.target.value))}
+                    className="w-full h-2 bg-primary/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                  />
+                  <div className="flex justify-between mt-2">
+                    {[0, 5, 10, 15, 20, 25, 30].map(val => (
+                      <span key={val} className="text-[8px] font-black text-muted-foreground uppercase">{val}%</span>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {CANAIS_DEF.map(c => {
                 const qty = channels[c.id] ?? 0;
                 
@@ -325,32 +331,45 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 };
 
                 return (
-                  <div key={c.id} className="flex items-center justify-between p-4 rounded-xl border border-border/40 bg-background/40 hover:bg-background/60 transition-all group">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-background border flex items-center justify-center text-muted-foreground group-hover:text-accent group-hover:border-accent/30 transition-colors">
+                  <div key={c.id} className="flex flex-col p-5 rounded-xl border border-border bg-background transition-all hover:border-primary/20 hover:shadow-sm group">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="w-10 h-10 rounded-lg bg-primary/5 text-primary flex items-center justify-center border border-primary/5 group-hover:bg-primary/10 transition-colors">
                         {getIcon(c.id)}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold uppercase tracking-wider">{c.label}</span>
-                        <span className="text-[10px] text-muted-foreground font-medium">
+                        <span className="text-xs font-bold uppercase tracking-widest text-primary">{c.label}</span>
+                        <span className="text-[10px] text-muted-foreground font-semibold">
                           {c.included} incl. · {fmtBRL(c.unit)}/extra
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 bg-background/80 rounded-full p-1 border shadow-sm">
-                      <button 
-                        onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))}
-                        className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent/10 hover:text-accent transition-colors"
-                      >
-                        <Minus className="h-3 w-3" />
-                      </button>
-                      <span className="w-6 text-center text-xs font-black tabular-nums">{qty}</span>
-                      <button 
-                        onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))}
-                        className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent/10 hover:text-accent transition-colors"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </button>
+                    
+                    <div className="mt-auto flex items-center justify-between pt-4 border-t border-border/40">
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))}
+                          className="h-8 w-8 rounded-full hover:bg-primary/5 hover:text-primary"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <span className="w-8 text-center text-sm font-bold tabular-nums text-primary">{qty}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))}
+                          className="h-8 w-8 rounded-full hover:bg-primary/5 hover:text-primary"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      {qty > c.included && (
+                        <div className="text-[10px] font-bold text-primary">
+                          +{qty - c.included} extra
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -360,176 +379,93 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         </section>
 
         {mode === 'affiliate' && (
-          <section className="space-y-4 p-5 rounded-2xl border-2 border-dashed border-border/60">
-            <h3 className="text-sm font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-widest">
-              Modo Afiliado
-            </h3>
-            <div className="flex items-center justify-between p-4 rounded-xl bg-accent/5 border border-accent/10">
-              <div className="space-y-0.5">
-                <div className="text-sm font-bold">Preço Protagonista</div>
-                <div className="text-xs text-muted-foreground">Valor promocional torna-se a recorrência fixa.</div>
+          <section className="p-8 rounded-xl border border-dashed border-border bg-primary/[0.01] space-y-6">
+            <div className="flex items-center gap-3 border-b pb-4 border-border/40">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <h3 className="text-sm font-black text-primary uppercase tracking-[0.2em]">Painel do Afiliado</h3>
+            </div>
+            
+            <div className="flex items-center justify-between p-6 rounded-xl bg-white border border-border shadow-sm group hover:border-primary/30 transition-all">
+              <div className="space-y-1">
+                <div className="text-sm font-bold text-primary uppercase tracking-tight">Preço Protagonista</div>
+                <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                  Fixar o valor promocional como mensalidade vitalícia.
+                </p>
               </div>
-              <Switch checked={protagonista} onCheckedChange={setProtagonista} className="data-[state=checked]:bg-accent" />
+              <Switch checked={protagonista} onCheckedChange={setProtagonista} className="data-[state=checked]:bg-primary" />
             </div>
           </section>
         )}
       </div>
 
       {/* SUMMARY PANEL */}
-      <aside className="relative">
-        <div className="card-glass rounded-[2rem] p-6 border-2 border-accent/20 sticky top-24 space-y-6 shadow-2xl shadow-accent/5 overflow-hidden">
-          {/* Decorative background element */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
-          
-          <div className="flex items-center justify-between relative z-10">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Resumo do Investimento</span>
-            <Badge variant="outline" className="text-[10px] font-bold border-accent/30 text-accent uppercase tracking-wider px-2 py-0">
-              {quote?.planLabel}
-            </Badge>
-          </div>
-
-          {quote && (
-            <div className="space-y-6 relative z-10">
-              {/* PRICE BREAKDOWN */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total 1º Mês</span>
-                    <span className="text-xs text-muted-foreground font-medium italic">Valor promocional</span>
-                  </div>
-                  <AnimatePresence mode="wait">
-                    <motion.span 
-                      key={quote.total1m}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="text-3xl font-black text-accent tabular-nums"
-                    >
-                      {fmtBRL(quote.total1m)}
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t border-border/50">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Recorrência Mensal</span>
-                  <AnimatePresence mode="wait">
-                    <motion.span 
-                      key={quote.totalRec}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="text-lg font-bold tabular-nums"
-                    >
-                      {fmtBRL(quote.totalRec)}
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
+      <aside className="relative lg:h-full">
+        <div className="sticky top-24 space-y-6">
+          <div className="bg-primary rounded-2xl p-8 text-white shadow-2xl shadow-primary/20 overflow-hidden relative group transition-all">
+            {/* Decorative element */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/10 transition-all pointer-events-none" />
+            
+            <div className="relative z-10 space-y-8">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Investimento Total</span>
+                <Badge className="bg-white/10 text-white border-white/20 text-[10px] font-bold uppercase tracking-widest px-2 py-0">
+                  {quote?.planLabel.split(' ')[1]}
+                </Badge>
               </div>
 
-              {quote.protagonista && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-green-500/5 border border-green-500/20 text-green-700">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span className="text-[11px] font-bold leading-tight">Valor fixo de {fmtBRL(quote.total1m)} garantido para sempre!</span>
+              {quote && (
+                <div className="space-y-6">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Primeiro Mês</p>
+                    <AnimatePresence mode="wait">
+                      <motion.div 
+                        key={quote.total1m}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-4xl font-black tracking-tighter"
+                      >
+                        {fmtBRL(quote.total1m)}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/10 space-y-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Recorrência Mensal</p>
+                    <AnimatePresence mode="wait">
+                      <motion.div 
+                        key={quote.totalRec}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-2xl font-bold tracking-tight text-white/90"
+                      >
+                        {fmtBRL(quote.totalRec)}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
                 </div>
               )}
 
-              {/* DETAILS LIST */}
-              <div className="space-y-3 pt-2">
-                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest border-b border-border/40 pb-3">
-                  <span className="text-muted-foreground">Detalhamento</span>
-                  <span className="text-accent">Subtotal</span>
-                </div>
-                
-                <div className="flex justify-between text-[11px] font-bold">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <ShieldCheck className="h-3 w-3" /> Plano Base
-                  </span>
-                  <span>{fmtBRL(quote.base1m)}</span>
-                </div>
-
-                {quote.channelLines.length > 0 && (
-                  <div className="space-y-2 py-1">
-                    {quote.channelLines.map(l => {
-                      const getIcon = (id: string) => {
-                        switch (id) {
-                          case 'waof':
-                          case 'wano': return <MessageSquare className="h-3 w-3" />;
-                          case 'ig': return <Instagram className="h-3 w-3" />;
-                          case 'fb': return <Facebook className="h-3 w-3" />;
-                          case 'email': return <Mail className="h-3 w-3" />;
-                          case 'olx': return <Tag className="h-3 w-3" />;
-                          case 'tiktok': return <Music2 className="h-3 w-3" />;
-                          case 'ml': return <ShoppingCart className="h-3 w-3" />;
-                          case 'li': return <Linkedin className="h-3 w-3" />;
-                          case 'yt': return <Youtube className="h-3 w-3" />;
-                          case 'woo': return <ShoppingBag className="h-3 w-3" />;
-                          default: return <MessageSquare className="h-3 w-3" />;
-                        }
-                      };
-
-                      return (
-                        <div key={l.id} className="flex justify-between text-[10px] font-medium animate-in fade-in slide-in-from-right-2">
-                          <span className="text-muted-foreground flex items-center gap-2">
-                            {getIcon(l.id)} {l.label} ({l.qty}x)
-                            {quote.channelsDiscountPercent > 0 && (
-                              <Badge variant="outline" className="text-[7px] h-3 px-1 border-accent/20 text-accent bg-accent/5">-{quote.channelsDiscountPercent}%</Badge>
-                            )}
-                          </span>
-                          <span>{fmtBRL(l.amount)}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                
-                {quote.telCost > 0 && (
-                  <div className="flex justify-between text-[11px] font-bold pt-2 border-t border-border/40">
-                    <span className="text-muted-foreground flex items-center gap-2">
-                      <Smartphone className="h-3 w-3" /> Telefonia
-                    </span>
-                    <span>{fmtBRL(quote.telCost)}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* ACTIONS */}
-              <div className="space-y-4 pt-6">
+              <div className="pt-2">
                 {mode === 'customer' ? (
-                  <div className="space-y-6">
-                    <Button 
-                      onClick={() => onCheckout?.(config)} 
-                      className="w-full bg-accent hover:bg-accent/90 text-white h-16 text-lg font-black rounded-xl shadow-lg shadow-accent/20 transition-all hover:scale-[1.02] active:scale-[0.98] group"
-                    >
-                      <span>Ativar Plataforma</span>
-                      <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                    
-                    {/* Payment Icons */}
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Pagamento Seguro</div>
-                      <div className="flex items-center justify-center gap-6 opacity-70 grayscale hover:grayscale-0 transition-all">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6 w-auto object-contain" />
-                        <img src="https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png" alt="Pix" className="h-5 w-auto object-contain" />
-                        <div className="flex flex-col items-center gap-0.5 border border-border/60 rounded px-1.5 py-0.5 bg-white shadow-sm">
-                          <div className="flex gap-0.5">
-                            {[1,1,1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
-                            {[1,1,1].map((_,i)=><div key={i} className="w-[2px] h-3 bg-black"/>)}
-                          </div>
-                          <span className="text-[7px] font-bold text-black leading-none uppercase">Boleto</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : affiliateSlug && (
-                  <div className="space-y-4">
+                  <Button 
+                    onClick={() => onCheckout?.(config)} 
+                    className="w-full bg-white text-primary hover:bg-white/90 h-16 text-lg font-black rounded-xl transition-all shadow-xl group"
+                  >
+                    <span>Assinar Agora</span>
+                    <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
                     <Button 
                       onClick={() => copy(checkoutUrl, 'Link copiado')} 
-                      className="w-full rounded-xl h-14 font-black uppercase tracking-wider text-xs shadow-md shadow-accent/10" 
+                      className="w-full bg-white text-primary hover:bg-white/90 h-14 text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-md"
                     >
-                      <Link2 className="h-4 w-4 mr-2" />Copiar Link Checkout
+                      <Link2 className="h-4 w-4 mr-2" />Copiar Checkout
                     </Button>
                     <Button 
                       onClick={() => copy(proposalText, 'Proposta copiada')} 
-                      variant="outline" 
-                      className="w-full rounded-xl h-14 font-black uppercase tracking-wider text-xs border-2 hover:bg-accent/5 hover:text-accent shadow-sm" 
+                      variant="outline"
+                      className="w-full bg-transparent text-white border-white/20 hover:bg-white/10 h-14 text-xs font-black uppercase tracking-widest rounded-xl transition-all"
                     >
                       <FileText className="h-4 w-4 mr-2" />Copiar Proposta
                     </Button>
@@ -537,7 +473,73 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 )}
               </div>
             </div>
-          )}
+          </div>
+
+          {/* DETAILED SUMMARY CARD */}
+          <div className="bg-card rounded-2xl p-8 border border-border shadow-sm space-y-6">
+            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-primary border-b pb-4 border-border/60 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" /> Detalhamento
+            </h4>
+            
+            {quote && (
+              <div className="space-y-5">
+                <div className="flex justify-between items-center group">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-primary/40 group-hover:text-primary transition-colors" />
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Plano Base</span>
+                  </div>
+                  <span className="text-sm font-bold text-primary">{fmtBRL(quote.base1m)}</span>
+                </div>
+
+                {quote.channelLines.length > 0 && (
+                  <div className="space-y-3 pt-2 border-t border-border/40">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Canais Extras</p>
+                    {quote.channelLines.map(l => (
+                      <div key={l.id} className="flex justify-between items-center animate-in fade-in slide-in-from-right-2">
+                        <span className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                          {l.label} ({l.qty}x)
+                        </span>
+                        <span className="text-sm font-bold text-primary">{fmtBRL(l.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {quote.telCost > 0 && (
+                  <div className="flex justify-between items-center pt-2 border-t border-border/40 group">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="h-3.5 w-3.5 text-primary/40 group-hover:text-primary transition-colors" />
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Telefonia</span>
+                    </div>
+                    <span className="text-sm font-bold text-primary">{fmtBRL(quote.telCost)}</span>
+                  </div>
+                )}
+
+                {quote.protagonista && (
+                  <div className="p-4 rounded-xl bg-primary/[0.03] border border-primary/10 flex items-start gap-3">
+                    <Zap className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-primary">Preço Protagonista</p>
+                      <p className="text-[10px] text-primary/70 font-medium leading-relaxed italic">
+                        Valor promocional de {fmtBRL(quote.total1m)} fixado permanentemente como sua recorrência mensal.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* HELP CARD */}
+          <div className="bg-primary/[0.01] rounded-2xl p-6 border border-dashed border-border flex items-center gap-4 group hover:bg-primary/[0.03] transition-all cursor-help">
+            <div className="h-10 w-10 rounded-full bg-primary/5 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <HelpCircle className="h-5 w-5" />
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs font-bold text-primary uppercase tracking-widest">Dúvidas?</p>
+              <p className="text-[10px] text-muted-foreground font-medium">Consulte os termos de uso ou fale com um consultor.</p>
+            </div>
+          </div>
         </div>
       </aside>
     </div>
