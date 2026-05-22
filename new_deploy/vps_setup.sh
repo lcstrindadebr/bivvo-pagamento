@@ -1,4 +1,4 @@
-#!/bash
+#!/bin/bash
 # Script de preparação automática para VPS (Ubuntu/Debian)
 # Este script instala Node.js, Nginx e Certbot.
 
