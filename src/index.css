@@ -114,40 +114,37 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: sans-serif;
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-white/20;
+    @apply bg-white border border-border/50;
   }
   
   .glass-dark {
-    @apply bg-card/60 backdrop-blur-xl border border-white/10;
+    @apply bg-card border border-border/20;
   }
 
   .gradient-mesh {
-    background: 
-      radial-gradient(at 20% 20%, hsl(var(--accent) / 0.15) 0px, transparent 50%),
-      radial-gradient(at 80% 80%, hsl(var(--primary) / 0.1) 0px, transparent 50%),
-      radial-gradient(at 50% 50%, hsl(var(--accent) / 0.08) 0px, transparent 70%);
+    background: transparent;
   }
 
   .glow-accent {
-    box-shadow: 0 0 40px hsl(var(--glow-accent)), 0 0 80px hsl(var(--glow-accent));
+    box-shadow: none;
   }
 
   .input-glass {
-    @apply bg-white/50 dark:bg-white/5 backdrop-blur-sm border-white/30 dark:border-white/10
-           focus:border-accent/50 focus:ring-accent/20 transition-all duration-200;
+    @apply bg-white border border-border/50
+           focus:border-primary focus:ring-primary/20 transition-all duration-200;
   }
 
   .card-glass {
-    @apply bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/30 dark:border-white/10 
-           shadow-xl shadow-black/5 dark:shadow-black/20;
+    @apply bg-white border border-border/50;
   }
 
   .text-gradient {
-    @apply bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent;
+    @apply text-foreground;
   }
 }
