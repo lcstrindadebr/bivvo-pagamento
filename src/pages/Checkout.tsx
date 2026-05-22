@@ -594,31 +594,29 @@ const Checkout = () => {
       </div>
 
       {/* Progress */}
-      <div className="relative max-w-lg mx-auto px-4 pt-6 pb-4">
-        <div className="flex items-center justify-between mb-2">
+      <div className="relative max-w-lg mx-auto px-4 pt-10 pb-6">
+        <div className="flex items-center justify-between mb-4">
           {STEPS.map((step, index) => (
             <div key={step.id} className="flex items-center">
               <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
-                  index < currentStepIndex
-                    ? 'bg-gradient-to-br from-accent to-primary text-white shadow-lg shadow-accent/30'
-                    : index === currentStepIndex
-                    ? 'bg-gradient-to-br from-accent to-primary text-white shadow-lg shadow-accent/30 scale-110'
-                    : 'bg-muted/50 text-muted-foreground border border-border'
+                className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium transition-all duration-200 ${
+                  index <= currentStepIndex
+                    ? 'bg-primary text-white'
+                    : 'bg-white text-muted-foreground border border-border/30'
                 }`}
               >
                 {index < currentStepIndex ? (
-                  <Check className="h-5 w-5" />
+                  <Check className="h-4 w-4" />
                 ) : (
                   index + 1
                 )}
               </div>
               {index < STEPS.length - 1 && (
                 <div
-                  className={`w-12 sm:w-20 h-1 mx-2 rounded-full transition-colors duration-300 ${
+                  className={`w-12 sm:w-20 h-0.5 mx-2 rounded-full transition-colors duration-200 ${
                     index < currentStepIndex 
-                      ? 'bg-gradient-to-r from-accent to-primary' 
-                      : 'bg-muted/50'
+                      ? 'bg-primary' 
+                      : 'bg-border/30'
                   }`}
                 />
               )}
@@ -629,12 +627,10 @@ const Checkout = () => {
           {STEPS.map((step, index) => (
             <span
               key={step.id}
-              className={`text-xs transition-colors ${
-                index === currentStepIndex 
-                  ? 'text-accent font-semibold' 
-                  : index < currentStepIndex
-                  ? 'text-foreground'
-                  : 'text-muted-foreground'
+              className={`text-[11px] uppercase tracking-widest transition-colors duration-200 ${
+                index <= currentStepIndex 
+                  ? 'text-primary font-medium' 
+                  : 'text-muted-foreground font-normal'
               }`}
             >
               {step.label}
