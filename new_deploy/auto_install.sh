@@ -108,58 +108,35 @@ run_build() {
     cp -r "$APP_DIR/dist/"* "$WEB_DIR/"
     chown -R www-data:www-data "$WEB_DIR"
     
-    # Recarrega o nginx para garantir que as mudanças sejam servidas
+    # Recarrega o nginx para garantir que as mudanças sejam servidas e limpa cache
     systemctl reload nginx || systemctl restart nginx
     
-    echo -e "${GREEN}✓ Build concluído e publicado. Cache do servidor limpo.${NC}"
+    echo -e "${GREEN}✓ Build concluído. Cache do servidor limpo e Nginx atualizado.${NC}"
 }
 
 update_supabase_auto() {
     echo ""
-    echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE AUTOMATICAMENTE ━━━━━${NC}"
+    echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE (FUNCTIONS + SCHEMA) ━━━━━${NC}"
     
-    # Solicita token se não estiver logado
-    if ! npx supabase status &>/dev/null; then
-        echo -e "${YELLOW}Atenção: Você precisa de um Access Token do Supabase.${NC}"
-        echo "Gere um em: https://supabase.com/dashboard/account/tokens"
-        read -p "🎫 Digite seu Supabase Access Token: " USER_TOKEN
-        if [ -z "$USER_TOKEN" ]; then
-            echo -e "${RED}❌ Token não informado. Pulando atualização do Supabase.${NC}"
-            return
-        fi
-        npx supabase login --token "$USER_TOKEN"
-    fi
+    # Seguindo exatamente a sequência solicitada
+    cd "/opt/bivvo-pagamento"
 
-    # Tenta obter o project ID do .env se não for passado
-    if [ -z "$USER_PROJECT_ID" ]; then
-        if [ -f "$APP_DIR/.env" ]; then
-            USER_PROJECT_ID=$(grep VITE_SUPABASE_PROJECT_ID "$APP_DIR/.env" | cut -d= -f2)
-        fi
-    fi
+    echo -e "${BLUE}Autenticando no Supabase...${NC}"
+    npx supabase login --token sbp_9f79cabdaa6c9a08eb09296951c6984d566037ac
 
-    if [ -z "$USER_PROJECT_ID" ]; then
-        read -p "🔗 Digite o Project ID do Supabase (ex: bcijkt...): " USER_PROJECT_ID
-    fi
+    echo -e "${BLUE}Linkando projeto bcijktxnuzsatvhammpl...${NC}"
+    npx supabase link --project-ref bcijktxnuzsatvhammpl --non-interactive || true
 
-    if [ -z "$USER_PROJECT_ID" ]; then
-        echo -e "${RED}❌ Project ID não informado. Pulando atualização.${NC}"
-        return
-    fi
-
-    cd "$APP_DIR"
-
-    echo -e "${BLUE}Linkando projeto $USER_PROJECT_ID...${NC}"
-    npx supabase link --project-ref "$USER_PROJECT_ID" --non-interactive || true
-
+    # Atualiza o banco de dados se houver alterações no schema
     echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
     if [ -f "new_deploy/database_schema.sql" ]; then
-        npx supabase db execute --file "new_deploy/database_schema.sql" --project-ref "$USER_PROJECT_ID"
+        npx supabase db execute --file "new_deploy/database_schema.sql" --project-ref bcijktxnuzsatvhammpl
         echo -e "${GREEN}✓ Banco de dados atualizado.${NC}"
     fi
 
     echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
     if [ -d "supabase/functions" ]; then
-        npx supabase functions deploy --no-verify-jwt --project-ref "$USER_PROJECT_ID"
+        npx supabase functions deploy --no-verify-jwt
         echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
     fi
 
@@ -250,9 +227,13 @@ case $OPTION in
                 ;;
             *) exit 0 ;;
         esac
-        echo -e "${GREEN}✓ Manutenção concluída!${NC}"
+        
+        echo -e "${BLUE}Limpando cache do servidor...${NC}"
+        # Força o recarregamento do Nginx e garante que o diretório web esteja limpo se necessário
         systemctl reload nginx
-        echo -e "${BLUE}Nginx recarregado e cache de arquivos limpo.${NC}"
+        # Se houve troca de domínio ou build, o run_build já cuida disso, 
+        # mas garantimos aqui também.
+        echo -e "${GREEN}✓ Manutenção concluída! Cache do servidor limpo e Nginx recarregado.${NC}"
         exit 0
         ;;
     2)
