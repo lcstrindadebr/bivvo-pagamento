@@ -39,7 +39,7 @@ export const CANAIS_DEF = [
   { id: 'email',  label: 'E-mail',                   included: 1, unit: 50,  emoji: '✉️',  logo: 'https://cdn.simpleicons.org/gmail/%23EA4335' },
   { id: 'olx',    label: 'OLX',                      included: 0, unit: 100, emoji: '🏷️', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/OLX_2019.svg/512px-OLX_2019.svg.png' },
   { id: 'tiktok', label: 'TikTok',                   included: 0, unit: 100, emoji: '🎵', logo: 'https://cdn.simpleicons.org/tiktok/%23000000' },
-  { id: 'ml',     label: 'Mercado Livre',            included: 0, unit: 100, emoji: '🛒', logo: 'https://http2.mlstatic.com/frontend-assets/ui-navigation/5.21.22/mercadolibre/logo__small.png' },
+  { id: 'ml',     label: 'Mercado Livre',            included: 0, unit: 100, emoji: '🛒', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Logo_Mercado_Livre.svg/1024px-Logo_Mercado_Livre.svg.png' },
   { id: 'li',     label: 'LinkedIn',                 included: 0, unit: 100, emoji: '💼', logo: 'https://cdn.simpleicons.org/linkedin/%230A66C2' },
   { id: 'yt',     label: 'YouTube',                  included: 0, unit: 100, emoji: '▶️',  logo: 'https://cdn.simpleicons.org/youtube/%23FF0000' },
   { id: 'woo',    label: 'WooCommerce',              included: 0, unit: 100, emoji: '🛍️', logo: 'https://cdn.simpleicons.org/woocommerce/%2396588A' },
