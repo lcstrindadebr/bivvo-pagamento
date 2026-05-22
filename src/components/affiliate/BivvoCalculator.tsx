@@ -171,91 +171,104 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
           </div>
         </section>
 
-        {/* SECTION: CUSTOMIZATION */}
-        <section className="space-y-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">2</span>
-            Personalize sua Experiência
-          </h3>
+        {/* SECTION 2: CUSTOMIZATION */}
+        <section className="space-y-6">
+          <div className="flex items-end justify-between border-b pb-4 border-border/60">
+            <div className="space-y-1">
+              <h3 className="text-xl font-semibold tracking-tight text-primary">Configurações e Adicionais</h3>
+              <p className="text-sm text-muted-foreground font-medium">Personalize a capacidade e recursos extras</p>
+            </div>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* USERS CARD */}
-            <div className="card-glass rounded-xl p-6 border border-border/40 space-y-5 bg-background/20">
+            <div className="bg-card rounded-xl p-8 border border-border shadow-sm space-y-8">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
-                    <Users className="h-4 w-4" />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-bold uppercase tracking-widest text-primary">Equipe de Atendimento</span>
                   </div>
-                  <span className="text-sm font-bold uppercase tracking-tight">Usuários Extras</span>
+                  <p className="text-[11px] text-muted-foreground font-medium">Adicione mais usuários à sua operação</p>
                 </div>
-                <Badge variant="outline" className="text-[10px] font-bold border-accent/20 text-accent">
-                  {fmtBRL(35)}/cada
+                <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 font-bold px-3 py-1">
+                  {fmtBRL(35)}/u
                 </Badge>
               </div>
               
-              <div className="flex items-center justify-between gap-4 bg-background/40 p-4 rounded-xl border border-border/40">
+              <div className="flex items-center justify-center gap-10">
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="icon" 
                   onClick={() => setUsers(u => Math.max(1, u - 1))}
-                  className="h-12 w-12 rounded-full border bg-background hover:bg-accent/5 hover:text-accent transition-all"
+                  className="h-14 w-14 rounded-full border-2 hover:bg-primary/5 hover:text-primary transition-all shadow-sm"
                 >
-                  <Minus className="h-5 w-5" />
+                  <Minus className="h-6 w-6" />
                 </Button>
                 
                 <div className="flex flex-col items-center">
                   <motion.span 
                     key={users}
-                    initial={{ scale: 1.1, opacity: 0 }}
+                    initial={{ scale: 1.1, opacity: 0.8 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="text-4xl font-black tabular-nums"
+                    className="text-6xl font-black text-primary tabular-nums tracking-tighter"
                   >
                     {users}
                   </motion.span>
-                  <span className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em]">Total</span>
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.3em] mt-1">Colaboradores</span>
                 </div>
 
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="icon" 
                   onClick={() => setUsers(u => u + 1)}
-                  className="h-12 w-12 rounded-full border bg-background hover:bg-accent/5 hover:text-accent transition-all"
+                  className="h-14 w-14 rounded-full border-2 hover:bg-primary/5 hover:text-primary transition-all shadow-sm"
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus className="h-6 w-6" />
                 </Button>
               </div>
               
-              {isLoaded && users > PLANS[plan].users && (
-                <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-accent bg-accent/5 py-2 rounded-lg border border-accent/10">
-                  <Zap className="h-3 w-3" />
-                  <span>+{users - PLANS[plan].users} usuários excedentes</span>
-                </div>
-              )}
+              <div className="pt-6 border-t border-border/40">
+                {isLoaded && users > PLANS[plan].users ? (
+                  <div className="flex items-center gap-3 text-[11px] font-bold text-primary bg-primary/[0.03] p-4 rounded-lg border border-primary/10">
+                    <Zap className="h-4 w-4 fill-primary/10" />
+                    <span>+{users - PLANS[plan].users} usuários extras inclusos na proposta</span>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-center text-muted-foreground font-medium">Utilizando capacidade padrão do plano</p>
+                )}
+              </div>
             </div>
 
             {/* TELEPHONY CARD */}
-            <div className="card-glass rounded-xl p-6 border border-border/40 space-y-5 bg-background/20 flex flex-col justify-between">
-              <div className="space-y-4">
+            <div className="bg-card rounded-xl p-8 border border-border shadow-sm flex flex-col justify-between">
+              <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
-                      <Smartphone className="h-4 w-4" />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-bold uppercase tracking-widest text-primary">Telefonia WA</span>
                     </div>
-                    <span className="text-sm font-bold uppercase tracking-tight">Telefonia WA</span>
+                    <p className="text-[11px] text-muted-foreground font-medium">Chamadas profissionais integradas</p>
                   </div>
-                  <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-accent" />
+                  <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-primary" />
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                  Ative chamadas de voz e áudio profissionais integradas ao seu painel.
-                </p>
+                
+                <div className="bg-primary/[0.01] rounded-lg border border-border/60 p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /></div>
+                    <p className="text-[11px] font-medium leading-relaxed text-muted-foreground">Chamadas de áudio e vídeo ilimitadas para seus atendentes.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /></div>
+                    <p className="text-[11px] font-medium leading-relaxed text-muted-foreground">Gravação de chamadas disponível no histórico do cliente.</p>
+                  </div>
+                </div>
               </div>
               
-              <div className="flex items-center justify-between pt-4 border-t border-border/40">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Custo Fixo</span>
-                  <span className="text-[10px] text-accent font-bold">Incluso no checkout</span>
-                </div>
-                <div className="text-xl font-black">{fmtBRL(100)}<span className="text-[10px] text-muted-foreground font-medium">/mês</span></div>
+              <div className="flex items-center justify-between pt-6 border-t border-border/40 mt-auto">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Investimento Mensal</span>
+                <div className="text-2xl font-bold text-primary">{fmtBRL(100)}</div>
               </div>
             </div>
           </div>
