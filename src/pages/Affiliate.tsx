@@ -143,37 +143,37 @@ export default function Affiliate() {
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Assinaturas Ativas</div>
-            <div className="text-xl font-bold text-accent">{me.stats?.activeSubscriptions ?? 0}</div>
+            <div className="text-xl font-medium text-primary">{me.stats?.activeSubscriptions ?? 0}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Cliques</div>
-            <div className="text-xl font-bold text-purple-500">{(me.stats as any)?.totalClicks ?? 0}</div>
+            <div className="text-xl font-medium text-primary">{(me.stats as any)?.totalClicks ?? 0}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Conversão</div>
-            <div className="text-xl font-bold text-pink-500">{(me.stats as any)?.conversionRate ?? 0}%</div>
+            <div className="text-xl font-medium text-primary">{(me.stats as any)?.conversionRate ?? 0}%</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">A Receber (Mês)</div>
-            <div className="text-xl font-bold text-blue-500">{formatCurrency(nextMonthEstimate)}</div>
+            <div className="text-xl font-medium text-primary">{formatCurrency(nextMonthEstimate)}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Disponível</div>
-            <div className="text-xl font-bold text-green-600">{formatCurrency(totalAvailable)}</div>
+            <div className="text-xl font-medium text-green-600">{formatCurrency(totalAvailable)}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Retido (7 dias)</div>
-            <div className="text-xl font-bold text-amber-600">{formatCurrency(totalHeld)}</div>
+            <div className="text-xl font-medium text-amber-600">{formatCurrency(totalHeld)}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Já Pagos</div>
-            <div className="text-xl font-bold text-slate-400">{formatCurrency(totalPaid)}</div>
+            <div className="text-xl font-medium text-slate-400">{formatCurrency(totalPaid)}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Total Gerado</div>
-            <div className="text-xl font-bold">{formatCurrency(totalGen)}</div>
+            <div className="text-xl font-medium text-foreground">{formatCurrency(totalGen)}</div>
           </div>
         </div>
 
