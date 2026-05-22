@@ -9,7 +9,7 @@
 @layer base {
   :root {
     /* Paleta baseada na imagem Bivvo - tons de azul escuro */
-    --background: 210 50% 98%;
+    --background: 0 0% 100%;
     --foreground: 210 50% 11%;
 
     --card: 0 0% 100%;
@@ -18,48 +18,43 @@
     --popover: 0 0% 100%;
     --popover-foreground: 210 50% 11%;
 
-    /* Azul escuro principal (#00203a) */
-    --primary: 207 100% 11%;
+    /* Cor principal: #1a6fdb (H:214 S:79% L:48%) */
+    --primary: 214 79% 48%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 40% 96%;
-    --secondary-foreground: 207 100% 11%;
+    --secondary-foreground: 214 79% 48%;
 
     --muted: 210 40% 96%;
     --muted-foreground: 210 25% 45%;
 
-    /* Azul accent (#1976d2) */
-    --accent: 210 79% 46%;
+    --accent: 214 79% 48%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 30% 90%;
-    --input: 210 30% 90%;
-    --ring: 210 79% 46%;
+    --border: 214 10% 90%;
+    --input: 214 10% 90%;
+    --ring: 214 79% 48%;
 
-    --radius: 0.75rem;
+    --radius: 12px;
 
-    /* Cores customizadas */
+    /* Cores customizadas p/ estados selecionados */
+    --selected-bg: 214 100% 97%; /* #f0f6ff */
+    --selected-badge: 214 100% 95%; /* #e8f1fd */
+
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 214 79% 48%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-accent: 214 100% 97%;
+    --sidebar-accent-foreground: 214 79% 48%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 210 79% 46%;
-
-    /* Glassmorphism tokens */
-    --glass-bg: 210 50% 98% / 0.7;
-    --glass-border: 210 30% 90% / 0.5;
-    --gradient-primary: 207 100% 11%;
-    --gradient-accent: 210 79% 46%;
-    --glow-accent: 210 79% 46% / 0.3;
+    --sidebar-ring: 214 79% 48%;
   }
 
   .dark {
@@ -119,40 +114,37 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: sans-serif;
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-white/20;
+    @apply bg-white border border-border/50;
   }
   
   .glass-dark {
-    @apply bg-card/60 backdrop-blur-xl border border-white/10;
+    @apply bg-card border border-border/20;
   }
 
   .gradient-mesh {
-    background: 
-      radial-gradient(at 20% 20%, hsl(var(--accent) / 0.15) 0px, transparent 50%),
-      radial-gradient(at 80% 80%, hsl(var(--primary) / 0.1) 0px, transparent 50%),
-      radial-gradient(at 50% 50%, hsl(var(--accent) / 0.08) 0px, transparent 70%);
+    background: transparent;
   }
 
   .glow-accent {
-    box-shadow: 0 0 40px hsl(var(--glow-accent)), 0 0 80px hsl(var(--glow-accent));
+    box-shadow: none;
   }
 
   .input-glass {
-    @apply bg-white/50 dark:bg-white/5 backdrop-blur-sm border-white/30 dark:border-white/10
-           focus:border-accent/50 focus:ring-accent/20 transition-all duration-200;
+    @apply bg-white border border-border/50
+           focus:border-primary focus:ring-primary/20 transition-all duration-200;
   }
 
   .card-glass {
-    @apply bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/30 dark:border-white/10 
-           shadow-xl shadow-black/5 dark:shadow-black/20;
+    @apply bg-white border border-border/50;
   }
 
   .text-gradient {
-    @apply bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent;
+    @apply text-foreground;
   }
 }

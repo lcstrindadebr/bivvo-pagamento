@@ -44,12 +44,9 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
-      {/* Mesh gradient background */}
-      <div className="fixed inset-0 gradient-mesh opacity-30 pointer-events-none" />
-
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="relative py-6 px-4 border-b border-border/40 backdrop-blur-md sticky top-0 z-50">
+      <header className="relative py-6 px-4 border-b border-border/30 bg-white sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <img src={bivvoLogo} alt="Bivvo" className="h-8" />
         </div>
@@ -58,7 +55,7 @@ const Index = () => {
       {/* Main Content (Calculator) */}
       <section id="pricing" className="relative py-12 px-4 pb-24">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-background/40 backdrop-blur-xl border border-border/50 rounded-[2.5rem] p-4 md:p-8 shadow-2xl shadow-accent/5">
+          <div className="bg-white border border-border/30 rounded-xl p-[1.25rem] md:p-[1.5rem] transition-all duration-200">
             {isLoaded ? (
               <BivvoCalculator 
                 mode="customer" 
@@ -66,7 +63,7 @@ const Index = () => {
               />
             ) : (
               <div className="min-h-[400px] flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             )}
           </div>

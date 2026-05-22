@@ -21,7 +21,7 @@ export function CardMarketingLink({ slug }: { slug: string }) {
   };
 
   return (
-    <Card className="card-glass border-none shadow-xl">
+    <Card className="bg-white border border-border/30 rounded-xl transition-all duration-200">
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <Share2 className="h-5 w-5 text-accent" /> Seu Link de Afiliado
@@ -77,7 +77,7 @@ export function CardMarketingTools() {
   };
 
   return (
-    <Card className="card-glass border-none shadow-xl">
+    <Card className="bg-white border border-border/30 rounded-xl transition-all duration-200">
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <ImageIcon className="h-5 w-5 text-accent" /> Material de Apoio

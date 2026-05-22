@@ -133,7 +133,7 @@ export default function Affiliate() {
       <header className="sticky top-0 z-50 glass border-b">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="font-bold">Bivvo</span>
+            <span className="font-medium">Bivvo</span>
             <Badge variant="outline">Afiliado</Badge>
             <span className="text-sm text-muted-foreground hidden sm:inline">{me.name}</span>
           </div>
@@ -143,37 +143,37 @@ export default function Affiliate() {
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Assinaturas Ativas</div>
-            <div className="text-xl font-bold text-accent">{me.stats?.activeSubscriptions ?? 0}</div>
+            <div className="text-xl font-medium text-primary">{me.stats?.activeSubscriptions ?? 0}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Cliques</div>
-            <div className="text-xl font-bold text-purple-500">{(me.stats as any)?.totalClicks ?? 0}</div>
+            <div className="text-xl font-medium text-primary">{(me.stats as any)?.totalClicks ?? 0}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Conversão</div>
-            <div className="text-xl font-bold text-pink-500">{(me.stats as any)?.conversionRate ?? 0}%</div>
+            <div className="text-xl font-medium text-primary">{(me.stats as any)?.conversionRate ?? 0}%</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">A Receber (Mês)</div>
-            <div className="text-xl font-bold text-blue-500">{formatCurrency(nextMonthEstimate)}</div>
+            <div className="text-xl font-medium text-primary">{formatCurrency(nextMonthEstimate)}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Disponível</div>
-            <div className="text-xl font-bold text-green-600">{formatCurrency(totalAvailable)}</div>
+            <div className="text-xl font-medium text-green-600">{formatCurrency(totalAvailable)}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Retido (7 dias)</div>
-            <div className="text-xl font-bold text-amber-600">{formatCurrency(totalHeld)}</div>
+            <div className="text-xl font-medium text-amber-600">{formatCurrency(totalHeld)}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Já Pagos</div>
-            <div className="text-xl font-bold text-slate-400">{formatCurrency(totalPaid)}</div>
+            <div className="text-xl font-medium text-slate-400">{formatCurrency(totalPaid)}</div>
           </div>
-          <div className="card-glass rounded-xl p-4">
+          <div className="bg-white rounded-lg p-4 border border-border/30 transition-all duration-200">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Total Gerado</div>
-            <div className="text-xl font-bold">{formatCurrency(totalGen)}</div>
+            <div className="text-xl font-medium text-foreground">{formatCurrency(totalGen)}</div>
           </div>
         </div>
 
@@ -204,7 +204,7 @@ export default function Affiliate() {
           </TabsContent>
 
           <TabsContent value="sales" className="mt-4">
-            <div className="card-glass rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl border border-border/30 overflow-hidden transition-all duration-200">
               <Table>
                 <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Plano</TableHead><TableHead>Origem</TableHead><TableHead>1º mês</TableHead><TableHead>Recorrente</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ação</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -258,7 +258,7 @@ export default function Affiliate() {
           </TabsContent>
 
           <TabsContent value="comm" className="mt-4">
-            <div className="card-glass rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl border border-border/30 overflow-hidden transition-all duration-200">
               <Table>
                 <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Venda</TableHead><TableHead>%</TableHead><TableHead>Comissão</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Comprovante</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -308,7 +308,7 @@ export default function Affiliate() {
           </TabsContent>
 
           <TabsContent value="profile" className="mt-4">
-            <div className="card-glass rounded-xl p-6 max-w-xl space-y-4">
+            <div className="bg-white rounded-xl p-6 border border-border/30 max-w-xl space-y-4 transition-all duration-200">
               <div><Label>Nome</Label><Input value={profile.name} onChange={e => setProfile(p => ({ ...p, name: e.target.value }))} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>WhatsApp</Label><Input value={profile.whatsapp} onChange={e => setProfile(p => ({ ...p, whatsapp: e.target.value }))} /></div>
