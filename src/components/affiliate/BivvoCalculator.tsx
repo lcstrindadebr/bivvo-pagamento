@@ -179,69 +179,69 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* USERS CARD */}
-            <div className="card-glass rounded-2xl p-5 border border-border/50 space-y-4 shadow-sm">
+            <div className="bg-white rounded-xl p-[1.25rem] md:p-[1.5rem] border border-border/30 space-y-5 transition-all duration-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-bold">Usuários Adicionais</span>
+                  <Users className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Usuários Adicionais</span>
                 </div>
-                <Badge variant="secondary" className="font-mono text-[10px]">
+                <Badge variant="secondary" className="bg-[hsl(var(--selected-badge))] text-primary font-normal text-[10px] border-none">
                   R$ 35,00/cada
                 </Badge>
               </div>
               
-              <div className="flex items-center justify-center gap-6 py-2">
+              <div className="flex items-center justify-center gap-8 py-2">
                 <Button 
                   variant="outline" 
                   size="icon" 
                   onClick={() => setUsers(u => Math.max(1, u - 1))}
-                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent shadow-sm"
+                  className="h-9 w-9 rounded-lg border border-border/30 hover:bg-primary/5 hover:text-primary transition-all duration-200"
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
                 <div className="flex flex-col items-center min-w-[80px]">
                   <motion.span 
                     key={users}
-                    initial={{ scale: 1.2, color: '#e94560' }}
-                    animate={{ scale: 1, color: 'currentColor' }}
-                    className="text-5xl font-black tabular-nums tracking-tighter"
+                    initial={{ opacity: 0.8 }}
+                    animate={{ opacity: 1 }}
+                    className="text-5xl font-medium tabular-nums tracking-tighter"
                   >
                     {users}
                   </motion.span>
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mt-1">Usuários</span>
+                  <span className="text-[10px] text-muted-foreground font-normal uppercase tracking-widest mt-1">Usuários</span>
                 </div>
                 <Button 
                   variant="outline" 
                   size="icon" 
                   onClick={() => setUsers(u => u + 1)}
-                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent shadow-sm"
+                  className="h-9 w-9 rounded-lg border border-border/30 hover:bg-primary/5 hover:text-primary transition-all duration-200"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
               
               {isLoaded && users > PLANS[plan].users && (
-                <div className="text-[10px] text-center p-2 rounded-lg bg-accent/5 text-accent font-semibold animate-in fade-in zoom-in-95">
+                <div className="text-[10px] text-center p-2 rounded-lg bg-[hsl(var(--selected-bg))] text-primary font-medium">
                   + {users - PLANS[plan].users} excedentes → {fmtBRL((users - PLANS[plan].users) * 35)}/mês
                 </div>
               )}
             </div>
 
             {/* TELEPHONY CARD */}
-            <div className="card-glass rounded-2xl p-5 border border-border/50 space-y-4 shadow-sm flex flex-col justify-between">
+            <div className="bg-white rounded-xl p-[1.25rem] md:p-[1.5rem] border border-border/30 space-y-4 flex flex-col justify-between transition-all duration-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Smartphone className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-bold">Telefonia WhatsApp</span>
+                  <Smartphone className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Telefonia WhatsApp</span>
                 </div>
-                <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-accent" />
+                <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-primary" />
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed font-normal">
                 Adicione recursos de telefonia diretamente no seu WhatsApp para uma comunicação profissional.
               </p>
               <div className="flex items-center justify-between pt-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
-                <span className="text-sm font-bold">{fmtBRL(100)}<span className="text-[10px] text-muted-foreground font-normal">/mês</span></span>
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
+                <span className="text-sm font-medium text-foreground">{fmtBRL(100)}<span className="text-[10px] text-muted-foreground font-normal ml-1">/mês</span></span>
               </div>
             </div>
           </div>
