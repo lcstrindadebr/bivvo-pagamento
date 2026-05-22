@@ -69,7 +69,7 @@ const AdminLogin = () => {
         </div>
 
         {/* Login Form */}
-        <div className="bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl p-8 md:p-10">
+        <div className="bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-xl p-8 md:p-10">
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email corporativo</Label>

@@ -107,13 +107,13 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">1</span>
+              <span className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center text-sm">1</span>
               Selecione seu Plano Base
             </h3>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
                     <Info className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </TooltipTrigger>
@@ -134,7 +134,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 <div key={k} className="relative pt-3">
                   {isPopular && (
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
-                      <Badge className="bg-primary text-white text-[10px] font-medium px-3 py-0.5 rounded-full border-none shadow-none uppercase tracking-wider">
+                      <Badge className="bg-primary text-white text-[10px] font-medium px-3 py-0.5 rounded-lg border-none shadow-none uppercase tracking-wider">
                         Mais popular
                       </Badge>
                     </div>
@@ -173,7 +173,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         {/* SECTION: CUSTOMIZATION */}
         <section className="space-y-4">
           <h3 className="text-lg font-medium flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">2</span>
+            <span className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center text-sm">2</span>
             Personalize sua Experiência
           </h3>
 
@@ -250,7 +250,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         {/* SECTION: CHANNELS */}
         <section className="space-y-4">
           <h3 className="text-lg font-medium flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center text-sm">3</span>
+            <span className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center text-sm">3</span>
             Canais de Atendimento
           </h3>
           
@@ -259,7 +259,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <div className="bg-[hsl(var(--selected-bg))] p-5 rounded-lg border border-primary/10 space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-[11px] font-medium uppercase tracking-widest text-primary">Desconto nos Canais</Label>
-                  <Badge className="bg-primary text-white font-medium text-[10px] rounded-full px-3">{channelsDiscount}%</Badge>
+                  <Badge className="bg-primary text-white font-medium text-[10px] rounded-lg px-3">{channelsDiscount}%</Badge>
                 </div>
                 <input 
                   type="range" min="0" max="30" step="5"
@@ -326,7 +326,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
         <div className="bg-white rounded-xl p-[1.25rem] md:p-[1.5rem] border border-border/30 sticky top-24 space-y-6 transition-all duration-200">
           <div className="flex items-center justify-between relative z-10">
             <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Resumo do Investimento</span>
-            <Badge variant="outline" className="text-[10px] font-medium border-primary/20 text-primary uppercase tracking-wider px-2 py-0.5 rounded-full">
+            <Badge variant="outline" className="text-[10px] font-medium border-primary/20 text-primary uppercase tracking-wider px-2 py-0.5 rounded-lg">
               {quote?.planLabel}
             </Badge>
           </div>
@@ -387,7 +387,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                         <span className="text-muted-foreground font-normal flex items-center gap-2">
                           <img src={l.logo} alt={l.label} className="w-3.5 h-3.5 object-contain" /> {l.label} ({l.qty})
                           {quote.channelsDiscountPercent > 0 && (
-                            <span className="bg-primary/10 text-primary px-1.5 rounded-full text-[8px]">-{quote.channelsDiscountPercent}%</span>
+                            <span className="bg-primary/10 text-primary px-1.5 rounded-lg text-[8px]">-{quote.channelsDiscountPercent}%</span>
                           )}
                         </span>
                         <span className="font-medium text-foreground">{fmtBRL(l.amount)}</span>

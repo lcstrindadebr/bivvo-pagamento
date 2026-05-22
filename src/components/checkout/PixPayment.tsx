@@ -60,8 +60,8 @@ const PixPayment = ({ qrCodeImage, qrCodeText, expiresAt, loading }: PixPaymentP
 
   if (loading) {
     return (
-      <div className="card-glass rounded-2xl p-8 text-center space-y-4">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
+      <div className="card-glass rounded-xl p-8 text-center space-y-4">
+        <div className="w-16 h-16 mx-auto rounded-xl bg-accent/10 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-accent" />
         </div>
         <p className="text-muted-foreground">Gerando QR Code PIX...</p>
@@ -71,8 +71,8 @@ const PixPayment = ({ qrCodeImage, qrCodeText, expiresAt, loading }: PixPaymentP
 
   if (!qrCodeImage && !qrCodeText) {
     return (
-      <div className="card-glass rounded-2xl p-8 text-center space-y-4">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
+      <div className="card-glass rounded-xl p-8 text-center space-y-4">
+        <div className="w-16 h-16 mx-auto rounded-xl bg-accent/10 flex items-center justify-center">
           <QrCode className="h-8 w-8 text-accent" />
         </div>
         <div className="space-y-2">
@@ -98,7 +98,7 @@ const PixPayment = ({ qrCodeImage, qrCodeText, expiresAt, loading }: PixPaymentP
       )}
 
       {/* QR Code */}
-      <div className="card-glass rounded-2xl p-6 text-center space-y-4">
+      <div className="card-glass rounded-xl p-6 text-center space-y-4">
         <p className="font-semibold">Escaneie o QR Code</p>
         
         {qrCodeImage && (
