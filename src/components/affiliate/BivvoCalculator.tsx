@@ -277,8 +277,8 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                 return (
                   <div key={c.id} className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-background/30 hover:bg-background/50 transition-colors">
                     <div className="flex flex-col">
-                      <span className="text-xs font-bold flex items-center gap-1.5">
-                        <span className="text-base">{c.emoji}</span> {c.label}
+                      <span className="text-xs font-bold flex items-center gap-2">
+                        <img src={c.logo} alt={c.label} className="w-5 h-5 object-contain" /> {c.label}
                       </span>
                       <span className="text-[10px] text-muted-foreground mt-0.5">
                         {c.included} incl. · {fmtBRL(c.unit)}/extra
