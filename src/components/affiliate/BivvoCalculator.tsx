@@ -199,69 +199,82 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* USERS CARD */}
-            <div className="card-glass rounded-2xl p-5 border border-border/50 space-y-4 shadow-sm">
+            <div className="card-glass rounded-xl p-6 border border-border/40 space-y-5 bg-background/20">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-bold">Usuários Adicionais</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
+                    <Users className="h-4 w-4" />
+                  </div>
+                  <span className="text-sm font-bold uppercase tracking-tight">Usuários Extras</span>
                 </div>
-                <Badge variant="secondary" className="font-mono text-[10px]">
-                  R$ 35,00/cada
+                <Badge variant="outline" className="text-[10px] font-bold border-accent/20 text-accent">
+                  {fmtBRL(35)}/cada
                 </Badge>
               </div>
               
-              <div className="flex items-center justify-center gap-6 py-2">
+              <div className="flex items-center justify-between gap-4 bg-background/40 p-4 rounded-xl border border-border/40">
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   size="icon" 
                   onClick={() => setUsers(u => Math.max(1, u - 1))}
-                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent shadow-sm"
+                  className="h-12 w-12 rounded-full border bg-background hover:bg-accent/5 hover:text-accent transition-all"
                 >
-                  <Minus className="h-4 w-4" />
+                  <Minus className="h-5 w-5" />
                 </Button>
-                <div className="flex flex-col items-center min-w-[80px]">
+                
+                <div className="flex flex-col items-center">
                   <motion.span 
                     key={users}
-                    initial={{ scale: 1.2, color: '#e94560' }}
-                    animate={{ scale: 1, color: 'currentColor' }}
-                    className="text-5xl font-black tabular-nums tracking-tighter"
+                    initial={{ scale: 1.1, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="text-4xl font-black tabular-nums"
                   >
                     {users}
                   </motion.span>
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mt-1">Usuários</span>
+                  <span className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em]">Total</span>
                 </div>
+
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   size="icon" 
                   onClick={() => setUsers(u => u + 1)}
-                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent shadow-sm"
+                  className="h-12 w-12 rounded-full border bg-background hover:bg-accent/5 hover:text-accent transition-all"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-5 w-5" />
                 </Button>
               </div>
               
               {isLoaded && users > PLANS[plan].users && (
-                <div className="text-[10px] text-center p-2 rounded-lg bg-accent/5 text-accent font-semibold animate-in fade-in zoom-in-95">
-                  + {users - PLANS[plan].users} excedentes → {fmtBRL((users - PLANS[plan].users) * 35)}/mês
+                <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-accent bg-accent/5 py-2 rounded-lg border border-accent/10">
+                  <Zap className="h-3 w-3" />
+                  <span>+{users - PLANS[plan].users} usuários excedentes</span>
                 </div>
               )}
             </div>
 
             {/* TELEPHONY CARD */}
-            <div className="card-glass rounded-2xl p-5 border border-border/50 space-y-4 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Smartphone className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-bold">Telefonia WhatsApp</span>
+            <div className="card-glass rounded-xl p-6 border border-border/40 space-y-5 bg-background/20 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
+                      <Smartphone className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm font-bold uppercase tracking-tight">Telefonia WA</span>
+                  </div>
+                  <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-accent" />
                 </div>
-                <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-accent" />
+                <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                  Ative chamadas de voz e áudio profissionais integradas ao seu painel.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Adicione recursos de telefonia diretamente no seu WhatsApp para uma comunicação profissional.
-              </p>
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
-                <span className="text-sm font-bold">{fmtBRL(100)}<span className="text-[10px] text-muted-foreground font-normal">/mês</span></span>
+              
+              <div className="flex items-center justify-between pt-4 border-t border-border/40">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Custo Fixo</span>
+                  <span className="text-[10px] text-accent font-bold">Incluso no checkout</span>
+                </div>
+                <div className="text-xl font-black">{fmtBRL(100)}<span className="text-[10px] text-muted-foreground font-medium">/mês</span></div>
               </div>
             </div>
           </div>
