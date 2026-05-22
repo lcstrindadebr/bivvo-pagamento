@@ -491,56 +491,48 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               </div>
 
               {/* ACTIONS */}
-              <div className="space-y-3 pt-4">
+              <div className="space-y-4 pt-6">
                 {mode === 'customer' ? (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <Button 
                       onClick={() => onCheckout?.(config)} 
-                      className="w-full bg-accent hover:bg-accent/90 text-white py-8 text-xl font-black rounded-2xl shadow-xl shadow-accent/20 transition-all active:scale-[0.98]"
+                      className="w-full bg-accent hover:bg-accent/90 text-white h-16 text-lg font-black rounded-xl shadow-lg shadow-accent/20 transition-all hover:scale-[1.02] active:scale-[0.98] group"
                     >
-                      Assinar Agora
+                      <span>Ativar Plataforma</span>
+                      <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
                     </Button>
                     
                     {/* Payment Icons */}
-                    <div className="flex items-center justify-center gap-6 opacity-90 pb-2">
-                      <svg viewBox="0 0 48 48" className="h-4 w-auto" aria-label="Visa">
-                        <path fill="#1A1F71" d="M35.33,12h-3.33L25.33,28.67l-3.33-16.67H18l-5.33,16.67H16l1.33-4.67h6.67l1.33,4.67H32L35.33,12z M20,20.67l2-7.33l2,7.33H20z M3.33,12L0,36h3.33l3.33-24H3.33z M48,12h-3.33l-3.33,12l-3.33-12H34.67L40,36h3.33L48,12z"/>
-                        <path fill="#F79E1B" d="M11.33,12H8L2.67,36H6L11.33,12z"/>
-                      </svg>
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-7 w-auto object-contain" />
-                      <img src="https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png" alt="Pix" className="h-6 w-auto object-contain" />
-                      <div className="flex flex-col items-center gap-0.5 border border-border/60 rounded px-1.5 py-0.5 bg-white shadow-sm">
-                        <div className="flex gap-0.5">
-                          {[1,1,1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
-                          {[1,1,1].map((_,i)=><div key={i} className="w-[2px] h-3 bg-black"/>)}
-                          {[1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Pagamento Seguro</div>
+                      <div className="flex items-center justify-center gap-6 opacity-70 grayscale hover:grayscale-0 transition-all">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6 w-auto object-contain" />
+                        <img src="https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png" alt="Pix" className="h-5 w-auto object-contain" />
+                        <div className="flex flex-col items-center gap-0.5 border border-border/60 rounded px-1.5 py-0.5 bg-white shadow-sm">
+                          <div className="flex gap-0.5">
+                            {[1,1,1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
+                            {[1,1,1].map((_,i)=><div key={i} className="w-[2px] h-3 bg-black"/>)}
+                          </div>
+                          <span className="text-[7px] font-bold text-black leading-none uppercase">Boleto</span>
                         </div>
-                        <span className="text-[7px] font-bold text-black leading-none uppercase">Boleto</span>
                       </div>
                     </div>
                   </div>
                 ) : affiliateSlug && (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <Button 
                       onClick={() => copy(checkoutUrl, 'Link copiado')} 
-                      className="w-full rounded-xl h-11 font-bold" 
-                      size="sm"
+                      className="w-full rounded-xl h-14 font-black uppercase tracking-wider text-xs shadow-md shadow-accent/10" 
                     >
                       <Link2 className="h-4 w-4 mr-2" />Copiar Link Checkout
                     </Button>
                     <Button 
                       onClick={() => copy(proposalText, 'Proposta copiada')} 
                       variant="outline" 
-                      className="w-full rounded-xl h-11 font-bold border-2 hover:bg-accent/5 hover:text-accent" 
-                      size="sm"
+                      className="w-full rounded-xl h-14 font-black uppercase tracking-wider text-xs border-2 hover:bg-accent/5 hover:text-accent shadow-sm" 
                     >
                       <FileText className="h-4 w-4 mr-2" />Copiar Proposta
                     </Button>
-                    <textarea 
-                      readOnly 
-                      value={proposalText} 
-                      className="w-full mt-2 p-3 text-[10px] rounded-xl border border-border/60 bg-muted/20 h-32 font-mono leading-relaxed" 
-                    />
                   </div>
                 )}
               </div>
