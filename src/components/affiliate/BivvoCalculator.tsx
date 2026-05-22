@@ -4,7 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Link2, FileText, Info, Users, Smartphone, Plus, Minus, CheckCircle2, Loader2 } from 'lucide-react';
+import { 
+  Copy, Link2, FileText, Info, Users, Smartphone, Plus, Minus, 
+  CheckCircle2, Loader2, MessageSquare, Instagram, Facebook, 
+  Mail, Tag, Music2, ShoppingCart, Linkedin, Youtube, ShoppingBag,
+  Zap, ArrowRight, ShieldCheck, TrendingUp
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
