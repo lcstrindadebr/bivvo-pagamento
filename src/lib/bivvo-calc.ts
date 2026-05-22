@@ -69,7 +69,7 @@ export interface BivvoQuote {
   total1m: number;
   totalRec: number;
   protagonista: boolean;
-  channelLines: Array<{ id: string; label: string; emoji: string; qty: number; amount: number }>;
+  channelLines: Array<{ id: string; label: string; emoji: string; logo: string; qty: number; amount: number }>;
 }
 
 export function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
