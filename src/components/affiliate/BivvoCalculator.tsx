@@ -4,7 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Link2, FileText, Info, Users, Smartphone, Plus, Minus, CheckCircle2, Loader2 } from 'lucide-react';
+import { 
+  Copy, Link2, FileText, Info, Users, Smartphone, Plus, Minus, 
+  CheckCircle2, Loader2, MessageSquare, Instagram, Facebook, 
+  Mail, Tag, Music2, ShoppingCart, Linkedin, Youtube, ShoppingBag,
+  Zap, ArrowRight, ShieldCheck, TrendingUp
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -124,44 +129,59 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
             </TooltipProvider>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {(Object.keys(PLANS) as PlanSlug[]).map(k => {
               const p = PLANS[k];
               const active = plan === k;
+              const isSilver = k === 'silver';
+              
               return (
                 <button
                   key={k}
                   type="button"
                   onClick={() => { setPlan(k); setUsers(p.users); }}
-                  className={`relative flex flex-col p-4 rounded-2xl border-2 text-left transition-all duration-300 ${
+                  className={`relative flex flex-col p-6 rounded-xl border-2 text-left transition-all duration-300 ${
                     active 
-                    ? 'border-accent bg-accent/5 ring-4 ring-accent/5' 
-                    : 'border-border/50 hover:border-accent/30 bg-background/50'
-                  }`}
+                    ? 'border-accent bg-accent/5 ring-4 ring-accent/5 shadow-lg' 
+                    : 'border-border/40 hover:border-accent/30 bg-card/50'
+                  } ${isSilver && !active ? 'ring-2 ring-accent/10 shadow-sm' : ''}`}
                 >
+                  {isSilver && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md z-20">
+                      Mais Popular
+                    </div>
+                  )}
+                  
                   {active && (
-                    <div className="absolute top-3 right-3 z-10">
+                    <div className="absolute top-4 right-4 z-10">
                       <CheckCircle2 className="h-5 w-5 text-accent" />
                     </div>
                   )}
-                  <span className={`text-[10px] uppercase font-bold tracking-wider mb-1 ${active ? 'text-accent' : 'text-muted-foreground'}`}>
+                  
+                  <span className={`text-[10px] uppercase font-black tracking-[0.2em] mb-3 ${active ? 'text-accent' : 'text-muted-foreground'}`}>
                     {p.name}
                   </span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-xl font-black">{fmtBRL(p.promo)}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium">/1º mês</span>
+                  
+                  <div className="flex flex-col mb-4">
+                    <span className="text-3xl font-black tracking-tight">{fmtBRL(p.promo)}</span>
+                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest mt-1">Primeiro Mês</span>
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1.5">
-                    <Users className="h-3 w-3" />
-                    Até {p.users} usuários
+
+                  <div className="space-y-2 pt-4 border-t border-border/40">
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-2">
+                      <Users className="h-3 w-3 text-accent" />
+                      <span className="font-semibold">Até {p.users} usuários</span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-2">
+                      <TrendingUp className="h-3 w-3 text-accent" />
+                      <span className="font-semibold">Recorrência: {fmtBRL(p.full)}</span>
+                    </div>
                   </div>
-                  <div className="text-[10px] font-semibold mt-1">
-                    Recorrência: {fmtBRL(p.full)}
-                  </div>
+
                   {active && (
                     <motion.div 
                       layoutId="plan-active"
-                      className="absolute inset-0 border-2 border-accent rounded-2xl pointer-events-none"
+                      className="absolute inset-0 border-2 border-accent rounded-xl pointer-events-none"
                     />
                   )}
                 </button>
@@ -179,69 +199,82 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* USERS CARD */}
-            <div className="card-glass rounded-2xl p-5 border border-border/50 space-y-4 shadow-sm">
+            <div className="card-glass rounded-xl p-6 border border-border/40 space-y-5 bg-background/20">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-bold">Usuários Adicionais</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
+                    <Users className="h-4 w-4" />
+                  </div>
+                  <span className="text-sm font-bold uppercase tracking-tight">Usuários Extras</span>
                 </div>
-                <Badge variant="secondary" className="font-mono text-[10px]">
-                  R$ 35,00/cada
+                <Badge variant="outline" className="text-[10px] font-bold border-accent/20 text-accent">
+                  {fmtBRL(35)}/cada
                 </Badge>
               </div>
               
-              <div className="flex items-center justify-center gap-6 py-2">
+              <div className="flex items-center justify-between gap-4 bg-background/40 p-4 rounded-xl border border-border/40">
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   size="icon" 
                   onClick={() => setUsers(u => Math.max(1, u - 1))}
-                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent shadow-sm"
+                  className="h-12 w-12 rounded-full border bg-background hover:bg-accent/5 hover:text-accent transition-all"
                 >
-                  <Minus className="h-4 w-4" />
+                  <Minus className="h-5 w-5" />
                 </Button>
-                <div className="flex flex-col items-center min-w-[80px]">
+                
+                <div className="flex flex-col items-center">
                   <motion.span 
                     key={users}
-                    initial={{ scale: 1.2, color: '#e94560' }}
-                    animate={{ scale: 1, color: 'currentColor' }}
-                    className="text-5xl font-black tabular-nums tracking-tighter"
+                    initial={{ scale: 1.1, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="text-4xl font-black tabular-nums"
                   >
                     {users}
                   </motion.span>
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mt-1">Usuários</span>
+                  <span className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em]">Total</span>
                 </div>
+
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   size="icon" 
                   onClick={() => setUsers(u => u + 1)}
-                  className="h-10 w-10 rounded-full border-2 hover:bg-accent/10 hover:text-accent shadow-sm"
+                  className="h-12 w-12 rounded-full border bg-background hover:bg-accent/5 hover:text-accent transition-all"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-5 w-5" />
                 </Button>
               </div>
               
               {isLoaded && users > PLANS[plan].users && (
-                <div className="text-[10px] text-center p-2 rounded-lg bg-accent/5 text-accent font-semibold animate-in fade-in zoom-in-95">
-                  + {users - PLANS[plan].users} excedentes → {fmtBRL((users - PLANS[plan].users) * 35)}/mês
+                <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-accent bg-accent/5 py-2 rounded-lg border border-accent/10">
+                  <Zap className="h-3 w-3" />
+                  <span>+{users - PLANS[plan].users} usuários excedentes</span>
                 </div>
               )}
             </div>
 
             {/* TELEPHONY CARD */}
-            <div className="card-glass rounded-2xl p-5 border border-border/50 space-y-4 shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Smartphone className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-bold">Telefonia WhatsApp</span>
+            <div className="card-glass rounded-xl p-6 border border-border/40 space-y-5 bg-background/20 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
+                      <Smartphone className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm font-bold uppercase tracking-tight">Telefonia WA</span>
+                  </div>
+                  <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-accent" />
                 </div>
-                <Switch checked={telefonia} onCheckedChange={setTelefonia} className="data-[state=checked]:bg-accent" />
+                <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                  Ative chamadas de voz e áudio profissionais integradas ao seu painel.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Adicione recursos de telefonia diretamente no seu WhatsApp para uma comunicação profissional.
-              </p>
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
-                <span className="text-sm font-bold">{fmtBRL(100)}<span className="text-[10px] text-muted-foreground font-normal">/mês</span></span>
+              
+              <div className="flex items-center justify-between pt-4 border-t border-border/40">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Custo Fixo</span>
+                  <span className="text-[10px] text-accent font-bold">Incluso no checkout</span>
+                </div>
+                <div className="text-xl font-black">{fmtBRL(100)}<span className="text-[10px] text-muted-foreground font-medium">/mês</span></div>
               </div>
             </div>
           </div>
@@ -270,31 +303,51 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {CANAIS_DEF.map(c => {
                 const qty = channels[c.id] ?? 0;
-                const extra = Math.max(0, qty - c.included);
+                
+                const getIcon = (id: string) => {
+                  switch (id) {
+                    case 'waof':
+                    case 'wano': return <MessageSquare className="h-4 w-4" />;
+                    case 'ig': return <Instagram className="h-4 w-4" />;
+                    case 'fb': return <Facebook className="h-4 w-4" />;
+                    case 'email': return <Mail className="h-4 w-4" />;
+                    case 'olx': return <Tag className="h-4 w-4" />;
+                    case 'tiktok': return <Music2 className="h-4 w-4" />;
+                    case 'ml': return <ShoppingCart className="h-4 w-4" />;
+                    case 'li': return <Linkedin className="h-4 w-4" />;
+                    case 'yt': return <Youtube className="h-4 w-4" />;
+                    case 'woo': return <ShoppingBag className="h-4 w-4" />;
+                    default: return <MessageSquare className="h-4 w-4" />;
+                  }
+                };
+
                 return (
-                  <div key={c.id} className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-background/30 hover:bg-background/50 transition-colors">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold flex items-center gap-1.5">
-                        <span className="text-base">{c.emoji}</span> {c.label}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground mt-0.5">
-                        {c.included} incl. · {fmtBRL(c.unit)}/extra
-                      </span>
+                  <div key={c.id} className="flex items-center justify-between p-4 rounded-xl border border-border/40 bg-background/40 hover:bg-background/60 transition-all group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-background border flex items-center justify-center text-muted-foreground group-hover:text-accent group-hover:border-accent/30 transition-colors">
+                        {getIcon(c.id)}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold uppercase tracking-wider">{c.label}</span>
+                        <span className="text-[10px] text-muted-foreground font-medium">
+                          {c.included} incl. · {fmtBRL(c.unit)}/extra
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 bg-background/50 rounded-lg p-1 border">
+                    <div className="flex items-center gap-2 bg-background/80 rounded-full p-1 border shadow-sm">
                       <button 
                         onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))}
-                        className="w-6 h-6 flex items-center justify-center hover:text-accent transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent/10 hover:text-accent transition-colors"
                       >
                         <Minus className="h-3 w-3" />
                       </button>
                       <span className="w-6 text-center text-xs font-black tabular-nums">{qty}</span>
                       <button 
                         onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))}
-                        className="w-6 h-6 flex items-center justify-center hover:text-accent transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-accent/10 hover:text-accent transition-colors"
                       >
                         <Plus className="h-3 w-3" />
                       </button>
@@ -379,85 +432,107 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               )}
 
               {/* DETAILS LIST */}
-              <div className="space-y-2 pt-2">
-                <div className="flex justify-between text-[11px] font-medium border-b border-border/40 pb-2">
-                  <span className="text-muted-foreground">Plano Base</span>
+              <div className="space-y-3 pt-2">
+                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest border-b border-border/40 pb-3">
+                  <span className="text-muted-foreground">Detalhamento</span>
+                  <span className="text-accent">Subtotal</span>
+                </div>
+                
+                <div className="flex justify-between text-[11px] font-bold">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <ShieldCheck className="h-3 w-3" /> Plano Base
+                  </span>
                   <span>{fmtBRL(quote.base1m)}</span>
                 </div>
+
                 {quote.channelLines.length > 0 && (
-                  <div className="space-y-1.5 py-1">
-                    {quote.channelLines.map(l => (
-                      <div key={l.id} className="flex justify-between text-[10px]">
-                        <span className="text-muted-foreground flex items-center gap-1.5">
-                          {l.emoji} {l.label} ({l.qty})
-                          {quote.channelsDiscountPercent > 0 && (
-                            <span className="bg-accent/10 text-accent px-1 rounded text-[8px]">-{quote.channelsDiscountPercent}%</span>
-                          )}
-                        </span>
-                        <span className="font-medium">{fmtBRL(l.amount)}</span>
-                      </div>
-                    ))}
+                  <div className="space-y-2 py-1">
+                    {quote.channelLines.map(l => {
+                      const getIcon = (id: string) => {
+                        switch (id) {
+                          case 'waof':
+                          case 'wano': return <MessageSquare className="h-3 w-3" />;
+                          case 'ig': return <Instagram className="h-3 w-3" />;
+                          case 'fb': return <Facebook className="h-3 w-3" />;
+                          case 'email': return <Mail className="h-3 w-3" />;
+                          case 'olx': return <Tag className="h-3 w-3" />;
+                          case 'tiktok': return <Music2 className="h-3 w-3" />;
+                          case 'ml': return <ShoppingCart className="h-3 w-3" />;
+                          case 'li': return <Linkedin className="h-3 w-3" />;
+                          case 'yt': return <Youtube className="h-3 w-3" />;
+                          case 'woo': return <ShoppingBag className="h-3 w-3" />;
+                          default: return <MessageSquare className="h-3 w-3" />;
+                        }
+                      };
+
+                      return (
+                        <div key={l.id} className="flex justify-between text-[10px] font-medium animate-in fade-in slide-in-from-right-2">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            {getIcon(l.id)} {l.label} ({l.qty}x)
+                            {quote.channelsDiscountPercent > 0 && (
+                              <Badge variant="outline" className="text-[7px] h-3 px-1 border-accent/20 text-accent bg-accent/5">-{quote.channelsDiscountPercent}%</Badge>
+                            )}
+                          </span>
+                          <span>{fmtBRL(l.amount)}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
+                
                 {quote.telCost > 0 && (
-                  <div className="flex justify-between text-[10px] pt-1 border-t border-border/40">
-                    <span className="text-muted-foreground flex items-center gap-1.5">📞 Telefonia</span>
-                    <span className="font-medium">{fmtBRL(quote.telCost)}</span>
+                  <div className="flex justify-between text-[11px] font-bold pt-2 border-t border-border/40">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Smartphone className="h-3 w-3" /> Telefonia
+                    </span>
+                    <span>{fmtBRL(quote.telCost)}</span>
                   </div>
                 )}
               </div>
 
               {/* ACTIONS */}
-              <div className="space-y-3 pt-4">
+              <div className="space-y-4 pt-6">
                 {mode === 'customer' ? (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <Button 
                       onClick={() => onCheckout?.(config)} 
-                      className="w-full bg-accent hover:bg-accent/90 text-white py-8 text-xl font-black rounded-2xl shadow-xl shadow-accent/20 transition-all active:scale-[0.98]"
+                      className="w-full bg-accent hover:bg-accent/90 text-white h-16 text-lg font-black rounded-xl shadow-lg shadow-accent/20 transition-all hover:scale-[1.02] active:scale-[0.98] group"
                     >
-                      Assinar Agora
+                      <span>Ativar Plataforma</span>
+                      <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
                     </Button>
                     
                     {/* Payment Icons */}
-                    <div className="flex items-center justify-center gap-6 opacity-90 pb-2">
-                      <svg viewBox="0 0 48 48" className="h-4 w-auto" aria-label="Visa">
-                        <path fill="#1A1F71" d="M35.33,12h-3.33L25.33,28.67l-3.33-16.67H18l-5.33,16.67H16l1.33-4.67h6.67l1.33,4.67H32L35.33,12z M20,20.67l2-7.33l2,7.33H20z M3.33,12L0,36h3.33l3.33-24H3.33z M48,12h-3.33l-3.33,12l-3.33-12H34.67L40,36h3.33L48,12z"/>
-                        <path fill="#F79E1B" d="M11.33,12H8L2.67,36H6L11.33,12z"/>
-                      </svg>
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-7 w-auto object-contain" />
-                      <img src="https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png" alt="Pix" className="h-6 w-auto object-contain" />
-                      <div className="flex flex-col items-center gap-0.5 border border-border/60 rounded px-1.5 py-0.5 bg-white shadow-sm">
-                        <div className="flex gap-0.5">
-                          {[1,1,1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
-                          {[1,1,1].map((_,i)=><div key={i} className="w-[2px] h-3 bg-black"/>)}
-                          {[1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Pagamento Seguro</div>
+                      <div className="flex items-center justify-center gap-6 opacity-70 grayscale hover:grayscale-0 transition-all">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6 w-auto object-contain" />
+                        <img src="https://www.bcb.gov.br/content/estabilidadefinanceira/piximg/logo_pix.png" alt="Pix" className="h-5 w-auto object-contain" />
+                        <div className="flex flex-col items-center gap-0.5 border border-border/60 rounded px-1.5 py-0.5 bg-white shadow-sm">
+                          <div className="flex gap-0.5">
+                            {[1,1,1,1].map((_,i)=><div key={i} className="w-[1px] h-3 bg-black"/>)}
+                            {[1,1,1].map((_,i)=><div key={i} className="w-[2px] h-3 bg-black"/>)}
+                          </div>
+                          <span className="text-[7px] font-bold text-black leading-none uppercase">Boleto</span>
                         </div>
-                        <span className="text-[7px] font-bold text-black leading-none uppercase">Boleto</span>
                       </div>
                     </div>
                   </div>
                 ) : affiliateSlug && (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <Button 
                       onClick={() => copy(checkoutUrl, 'Link copiado')} 
-                      className="w-full rounded-xl h-11 font-bold" 
-                      size="sm"
+                      className="w-full rounded-xl h-14 font-black uppercase tracking-wider text-xs shadow-md shadow-accent/10" 
                     >
                       <Link2 className="h-4 w-4 mr-2" />Copiar Link Checkout
                     </Button>
                     <Button 
                       onClick={() => copy(proposalText, 'Proposta copiada')} 
                       variant="outline" 
-                      className="w-full rounded-xl h-11 font-bold border-2 hover:bg-accent/5 hover:text-accent" 
-                      size="sm"
+                      className="w-full rounded-xl h-14 font-black uppercase tracking-wider text-xs border-2 hover:bg-accent/5 hover:text-accent shadow-sm" 
                     >
                       <FileText className="h-4 w-4 mr-2" />Copiar Proposta
                     </Button>
-                    <textarea 
-                      readOnly 
-                      value={proposalText} 
-                      className="w-full mt-2 p-3 text-[10px] rounded-xl border border-border/60 bg-muted/20 h-32 font-mono leading-relaxed" 
-                    />
                   </div>
                 )}
               </div>
