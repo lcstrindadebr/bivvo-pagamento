@@ -572,23 +572,22 @@ const Checkout = () => {
       </header>
 
       {/* Plan Info Bar */}
-      <div className="relative bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground py-4 overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMDUiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50" />
+      <div className="relative bg-primary text-primary-foreground py-6 overflow-hidden">
         <div className="relative max-w-lg mx-auto px-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center">
-              <Sparkles className="h-5 w-5" />
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center">
+              <Check className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs opacity-80">Assinatura</p>
-              <p className="font-semibold">{plan.name}</p>
+              <p className="text-[10px] uppercase tracking-widest opacity-70">Assinatura selecionada</p>
+              <p className="text-lg font-medium">{plan.name}</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs opacity-80">Total</p>
-            <p className="text-2xl font-bold">{formatCurrency(plan.price)}</p>
+            <p className="text-[10px] uppercase tracking-widest opacity-70">Valor total</p>
+            <p className="text-3xl font-medium">{formatCurrency(plan.price)}</p>
             {quote && quote.total1m !== quote.totalRec && (
-              <p className="text-[10px] opacity-70">Depois {formatCurrency(quote.totalRec)}/mês</p>
+              <p className="text-[10px] opacity-70 mt-1 font-normal">Depois {formatCurrency(quote.totalRec)}/mês</p>
             )}
           </div>
         </div>
