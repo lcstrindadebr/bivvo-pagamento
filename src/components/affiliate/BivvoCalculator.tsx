@@ -1,14 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Copy, Link2, FileText, Info, Users, Smartphone, Plus, Minus, 
+  Link2, FileText, Info, Users, Smartphone, Plus, Minus, 
   CheckCircle2, Loader2, MessageSquare, Instagram, Facebook, 
   Mail, Tag, Music2, ShoppingCart, Linkedin, Youtube, ShoppingBag,
-  Zap, ArrowRight, ShieldCheck, TrendingUp
+  Zap, ArrowRight, ShieldCheck, TrendingUp, HelpCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/tooltip";
 import { PLANS, CANAIS_DEF, quoteBivvo, fmtBRL, encodeBivvoConfig, type PlanSlug, type BivvoConfig, loadPlansFromDB } from '@/lib/bivvo-calc';
 import { useAppUrl } from '@/hooks/useSiteSettings';
+import { cn } from '@/lib/utils';
 
 interface Props {
   affiliateSlug?: string;
