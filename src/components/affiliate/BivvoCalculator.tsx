@@ -254,18 +254,18 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
             Canais de Atendimento
           </h3>
           
-          <div className="card-glass rounded-2xl p-6 border border-border/50 space-y-6">
+          <div className="bg-white rounded-xl p-[1.25rem] md:p-[1.5rem] border border-border/30 space-y-6 transition-all duration-200">
             {mode === 'affiliate' && (
-              <div className="bg-accent/5 p-4 rounded-xl border border-accent/20 space-y-3">
+              <div className="bg-[hsl(var(--selected-bg))] p-5 rounded-lg border border-primary/10 space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-accent">Desconto nos Canais</Label>
-                  <Badge className="bg-accent text-white font-mono">{channelsDiscount}%</Badge>
+                  <Label className="text-[11px] font-medium uppercase tracking-widest text-primary">Desconto nos Canais</Label>
+                  <Badge className="bg-primary text-white font-medium text-[10px] rounded-full px-3">{channelsDiscount}%</Badge>
                 </div>
                 <input 
                   type="range" min="0" max="30" step="5"
                   value={channelsDiscount} 
                   onChange={e => setChannelsDiscount(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-accent/20 rounded-lg appearance-none cursor-pointer accent-accent"
+                  className="w-full h-1 bg-primary/20 rounded-lg appearance-none cursor-pointer accent-primary"
                 />
               </div>
             )}
@@ -273,28 +273,27 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {CANAIS_DEF.map(c => {
                 const qty = channels[c.id] ?? 0;
-                const extra = Math.max(0, qty - c.included);
                 return (
-                  <div key={c.id} className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-background/30 hover:bg-background/50 transition-colors">
+                  <div key={c.id} className="flex items-center justify-between p-3.5 rounded-lg border border-border/30 bg-white hover:border-primary/30 transition-all duration-200">
                     <div className="flex flex-col">
-                      <span className="text-xs font-bold flex items-center gap-2">
+                      <span className="text-xs font-medium flex items-center gap-2">
                         <img src={c.logo} alt={c.label} className="w-5 h-5 object-contain" /> {c.label}
                       </span>
-                      <span className="text-[10px] text-muted-foreground mt-0.5">
+                      <span className="text-[10px] text-muted-foreground mt-1 font-normal">
                         {c.included} incl. · {fmtBRL(c.unit)}/extra
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 bg-background/50 rounded-lg p-1 border">
+                    <div className="flex items-center gap-2 bg-[hsl(var(--selected-bg))] rounded-lg p-1 border border-primary/10">
                       <button 
                         onClick={() => setChannels(s => ({ ...s, [c.id]: Math.max(0, qty - 1) }))}
-                        className="w-6 h-6 flex items-center justify-center hover:text-accent transition-colors"
+                        className="w-6 h-6 flex items-center justify-center hover:text-primary transition-colors"
                       >
                         <Minus className="h-3 w-3" />
                       </button>
-                      <span className="w-6 text-center text-xs font-black tabular-nums">{qty}</span>
+                      <span className="w-6 text-center text-xs font-medium tabular-nums text-foreground">{qty}</span>
                       <button 
                         onClick={() => setChannels(s => ({ ...s, [c.id]: qty + 1 }))}
-                        className="w-6 h-6 flex items-center justify-center hover:text-accent transition-colors"
+                        className="w-6 h-6 flex items-center justify-center hover:text-primary transition-colors"
                       >
                         <Plus className="h-3 w-3" />
                       </button>
