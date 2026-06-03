@@ -19,6 +19,8 @@ import AdminExpenses from '@/components/admin/AdminExpenses';
 import { AdminMarketingMaterials } from '@/components/admin/AdminMarketingMaterials';
 import { AdminSettings } from '@/components/admin/AdminSettings';
 import { AdminTasks } from '@/components/admin/AdminTasks';
+import { AdminOfficialTemplates } from '@/components/admin/AdminOfficialTemplates';
+
 
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import { formatCurrency } from '@/lib/validators';
