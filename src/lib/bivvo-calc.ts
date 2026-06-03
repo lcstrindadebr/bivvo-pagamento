@@ -132,6 +132,8 @@ export function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
     channelsDiscountPercent: discountPercent,
     telCost,
     disparoCost,
+    disparoDiscountPercent,
+
     total1m,
     totalRec,
     protagonista: !!cfg.protagonista,
