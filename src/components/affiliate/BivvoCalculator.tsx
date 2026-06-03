@@ -74,7 +74,7 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
       ? `✅ *Modo Preço Protagonista* — cliente paga *${fmtBRL(quote.total1m)}* todos os meses`
       : `💰 1º mês: *${fmtBRL(quote.total1m)}*\n↻ A partir do 2º mês: *${fmtBRL(quote.totalRec)}*/mês`;
     const extras = (quote.channelLines.length || quote.telCost || quote.disparoCost)
-      ? `\n📡 *Adicionais:*\n${lines}${quote.channelsDiscountPercent > 0 ? `\n  • 📉 Desconto adicional → ${quote.channelsDiscountPercent}%` : ''}${quote.telCost ? '\n  • 📞 Telefonia → R$ 100,00' : ''}${quote.disparoCost ? `\n  • 🚀 Módulo de Disparo → ${fmtBRL(quote.disparoCost)}` : ''}` : '';
+      ? `\n📡 *Adicionais:*\n${lines}${quote.channelsDiscountPercent > 0 ? `\n  • 📉 Desconto adicional → ${quote.channelsDiscountPercent}%` : ''}${quote.telCost ? '\n  • 📞 Telefonia → R$ 100,00' : ''}${quote.disparoCost ? '\n  • 🚀 Módulo de Disparo → R$ 100,00' : ''}` : '';
     return `📋 *Proposta Comercial — Bivvo*
 ━━━━━━━━━━━━━━━━━━━━━━━
 📦 *${quote.planLabel}*
@@ -259,7 +259,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               </p>
               <div className="flex items-center justify-between pt-2">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
-                <span className="text-sm font-bold">{fmtBRL(197)}<span className="text-xs text-muted-foreground font-normal ml-1">/mês</span></span>
+                <span className="text-sm font-bold">{fmtBRL(100)}<span className="text-xs text-muted-foreground font-normal ml-1">/mês</span></span>
               </div>
             </div>
           </div>
@@ -280,7 +280,7 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                   <Badge className="bg-accent text-white font-mono">{channelsDiscount}%</Badge>
                 </div>
                 <input 
-                  type="range" min="0" max="50" step="5"
+                  type="range" min="0" max="30" step="5"
                   value={channelsDiscount} 
                   onChange={e => setChannelsDiscount(parseInt(e.target.value))}
                   className="w-full h-1.5 bg-accent/20 rounded-lg appearance-none cursor-pointer accent-accent"
