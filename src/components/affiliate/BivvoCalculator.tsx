@@ -58,16 +58,17 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
     }
   }, [users, isLoaded]);
 
-  const config: BivvoConfig = { plan, users, protagonista, telefonia, disparo, channels, channelsDiscount };
+  const config: BivvoConfig = { plan, users, protagonista, telefonia, disparo, disparoDiscount, channels, channelsDiscount };
   const quote = useMemo(() => {
     try { return quoteBivvo(config); } catch { return null; }
-  }, [plan, users, protagonista, telefonia, disparo, channels, channelsDiscount]);
+  }, [plan, users, protagonista, telefonia, disparo, disparoDiscount, channels, channelsDiscount]);
 
   const checkoutUrl = useMemo(() => {
     if (!affiliateSlug) return '';
     const cfg = encodeBivvoConfig(config);
     return `${baseUrl}/checkout/${plan}?aff=${affiliateSlug}&cfg=${cfg}`;
-  }, [affiliateSlug, plan, users, protagonista, telefonia, disparo, channels, channelsDiscount, baseUrl]);
+  }, [affiliateSlug, plan, users, protagonista, telefonia, disparo, disparoDiscount, channels, channelsDiscount, baseUrl]);
+
 
   const proposalText = useMemo(() => {
     if (!quote) return '';
