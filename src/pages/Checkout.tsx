@@ -68,6 +68,7 @@ const Checkout = () => {
         users: planId === 'standard' ? 3 : planId === 'silver' ? 6 : 12,
         channels: { waof: 1, wano: 1, ig: 1, fb: 1, email: 1 },
         telefonia: false,
+        disparo: false,
         protagonista: false
       };
     }

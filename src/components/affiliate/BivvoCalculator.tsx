@@ -30,6 +30,7 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
   const [users, setUsers] = useState(6);
   const [protagonista, setProtagonista] = useState(false);
   const [telefonia, setTelefonia] = useState(false);
+  const [disparo, setDisparo] = useState(false);
   const [channelsDiscount, setChannelsDiscount] = useState(0);
   const [channels, setChannels] = useState<Record<string, number>>({});
 
@@ -55,16 +56,16 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
     }
   }, [users, isLoaded]);
 
-  const config: BivvoConfig = { plan, users, protagonista, telefonia, channels, channelsDiscount };
+  const config: BivvoConfig = { plan, users, protagonista, telefonia, disparo, channels, channelsDiscount };
   const quote = useMemo(() => {
     try { return quoteBivvo(config); } catch { return null; }
-  }, [plan, users, protagonista, telefonia, channels, channelsDiscount]);
+  }, [plan, users, protagonista, telefonia, disparo, channels, channelsDiscount]);
 
   const checkoutUrl = useMemo(() => {
     if (!affiliateSlug) return '';
     const cfg = encodeBivvoConfig(config);
     return `${baseUrl}/checkout/${plan}?aff=${affiliateSlug}&cfg=${cfg}`;
-  }, [affiliateSlug, plan, users, protagonista, telefonia, channels, channelsDiscount, baseUrl]);
+  }, [affiliateSlug, plan, users, protagonista, telefonia, disparo, channels, channelsDiscount, baseUrl]);
 
   const proposalText = useMemo(() => {
     if (!quote) return '';
@@ -72,8 +73,8 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
     const protText = quote.protagonista
       ? `✅ *Modo Preço Protagonista* — cliente paga *${fmtBRL(quote.total1m)}* todos os meses`
       : `💰 1º mês: *${fmtBRL(quote.total1m)}*\n↻ A partir do 2º mês: *${fmtBRL(quote.totalRec)}*/mês`;
-    const extras = (quote.channelLines.length || quote.telCost)
-      ? `\n📡 *Adicionais:*\n${lines}${quote.channelsDiscountPercent > 0 ? `\n  • 📉 Desconto adicional → ${quote.channelsDiscountPercent}%` : ''}${quote.telCost ? '\n  • 📞 Telefonia → R$ 100,00' : ''}` : '';
+    const extras = (quote.channelLines.length || quote.telCost || quote.disparoCost)
+      ? `\n📡 *Adicionais:*\n${lines}${quote.channelsDiscountPercent > 0 ? `\n  • 📉 Desconto adicional → ${quote.channelsDiscountPercent}%` : ''}${quote.telCost ? '\n  • 📞 Telefonia → R$ 100,00' : ''}${quote.disparoCost ? '\n  • 🚀 Módulo de Disparo → R$ 100,00' : ''}` : '';
     return `📋 *Proposta Comercial — Bivvo*
 ━━━━━━━━━━━━━━━━━━━━━━━
 📦 *${quote.planLabel}*
@@ -237,6 +238,24 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Adicione recursos de telefonia diretamente no seu WhatsApp para uma comunicação profissional.
+              </p>
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
+                <span className="text-sm font-bold">{fmtBRL(100)}<span className="text-xs text-muted-foreground font-normal ml-1">/mês</span></span>
+              </div>
+            </div>
+
+            {/* DISPARO CARD */}
+            <div className="card-glass rounded-2xl p-5 border border-border/50 space-y-4 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-accent" />
+                  <span className="text-sm font-medium">Módulo de Disparo</span>
+                </div>
+                <Switch checked={disparo} onCheckedChange={setDisparo} className="data-[state=checked]:bg-accent" />
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Envie mensagens em massa de forma automatizada e eficiente para toda sua base de contatos.
               </p>
               <div className="flex items-center justify-between pt-2">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
