@@ -31,8 +31,10 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
   const [protagonista, setProtagonista] = useState(false);
   const [telefonia, setTelefonia] = useState(false);
   const [disparo, setDisparo] = useState(false);
+  const [disparoDiscount, setDisparoDiscount] = useState(0);
   const [channelsDiscount, setChannelsDiscount] = useState(0);
   const [channels, setChannels] = useState<Record<string, number>>({});
+
 
   useEffect(() => {
     loadPlansFromDB().then(() => {
