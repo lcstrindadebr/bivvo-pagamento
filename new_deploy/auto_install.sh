@@ -122,7 +122,7 @@ update_supabase_auto() {
     cd "/opt/bivvo-pagamento"
 
     echo -e "${BLUE}Autenticando no Supabase...${NC}"
-    npx supabase login --token sbp_9f79cabdaa6c9a08eb09296951c6984d566037ac
+    npx supabase login --token sbp_516e6495ba1c625df99604c52ddea717a257d0d3
 
     echo -e "${BLUE}Linkando projeto bcijktxnuzsatvhammpl...${NC}"
     # O comando link geralmente exige confirmação ou senha da DB, usamos --non-interactive se possível
