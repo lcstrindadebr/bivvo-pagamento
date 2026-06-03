@@ -77,7 +77,7 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
       ? `✅ *Modo Preço Protagonista* — cliente paga *${fmtBRL(quote.total1m)}* todos os meses`
       : `💰 1º mês: *${fmtBRL(quote.total1m)}*\n↻ A partir do 2º mês: *${fmtBRL(quote.totalRec)}*/mês`;
     const extras = (quote.channelLines.length || quote.telCost || quote.disparoCost)
-      ? `\n📡 *Adicionais:*\n${lines}${quote.channelsDiscountPercent > 0 ? `\n  • 📉 Desconto adicional → ${quote.channelsDiscountPercent}%` : ''}${quote.telCost ? '\n  • 📞 Telefonia → R$ 100,00' : ''}${quote.disparoCost ? '\n  • 🚀 Módulo de Disparo → R$ 100,00' : ''}` : '';
+      ? `\n📡 *Adicionais:*\n${lines}${quote.channelsDiscountPercent > 0 ? `\n  • 📉 Desconto adicional → ${quote.channelsDiscountPercent}%` : ''}${quote.telCost ? `\n  • 📞 Telefonia → ${fmtBRL(quote.telCost)}` : ''}${quote.disparoCost ? `\n  • 🚀 Módulo de Disparo → ${fmtBRL(quote.disparoCost)}${quote.disparoDiscountPercent > 0 ? ` (-${quote.disparoDiscountPercent}%)` : ''}` : ''}` : '';
     return `📋 *Proposta Comercial — Bivvo*
 ━━━━━━━━━━━━━━━━━━━━━━━
 📦 *${quote.planLabel}*
