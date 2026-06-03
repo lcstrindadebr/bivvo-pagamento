@@ -30,7 +30,7 @@ export async function loadPlansFromDB() {
 
 export const EXTRA_USER_PRICE = 35;
 export const TELEFONIA_PRICE = 100;
-export const DISPARO_PRICE = 100;
+export const DISPARO_PRICE = 197;
 
 export const CANAIS_DEF = [
   { id: 'waof',   label: 'WhatsApp API Oficial',     included: 1, unit: 100, emoji: '📱', logo: 'https://cdn.simpleicons.org/whatsapp/%2325D366' },
@@ -89,7 +89,7 @@ export function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
   const base1m = basePromo;
   const baseRec = cfg.protagonista ? base1m : baseFull;
 
-  const discountPercent = Math.min(30, Math.max(0, cfg.channelsDiscount || 0));
+  const discountPercent = Math.min(50, Math.max(0, cfg.channelsDiscount || 0));
   const discountFactor = 1 - (discountPercent / 100);
 
   let channelsTotal = 0;

@@ -44,7 +44,7 @@ export function AdminOfficialTemplates() {
     if (error) {
       toast({ title: 'Erro ao carregar templates', description: error.message, variant: 'destructive' });
     } else {
-      setTemplates(data || []);
+      setTemplates((data || []) as any[]);
     }
     setLoading(false);
   };

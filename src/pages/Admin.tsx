@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp, Receipt, Share2, Copy, Settings, Smartphone, CheckCircle2 } from 'lucide-react';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp, Receipt, Share2, Copy, Settings, Smartphone, CheckCircle2, FileText } from 'lucide-react';
 
 import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
@@ -19,6 +19,7 @@ import AdminExpenses from '@/components/admin/AdminExpenses';
 import { AdminMarketingMaterials } from '@/components/admin/AdminMarketingMaterials';
 import { AdminSettings } from '@/components/admin/AdminSettings';
 import { AdminTasks } from '@/components/admin/AdminTasks';
+import { AdminOfficialTemplates } from '@/components/admin/AdminOfficialTemplates';
 
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import { formatCurrency } from '@/lib/validators';
@@ -452,6 +453,7 @@ const Admin = () => {
             <TabsTrigger value="expenses" className="gap-2"><Receipt className="h-4 w-4" /> Despesas</TabsTrigger>
             <TabsTrigger value="marketing" className="gap-2"><Share2 className="h-4 w-4" /> Marketing</TabsTrigger>
             <TabsTrigger value="settings" className="gap-2"><Settings className="h-4 w-4" /> Configurações</TabsTrigger>
+            <TabsTrigger value="templates" className="gap-2"><FileText className="h-4 w-4" /> Templates</TabsTrigger>
             <TabsTrigger value="tasks" className="gap-2"><CheckCircle2 className="h-4 w-4" /> Tarefas</TabsTrigger>
 
           </TabsList>
@@ -469,6 +471,11 @@ const Admin = () => {
           {/* MARKETING TAB */}
           <TabsContent value="marketing">
             <AdminMarketingMaterials />
+          </TabsContent>
+
+          {/* TEMPLATES TAB */}
+          <TabsContent value="templates">
+            <AdminOfficialTemplates />
           </TabsContent>
 
           {/* TASKS TAB */}
