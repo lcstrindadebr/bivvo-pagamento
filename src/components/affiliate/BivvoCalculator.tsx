@@ -31,8 +31,10 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
   const [protagonista, setProtagonista] = useState(false);
   const [telefonia, setTelefonia] = useState(false);
   const [disparo, setDisparo] = useState(false);
+  const [disparoDiscount, setDisparoDiscount] = useState(0);
   const [channelsDiscount, setChannelsDiscount] = useState(0);
   const [channels, setChannels] = useState<Record<string, number>>({});
+
 
   useEffect(() => {
     loadPlansFromDB().then(() => {
@@ -56,16 +58,17 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
     }
   }, [users, isLoaded]);
 
-  const config: BivvoConfig = { plan, users, protagonista, telefonia, disparo, channels, channelsDiscount };
+  const config: BivvoConfig = { plan, users, protagonista, telefonia, disparo, disparoDiscount, channels, channelsDiscount };
   const quote = useMemo(() => {
     try { return quoteBivvo(config); } catch { return null; }
-  }, [plan, users, protagonista, telefonia, disparo, channels, channelsDiscount]);
+  }, [plan, users, protagonista, telefonia, disparo, disparoDiscount, channels, channelsDiscount]);
 
   const checkoutUrl = useMemo(() => {
     if (!affiliateSlug) return '';
     const cfg = encodeBivvoConfig(config);
     return `${baseUrl}/checkout/${plan}?aff=${affiliateSlug}&cfg=${cfg}`;
-  }, [affiliateSlug, plan, users, protagonista, telefonia, disparo, channels, channelsDiscount, baseUrl]);
+  }, [affiliateSlug, plan, users, protagonista, telefonia, disparo, disparoDiscount, channels, channelsDiscount, baseUrl]);
+
 
   const proposalText = useMemo(() => {
     if (!quote) return '';
@@ -74,7 +77,7 @@ export default function BivvoCalculator({ affiliateSlug, mode = 'affiliate', onC
       ? `✅ *Modo Preço Protagonista* — cliente paga *${fmtBRL(quote.total1m)}* todos os meses`
       : `💰 1º mês: *${fmtBRL(quote.total1m)}*\n↻ A partir do 2º mês: *${fmtBRL(quote.totalRec)}*/mês`;
     const extras = (quote.channelLines.length || quote.telCost || quote.disparoCost)
-      ? `\n📡 *Adicionais:*\n${lines}${quote.channelsDiscountPercent > 0 ? `\n  • 📉 Desconto adicional → ${quote.channelsDiscountPercent}%` : ''}${quote.telCost ? '\n  • 📞 Telefonia → R$ 100,00' : ''}${quote.disparoCost ? '\n  • 🚀 Módulo de Disparo → R$ 100,00' : ''}` : '';
+      ? `\n📡 *Adicionais:*\n${lines}${quote.channelsDiscountPercent > 0 ? `\n  • 📉 Desconto adicional → ${quote.channelsDiscountPercent}%` : ''}${quote.telCost ? `\n  • 📞 Telefonia → ${fmtBRL(quote.telCost)}` : ''}${quote.disparoCost ? `\n  • 🚀 Módulo de Disparo → ${fmtBRL(quote.disparoCost)}${quote.disparoDiscountPercent > 0 ? ` (-${quote.disparoDiscountPercent}%)` : ''}` : ''}` : '';
     return `📋 *Proposta Comercial — Bivvo*
 ━━━━━━━━━━━━━━━━━━━━━━━
 📦 *${quote.planLabel}*
@@ -257,13 +260,37 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Envie mensagens em massa de forma automatizada e eficiente para toda sua base de contatos.
               </p>
+              {disparo && mode === 'affiliate' && (
+                <div className="bg-accent/5 p-3 rounded-xl border border-accent/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-accent">Desconto Disparo</Label>
+                    <Badge className="bg-accent text-white font-mono text-xs">{disparoDiscount}%</Badge>
+                  </div>
+                  <input
+                    type="range" min="0" max="50" step="5"
+                    value={disparoDiscount}
+                    onChange={e => setDisparoDiscount(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-accent/20 rounded-lg appearance-none cursor-pointer accent-accent"
+                  />
+                </div>
+              )}
               <div className="flex items-center justify-between pt-2">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
-                <span className="text-sm font-bold">{fmtBRL(100)}<span className="text-xs text-muted-foreground font-normal ml-1">/mês</span></span>
+                <div className="text-right">
+                  {disparo && disparoDiscount > 0 ? (
+                    <>
+                      <span className="text-xs text-muted-foreground line-through mr-2">{fmtBRL(197)}</span>
+                      <span className="text-sm font-bold text-accent">{fmtBRL(197 * (1 - disparoDiscount/100))}<span className="text-xs text-muted-foreground font-normal ml-1">/mês</span></span>
+                    </>
+                  ) : (
+                    <span className="text-sm font-bold">{fmtBRL(197)}<span className="text-xs text-muted-foreground font-normal ml-1">/mês</span></span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </section>
+
 
         {/* SECTION: CHANNELS */}
         <section className="space-y-4">
@@ -422,6 +449,18 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                     <span className="font-medium">{fmtBRL(quote.telCost)}</span>
                   </div>
                 )}
+                {quote.disparoCost > 0 && (
+                  <div className="flex justify-between text-xs pt-1 border-t border-border/40">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      🚀 Módulo de Disparo
+                      {quote.disparoDiscountPercent > 0 && (
+                        <span className="bg-accent/10 text-accent px-1 rounded text-[10px]">-{quote.disparoDiscountPercent}%</span>
+                      )}
+                    </span>
+                    <span className="font-medium">{fmtBRL(quote.disparoCost)}</span>
+                  </div>
+                )}
+
               </div>
 
               {/* ACTIONS */}

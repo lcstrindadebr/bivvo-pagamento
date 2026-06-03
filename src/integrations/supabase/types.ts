@@ -486,6 +486,39 @@ export type Database = {
         }
         Relationships: []
       }
+      official_templates: {
+        Row: {
+          body_text: string
+          buttons: Json | null
+          created_at: string
+          id: string
+          media_type: string | null
+          media_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          body_text: string
+          buttons?: Json | null
+          created_at?: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          body_text?: string
+          buttons?: Json | null
+          created_at?: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
