@@ -480,6 +480,13 @@ const Admin = () => {
             <AdminTasks />
           </TabsContent>
 
+          {/* OFFICIAL TEMPLATES TAB */}
+          <TabsContent value="templates">
+            <AdminOfficialTemplates />
+          </TabsContent>
+
+
+
           {/* PLANS TAB */}
 
           <TabsContent value="plans">
