@@ -109,9 +109,11 @@ export function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
     }
   }
   const telCost = cfg.telefonia ? TELEFONIA_PRICE : 0;
-  const disparoCost = cfg.disparo ? DISPARO_PRICE : 0;
+  const disparoDiscountPercent = Math.min(50, Math.max(0, cfg.disparoDiscount || 0));
+  const disparoCost = cfg.disparo ? round2(DISPARO_PRICE * (1 - disparoDiscountPercent / 100)) : 0;
   const total1m = round2(base1m + channelsTotal + telCost + disparoCost);
   const totalRec = round2(baseRec + channelsTotal + telCost + disparoCost);
+
   
   const planLabel = extraUsers > 0
     ? `Plano Personalizado (${plan.name} + ${extraUsers}u)`
