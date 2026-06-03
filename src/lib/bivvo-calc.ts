@@ -30,6 +30,7 @@ export async function loadPlansFromDB() {
 
 export const EXTRA_USER_PRICE = 35;
 export const TELEFONIA_PRICE = 100;
+export const DISPARO_PRICE = 100;
 
 export const CANAIS_DEF = [
   { id: 'waof',   label: 'WhatsApp API Oficial',     included: 1, unit: 100, emoji: '📱', logo: 'https://cdn.simpleicons.org/whatsapp/%2325D366' },
@@ -53,6 +54,7 @@ export interface BivvoConfig {
   channels: Record<string, number>;
   channelsDiscount?: number;
   telefonia: boolean;
+  disparo: boolean;
   protagonista: boolean;
 }
 
@@ -66,6 +68,7 @@ export interface BivvoQuote {
   channelsTotal: number;
   channelsDiscountPercent: number;
   telCost: number;
+  disparoCost: number;
   total1m: number;
   totalRec: number;
   protagonista: boolean;
@@ -103,8 +106,9 @@ export function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
     }
   }
   const telCost = cfg.telefonia ? TELEFONIA_PRICE : 0;
-  const total1m = round2(base1m + channelsTotal + telCost);
-  const totalRec = round2(baseRec + channelsTotal + telCost);
+  const disparoCost = cfg.disparo ? DISPARO_PRICE : 0;
+  const total1m = round2(base1m + channelsTotal + telCost + disparoCost);
+  const totalRec = round2(baseRec + channelsTotal + telCost + disparoCost);
   
   const planLabel = extraUsers > 0
     ? `Plano Personalizado (${plan.name} + ${extraUsers}u)`
@@ -120,6 +124,7 @@ export function quoteBivvo(cfg: BivvoConfig): BivvoQuote {
     channelsTotal: round2(channelsTotal),
     channelsDiscountPercent: discountPercent,
     telCost,
+    disparoCost,
     total1m,
     totalRec,
     protagonista: !!cfg.protagonista,
