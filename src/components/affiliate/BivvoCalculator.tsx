@@ -260,13 +260,37 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Envie mensagens em massa de forma automatizada e eficiente para toda sua base de contatos.
               </p>
+              {disparo && mode === 'affiliate' && (
+                <div className="bg-accent/5 p-3 rounded-xl border border-accent/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-accent">Desconto Disparo</Label>
+                    <Badge className="bg-accent text-white font-mono text-xs">{disparoDiscount}%</Badge>
+                  </div>
+                  <input
+                    type="range" min="0" max="50" step="5"
+                    value={disparoDiscount}
+                    onChange={e => setDisparoDiscount(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-accent/20 rounded-lg appearance-none cursor-pointer accent-accent"
+                  />
+                </div>
+              )}
               <div className="flex items-center justify-between pt-2">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Custo Fixo</span>
-                <span className="text-sm font-bold">{fmtBRL(100)}<span className="text-xs text-muted-foreground font-normal ml-1">/mês</span></span>
+                <div className="text-right">
+                  {disparo && disparoDiscount > 0 ? (
+                    <>
+                      <span className="text-xs text-muted-foreground line-through mr-2">{fmtBRL(197)}</span>
+                      <span className="text-sm font-bold text-accent">{fmtBRL(197 * (1 - disparoDiscount/100))}<span className="text-xs text-muted-foreground font-normal ml-1">/mês</span></span>
+                    </>
+                  ) : (
+                    <span className="text-sm font-bold">{fmtBRL(197)}<span className="text-xs text-muted-foreground font-normal ml-1">/mês</span></span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </section>
+
 
         {/* SECTION: CHANNELS */}
         <section className="space-y-4">
