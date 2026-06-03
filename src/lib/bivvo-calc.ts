@@ -30,7 +30,8 @@ export async function loadPlansFromDB() {
 
 export const EXTRA_USER_PRICE = 35;
 export const TELEFONIA_PRICE = 100;
-export const DISPARO_PRICE = 100;
+export const DISPARO_PRICE = 197;
+
 
 export const CANAIS_DEF = [
   { id: 'waof',   label: 'WhatsApp API Oficial',     included: 1, unit: 100, emoji: '📱', logo: 'https://cdn.simpleicons.org/whatsapp/%2325D366' },
