@@ -56,8 +56,10 @@ export interface BivvoConfig {
   channelsDiscount?: number;
   telefonia: boolean;
   disparo: boolean;
+  disparoDiscount?: number;
   protagonista: boolean;
 }
+
 
 export interface BivvoQuote {
   planSlug: PlanSlug;
