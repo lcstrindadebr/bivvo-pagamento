@@ -72,6 +72,8 @@ export interface BivvoQuote {
   channelsDiscountPercent: number;
   telCost: number;
   disparoCost: number;
+  disparoDiscountPercent: number;
+
   total1m: number;
   totalRec: number;
   protagonista: boolean;
