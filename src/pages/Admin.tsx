@@ -455,8 +455,10 @@ const Admin = () => {
             <TabsTrigger value="marketing" className="gap-2"><Share2 className="h-4 w-4" /> Marketing</TabsTrigger>
             <TabsTrigger value="settings" className="gap-2"><Settings className="h-4 w-4" /> Configurações</TabsTrigger>
             <TabsTrigger value="tasks" className="gap-2"><CheckCircle2 className="h-4 w-4" /> Tarefas</TabsTrigger>
+            <TabsTrigger value="templates" className="gap-2"><FileText className="h-4 w-4" /> Modelos de Template</TabsTrigger>
 
           </TabsList>
+
 
           {/* DASHBOARD TAB */}
           <TabsContent value="dashboard">
