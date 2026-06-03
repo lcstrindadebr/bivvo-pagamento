@@ -449,6 +449,18 @@ ${protText}${checkoutUrl ? `\n\n🔗 Link de checkout:\n${checkoutUrl}` : ''}`;
                     <span className="font-medium">{fmtBRL(quote.telCost)}</span>
                   </div>
                 )}
+                {quote.disparoCost > 0 && (
+                  <div className="flex justify-between text-xs pt-1 border-t border-border/40">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      🚀 Módulo de Disparo
+                      {quote.disparoDiscountPercent > 0 && (
+                        <span className="bg-accent/10 text-accent px-1 rounded text-[10px]">-{quote.disparoDiscountPercent}%</span>
+                      )}
+                    </span>
+                    <span className="font-medium">{fmtBRL(quote.disparoCost)}</span>
+                  </div>
+                )}
+
               </div>
 
               {/* ACTIONS */}
