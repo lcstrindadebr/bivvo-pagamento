@@ -16,10 +16,13 @@ CREATE TABLE IF NOT EXISTS public.tasks (
   description TEXT,
   status      TEXT NOT NULL DEFAULT 'todo',     -- todo | in_progress | done
   priority    TEXT NOT NULL DEFAULT 'medium',   -- low | medium | high
+  assigned_to UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   due_date    TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES auth.users(id) ON DELETE SET NULL;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.tasks TO authenticated;
 GRANT ALL ON public.tasks TO service_role;

@@ -191,8 +191,13 @@ serve(async (req) => {
       const subsData = await subsRes.json();
 
       // Enrich payments with customer names AND FILTER ONLY SUBSCRIPTION PAYMENTS
-      // We only want payments that belong to a subscription
-      let payments = (paymentsData.data || []).filter((p: any) => p.subscription !== null && p.subscription !== undefined && p.subscription !== "");
+      // We only want payments that belong to a subscription, excluding deleted/cancelled/refunded ones
+      const EXCLUDED_STATUSES = ['DELETED', 'REMOVED_BY_USER', 'CANCELLED', 'REFUNDED', 'REFUND_REQUESTED', 'CHARGEBACK_REQUESTED', 'CHARGEBACK_DISPUTE', 'AWAITING_CHARGEBACK_REVERSAL'];
+      let payments = (paymentsData.data || []).filter((p: any) =>
+        p.subscription !== null && p.subscription !== undefined && p.subscription !== "" &&
+        !p.deleted &&
+        !EXCLUDED_STATUSES.includes(p.status)
+      );
       
       if (payments.length > 0) {
         const customerIds = [...new Set(payments.map((p: any) => p.customer))];
