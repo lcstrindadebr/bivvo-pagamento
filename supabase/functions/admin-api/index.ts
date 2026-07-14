@@ -173,36 +173,54 @@ serve(async (req) => {
 
     if (action === 'finance-stats') {
       const dateStart = url.searchParams.get('dateCreated[ge]');
-
       const dateEnd = url.searchParams.get('dateCreated[le]');
-      
-      // Get payments (cobrancas) with filters
-      let paymentsUrl = `${ASAAS_BASE_URL}/payments?limit=100`;
-      if (dateStart) paymentsUrl += `&dateCreated[ge]=${dateStart}`;
-      if (dateEnd) paymentsUrl += `&dateCreated[le]=${dateEnd}`;
-      
-      console.log(`Buscando pagamentos: ${paymentsUrl}`);
-      const paymentsRes = await fetch(paymentsUrl, { headers: { 'access_token': ASAAS_API_KEY } });
-      const paymentsData = await paymentsRes.json();
-      
-      // Get subscriptions to count total recurring
-      const subsUrl = `${ASAAS_BASE_URL}/subscriptions?limit=100&status=ACTIVE`;
-      const subsRes = await fetch(subsUrl, { headers: { 'access_token': ASAAS_API_KEY } });
-      const subsData = await subsRes.json();
 
-      // Enrich payments with customer names AND FILTER ONLY SUBSCRIPTION PAYMENTS
-      // We only want payments that belong to a subscription, excluding deleted/cancelled/refunded ones
+      // 1) Paginate all subscriptions (exclude removed). Reference: GET /v3/subscriptions
+      const allSubs: any[] = [];
+      {
+        let offset = 0;
+        const limit = 100;
+        while (true) {
+          const u = `${ASAAS_BASE_URL}/subscriptions?limit=${limit}&offset=${offset}`;
+          const r = await fetch(u, { headers: { 'access_token': ASAAS_API_KEY } });
+          const j = await r.json();
+          const batch = (j.data || []).filter((s: any) => !s.deleted);
+          allSubs.push(...batch);
+          if (!j.hasMore || (j.data || []).length < limit) break;
+          offset += limit;
+          if (offset > 5000) break; // safety
+        }
+      }
+      const subsData = {
+        data: allSubs,
+        totalCount: allSubs.filter((s: any) => s.status === 'ACTIVE').length,
+      };
+
+      // 2) Paginate all payments with date filters and keep only subscription-linked, non-excluded
       const EXCLUDED_STATUSES = ['DELETED', 'REMOVED_BY_USER', 'CANCELLED', 'REFUNDED', 'REFUND_REQUESTED', 'CHARGEBACK_REQUESTED', 'CHARGEBACK_DISPUTE', 'AWAITING_CHARGEBACK_REVERSAL'];
-      let payments = (paymentsData.data || []).filter((p: any) =>
-        p.subscription !== null && p.subscription !== undefined && p.subscription !== "" &&
-        !p.deleted &&
-        !EXCLUDED_STATUSES.includes(p.status)
-      );
-      
+      let payments: any[] = [];
+      {
+        let offset = 0;
+        const limit = 100;
+        while (true) {
+          let u = `${ASAAS_BASE_URL}/payments?limit=${limit}&offset=${offset}`;
+          if (dateStart) u += `&dateCreated[ge]=${dateStart}`;
+          if (dateEnd) u += `&dateCreated[le]=${dateEnd}`;
+          const r = await fetch(u, { headers: { 'access_token': ASAAS_API_KEY } });
+          const j = await r.json();
+          const batch = (j.data || []).filter((p: any) =>
+            p.subscription && !p.deleted && !EXCLUDED_STATUSES.includes(p.status)
+          );
+          payments.push(...batch);
+          if (!j.hasMore || (j.data || []).length < limit) break;
+          offset += limit;
+          if (offset > 5000) break; // safety
+        }
+      }
+
       if (payments.length > 0) {
         const customerIds = [...new Set(payments.map((p: any) => p.customer))];
         const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
-        
         payments = payments.map((p: any) => ({
           ...p,
           customerName: userMap.get(p.customer)?.name || 'Desconhecido',
