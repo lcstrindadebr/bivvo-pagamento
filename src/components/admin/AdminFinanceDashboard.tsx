@@ -313,14 +313,17 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
               <div className="flex flex-col">
-                <div className="text-2xl font-bold text-blue-500">{formatCurrency(stats?.freeCash || 0)}</div>
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl font-bold text-blue-500">{formatCurrency(stats?.freeCash || 0)}</div>
+                  <DeltaBadge value={stats?.deltas?.freeCash} />
+                </div>
                 <div className="text-[10px] text-muted-foreground">
                   (Recebido líquido − Comissões − Despesas)
                 </div>
-
               </div>
             )}
           </CardContent>
+
         </Card>
 
         <Card className="card-glass border-none shadow-xl">
