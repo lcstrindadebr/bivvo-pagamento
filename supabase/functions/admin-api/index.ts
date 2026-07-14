@@ -254,7 +254,7 @@ serve(async (req) => {
 
       // Todas as chamadas Asaas em paralelo (subs + payments atual + payments anterior)
       const [allSubs, paymentsCurrent, paymentsPrevious] = await Promise.all([
-        paginate('/subscriptions', (s: any) => !s.deleted),
+        paginate('/subscriptions', () => true),
         fetchPayments(dateStart, dateEnd),
         previousStart ? fetchPayments(previousStart, previousEnd) : Promise.resolve([] as any[]),
       ]);
@@ -272,7 +272,7 @@ serve(async (req) => {
       }
 
       // Ativos hoje / MRR / ARPU (snapshot atual, comum a ambos)
-      const activeSubs = allSubs.filter((s: any) => s.status === 'ACTIVE');
+      const activeSubs = allSubs.filter((s: any) => !s.deleted && s.status === 'ACTIVE');
       const activeSubsCount = activeSubs.length;
       const mrr = activeSubs.reduce((a: number, s: any) => a + (Number(s.value) || 0) * (CYCLE_TO_MONTHLY[s.cycle] ?? 1), 0);
       const arpu = activeSubsCount > 0 ? mrr / activeSubsCount : 0;
@@ -308,13 +308,17 @@ serve(async (req) => {
         const paidNetValue = paidPays.reduce((a, p) => a + (Number(p.netValue) || Number(p.value) || 0), 0);
         const totalValue = pays.reduce((a, p) => a + (Number(p.value) || 0), 0);
 
-        // Churn do período: inactive/expired com nextDueDate dentro do intervalo
+        // Churn do período: deletadas/inactive/expired com data de saída no intervalo.
+        // Asaas marca canceladas como deleted=true; usamos nextDueDate (última cobrança
+        // que não aconteceria) ou dateCreated como fallback para posicionar no tempo.
         const rs = ds ? new Date(ds).getTime() : 0;
         const re = de ? new Date(de).getTime() + 86_400_000 : Date.now();
         const churnedInPeriod = allSubs.filter((s: any) => {
-          if (!['INACTIVE', 'EXPIRED'].includes(s.status)) return false;
-          if (!s.nextDueDate) return false;
-          const t = new Date(s.nextDueDate).getTime();
+          const churned = s.deleted === true || ['INACTIVE', 'EXPIRED'].includes(s.status);
+          if (!churned) return false;
+          const ref = s.nextDueDate || s.dateCreated;
+          if (!ref) return false;
+          const t = new Date(ref).getTime();
           return t >= rs && t <= re;
         }).length;
         const activeAtStart = activeSubsCount + churnedInPeriod;
