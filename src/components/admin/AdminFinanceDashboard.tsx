@@ -316,12 +316,19 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-blue-500" /> LTV (Média)
+              <TrendingUp className="h-4 w-4 text-blue-500" /> LTV
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              <div className="text-2xl font-bold text-blue-500">{formatCurrency(stats?.ltv || 0)}</div>
+              <div className="flex flex-col">
+                <div className="text-2xl font-bold text-blue-500">
+                  {stats && stats.churnRate > 0 ? formatCurrency(stats.ltv) : '—'}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  ARPU {formatCurrency(stats?.arpu || 0)} / mês
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
