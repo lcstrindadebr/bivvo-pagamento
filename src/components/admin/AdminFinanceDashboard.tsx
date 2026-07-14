@@ -141,7 +141,15 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h2 className="text-xl font-bold">Dashboard Financeiro</h2>
+          <div className="flex flex-col gap-0.5">
+            <h2 className="text-xl font-bold">Dashboard Financeiro</h2>
+            {stats?.previousRange && (
+              <p className="text-[10px] text-muted-foreground">
+                Comparado com {new Date(stats.previousRange.start).toLocaleDateString('pt-BR')} — {new Date(stats.previousRange.end).toLocaleDateString('pt-BR')}
+              </p>
+            )}
+          </div>
+
           <div className="flex flex-wrap gap-2">
             <Button 
               variant={period === 'today' ? 'default' : 'outline'} 
