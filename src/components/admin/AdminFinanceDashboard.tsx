@@ -346,15 +346,24 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <XCircle className="h-4 w-4 text-red-500" /> Churn Rate (30d)
+              <XCircle className="h-4 w-4 text-red-500" /> Churn Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              <div className="text-2xl font-bold text-red-500">{stats?.churnRate.toFixed(2)}%</div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl font-bold text-red-500">{stats?.churnRate.toFixed(2)}%</div>
+                  <DeltaBadge value={stats?.deltas?.churnRate} kind="pp" inverse />
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Normalizado para 30 dias
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
+
 
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
