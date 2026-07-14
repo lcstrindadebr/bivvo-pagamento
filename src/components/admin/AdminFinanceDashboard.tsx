@@ -235,9 +235,13 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
           </CardHeader>
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              <div className="text-2xl font-bold">{stats?.totalPayments || 0}</div>
+              <div className="flex items-center gap-2">
+                <div className="text-2xl font-bold">{stats?.totalPayments || 0}</div>
+                <DeltaBadge value={stats?.deltas?.paidCount} />
+              </div>
             )}
           </CardContent>
+
         </Card>
 
         <Card className="card-glass border-none shadow-xl">
