@@ -275,7 +275,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
               <div className="flex flex-col">
                 <div className="text-2xl font-bold text-blue-500">{formatCurrency(stats?.freeCash || 0)}</div>
                 <div className="text-[10px] text-muted-foreground">
-                  (Recebido - Comissões - Despesas)
+                  (Recebido líquido − Comissões − Despesas)
                 </div>
 
               </div>
