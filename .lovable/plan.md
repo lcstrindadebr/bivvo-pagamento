@@ -1,83 +1,83 @@
-## Plano — Melhorias no módulo de Tarefas
+## Plano — Melhorias em Configurações
 
-Revisei `src/components/admin/AdminTasks.tsx` e a tabela `public.tasks`. Hoje o módulo já tem Kanban + Lista + delegação, mas há vários campos criados no banco que não são usados na UI e faltam recursos básicos de gestão. Abaixo o que pode melhorar, agrupado por prioridade.
+Hoje `AdminSettings.tsx` gerencia apenas **um campo** (`site_url`), e a tabela `settings` é um simples key/value. Proponho evoluir a tela em três frentes: mais campos úteis, organização por abas, e conexão com integrações que hoje ficam em variáveis de ambiente ou hard-coded.
 
 ---
 
-### 1. Usar os campos que já existem no banco
+### 1. Estrutura em abas
+Uma única tela com todos os grupos vira bagunça. Dividir em abas (`Tabs` do shadcn):
 
-A tabela `tasks` tem `description`, `priority` (low/medium/high) e `due_date` — nenhum aparece na tela hoje.
+- **Geral** — identidade, domínio, contatos.
+- **Marca / Aparência** — logo, favicon, cores.
+- **Notificações** — e-mail/webhooks.
+- **Integrações** — Asaas, analytics.
 
-- Modal de "Nova tarefa" com título, descrição, responsável, prioridade e data de vencimento.
-- Card do Kanban mostra badge de prioridade colorida e data de vencimento (vermelho se atrasada).
-- Linha da Lista ganha colunas Prioridade e Vencimento (ordenáveis).
+### 2. Aba Geral
+- Nome do site / razão social.
+- E-mail de suporte (exibido no checkout e rodapé).
+- WhatsApp de suporte (link `wa.me`).
+- CNPJ / endereço (usado em recibos e rodapé LGPD).
+- `site_url` (já existe) — manter aqui.
+- Fuso horário padrão para relatórios.
 
-### 2. Edição de tarefa
+### 3. Aba Marca / Aparência
+- Upload de **logo claro** e **logo escuro** (bucket `marketing`).
+- Upload de **favicon**.
+- Cor primária / accent (color picker) — grava CSS vars no `:root` via hook.
+- Alternar tema padrão (claro/escuro/sistema).
+- Preview ao vivo do resultado.
 
-Hoje só dá para trocar status (drag) e responsável. Não dá para editar título/descrição depois de criar.
+### 4. Aba Notificações
+- E-mail do remetente (from).
+- E-mails que recebem cópia de novas vendas / cancelamentos.
+- URL de webhook para eventos internos (opcional).
+- Toggle "enviar e-mail ao criar tarefa delegada".
 
-- Clique no card → modal de detalhes/edição com todos os campos.
-- Suporte a marcar como concluída direto no card do Kanban (checkbox no canto).
-- adicionar subtarefas
+### 5. Aba Integrações
+- **Asaas**: mostrar status da chave (mascarada), ambiente (sandbox/prod), URL do webhook para copiar. **Não** editar a chave pela UI — apenas indicar se está configurada, com botão "atualizar" que abre modal explicando que a chave é um secret.
+- Google Analytics / Meta Pixel — IDs (públicos, seguros no client).
+- Reset/limpeza do cache de 60s da edge function `finance-stats`.
 
-### 3. Filtros e busca
+### 6. UX & robustez
+- Validação com `zod` + `react-hook-form` para cada aba.
+- Salvar por aba (não tudo de uma vez) — botão fica no fim de cada painel.
+- Badge "não salvo" no título da aba quando há mudanças pendentes.
+- Toast + refetch por aba (não invalida tudo).
+- Loading skeleton por aba.
+- Confirmar antes de sair da aba se houver alterações não salvas (`useBeforeUnload`).
 
-Com o tempo a lista fica longa. Adicionar:
-
-- Campo de busca por título/descrição.
-- Filtros por responsável, prioridade e status.
-- Toggle "Mostrar concluídas" (por padrão esconde as `done` com mais de 7 dias).
-
-### 4. Ordenação e agrupamento no Kanban
-
-- Dentro de cada coluna, ordenar por prioridade (alta → baixa) e depois por vencimento.
-- Contador da coluna mostra `pendentes / total`.
-- Coluna "Concluído" limita a 20 mais recentes (link "ver todas").
-
-### 5. Notificações e responsabilidade
-
-- Ao delegar, registrar em `audit_logs` (já existe a tabela) quem delegou para quem.
-- Badge no menu lateral do admin com contagem de tarefas atribuídas ao usuário logado e ainda não concluídas.
-- Destaque visual nos cards atribuídos ao próprio usuário ("Minhas tarefas").
-
-### 6. Realtime
-
-Duas pessoas editando o Kanban hoje não veem update uma da outra sem F5.
-
-- Assinar canal realtime da tabela `tasks` e recarregar no `INSERT/UPDATE/DELETE`.
-
-### 7. UX do drag-and-drop
-
-- Feedback visual da coluna alvo (borda destacada) enquanto arrasta.
-- Suporte a mover no mobile (hoje `draggable` HTML5 não funciona bem em touch) — usar `@dnd-kit/core`, que é leve e já é o padrão do shadcn.
-
-### 8. Pequenos ajustes
-
-- Loading skeleton enquanto carrega tarefas.
-- Empty state ilustrado quando não há nenhuma tarefa.
-- Confirmação antes de excluir (`AlertDialog` do shadcn).
-- Atalho `Ctrl+Enter` no modal para salvar.
+### 7. Auditoria
+Toda alteração em `settings` grava linha em `audit_logs` (`action='settings.update'`, `old_data`, `new_data`). Já existe a tabela, falta o hook.
 
 ---
 
 ### Estrutura técnica
 
 ```text
-src/components/admin/AdminTasks.tsx
-  ├─ estado: filters { search, assignee, priority, status, showDone }
-  ├─ TaskDialog.tsx           ← novo, criar/editar (título, desc, prioridade, prazo, responsável)
-  ├─ TaskCard.tsx             ← extrai card do kanban
-  ├─ useTasksRealtime()       ← hook que assina canal 'tasks'
-  └─ dnd: substituir HTML5 por @dnd-kit/core + @dnd-kit/sortable
+src/components/admin/settings/
+  ├─ AdminSettings.tsx           ← shell com Tabs
+  ├─ tabs/GeneralTab.tsx
+  ├─ tabs/BrandingTab.tsx
+  ├─ tabs/NotificationsTab.tsx
+  └─ tabs/IntegrationsTab.tsx
+
+src/hooks/
+  ├─ useSiteSettings.ts          (já existe, ampliar tipagem)
+  └─ useSaveSetting.ts           ← wrapper único (upsert + audit_log + toast)
 ```
 
-Banco: nenhuma migration nova é necessária — os campos já existem em `public.tasks`.
+Modelo de dados: **manter `settings` key/value** — sem migration nova. Cada campo vira uma chave (`support_email`, `brand_logo_url`, etc). Valor sempre `text` (JSON serializado quando estruturado).
+
+Política RLS atual já permite:
+- leitura pública apenas de `site_url` (para o checkout público continuar funcionando);
+- leitura/escrita completa para admins (via `has_role`).
+
+Precisa adicionar mais uma chave pública se algum campo (ex.: `brand_logo_url`, `support_whatsapp`) tiver que aparecer para visitantes anônimos no checkout. Faço isso ampliando a policy `Public can read site_url` para uma whitelist de chaves.
 
 ### Ordem sugerida
+1. Reestruturar em abas + aba **Geral** (impacto imediato).
+2. Aba **Marca** com upload de logo/favicon.
+3. Aba **Notificações**.
+4. Aba **Integrações** + auditoria.
 
-1. Itens 1 e 2 (campos + edição) — desbloqueia uso real.
-2. Item 3 (filtros/busca) — organização.
-3. Itens 4 e 8 (ordenação + polish).
-4. Itens 5, 6, 7 (auditoria, realtime, dnd mobile) — melhorias avançadas.
-
-Quer que eu execute tudo, ou prefere priorizar só 1 → 3 primeiro?
+Quer que eu execute tudo ou prefere priorizar 1–2 primeiro?
