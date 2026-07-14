@@ -1,32 +1,31 @@
+// ============================================================
+// process-payment — autossuficiente (sem imports de _shared)
+// Cria assinatura de Cartão de Crédito no Asaas com cálculo Bivvo embutido.
+// ============================================================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// --- Bivvo Calculation Logic (Standalone) ---
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 const PLANS = {
   standard: { name: 'STANDARD', users: 3, promo: 169.90, full: 197.90 },
   silver:   { name: 'SILVER',   users: 6, promo: 287.90, full: 389.90 },
   pro:      { name: 'PRO',      users: 12, promo: 429.90, full: 527.90 },
 } as const;
-
 const EXTRA_USER_PRICE = 35;
 const TELEFONIA_PRICE = 100;
-
 const CANAIS_DEF = [
-  { id: 'waof',   label: 'WhatsApp API Oficial',     included: 1, unit: 100, emoji: '📱' },
-  { id: 'wano',   label: 'WhatsApp API não oficial', included: 1, unit: 50,  emoji: '💬' },
-  { id: 'ig',     label: 'Instagram',                included: 1, unit: 50,  emoji: '📸' },
-  { id: 'fb',     label: 'Facebook',                 included: 1, unit: 50,  emoji: '📘' },
-  { id: 'email',  label: 'E-mail',                   included: 1, unit: 50,  emoji: '✉️'  },
-  { id: 'olx',    label: 'OLX',                      included: 0, unit: 100, emoji: '🏷️' },
-  { id: 'tiktok', label: 'TikTok',                   included: 0, unit: 100, emoji: '🎵' },
-  { id: 'ml',     label: 'Mercado Livre',            included: 0, unit: 100, emoji: '🛒' },
-  { id: 'li',     label: 'LinkedIn',                 included: 0, unit: 100, emoji: '💼' },
-  { id: 'yt',     label: 'YouTube',                  included: 0, unit: 100, emoji: '▶️'  },
-  { id: 'woo',    label: 'WooCommerce',              included: 0, unit: 100, emoji: '🛍️' },
+  { id: 'waof', included: 1, unit: 100 }, { id: 'wano', included: 1, unit: 50 },
+  { id: 'ig', included: 1, unit: 50 },    { id: 'fb', included: 1, unit: 50 },
+  { id: 'email', included: 1, unit: 50 }, { id: 'olx', included: 0, unit: 100 },
+  { id: 'tiktok', included: 0, unit: 100 },{ id: 'ml', included: 0, unit: 100 },
+  { id: 'li', included: 0, unit: 100 },   { id: 'yt', included: 0, unit: 100 },
+  { id: 'woo', included: 0, unit: 100 },
 ] as const;
-
 function round2(n: number) { return Math.round(n * 100) / 100; }
-
 function quoteBivvo(cfg: any) {
   const plan = PLANS[cfg.plan as keyof typeof PLANS];
   if (!plan) throw new Error('Plano inválido');
@@ -49,10 +48,10 @@ function quoteBivvo(cfg: any) {
   const telCost = cfg.telefonia ? TELEFONIA_PRICE : 0;
   const total1m = round2(base1m + channelsTotal + telCost);
   const totalRec = round2(baseRec + channelsTotal + telCost);
-  return { planLabel: extraUsers > 0 ? `${plan.name} + ${extraUsers}u` : plan.name, total1m, totalRec };
+  const planLabel = extraUsers > 0 ? `Plano Personalizado (${plan.name} + ${extraUsers}u)` : `Plano ${plan.name} (${plan.users}u)`;
+  return { planLabel, total1m, totalRec };
 }
 
-// --- Asaas Fetch Wrapper ---
 async function asaasFetch(url: string, options: RequestInit) {
   const response = await fetch(url, options);
   const contentType = response.headers.get('content-type');
@@ -65,11 +64,6 @@ async function asaasFetch(url: string, options: RequestInit) {
   return await response.text();
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -78,26 +72,19 @@ serve(async (req) => {
     const ASAAS_BASE_URL = Deno.env.get('ASAAS_BASE_URL');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
     if (!ASAAS_API_KEY || !ASAAS_BASE_URL || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Configuração incompleta no servidor (Secrets).');
     }
 
     const body = await req.json();
     const { plan, customerData, cardData, bivvoConfig, affiliateSlug, trackingId } = body;
-
-    // Get remote IP from headers (Supabase adds this)
     const remoteIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
-
-    // 1. Database Client
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // 2. Resolve Price
     let amount: number, recurringAmount: number, planLabel: string;
     if (bivvoConfig) {
       const q = quoteBivvo(bivvoConfig);
-      amount = q.total1m;
-      recurringAmount = q.totalRec;
+      amount = q.total1m; recurringAmount = q.totalRec;
       planLabel = `Plano ${q.planLabel}`;
     } else {
       const { data: pData } = await supabase.from('plans').select('price, name').eq('slug', plan).eq('active', true).single();
@@ -106,7 +93,6 @@ serve(async (req) => {
       planLabel = `Plano ${pData.name}`;
     }
 
-    // 3. User Management
     const cleanCpf = customerData.cpf.replace(/\D/g, '');
     const cleanPhone = customerData.whatsapp.replace(/\D/g, '');
     const cleanCep = customerData.cep.replace(/\D/g, '');
@@ -115,8 +101,7 @@ serve(async (req) => {
     const { data: user, error: uErr } = await supabase.from('users').upsert({
       email: customerData.email.toLowerCase().trim(),
       name: customerData.name.trim(),
-      whatsapp: cleanPhone,
-      cpf: cleanCpf,
+      whatsapp: cleanPhone, cpf: cleanCpf,
       billing_name: customerData.billingName.trim(),
       cep: cleanCep,
       endereco: customerData.endereco.trim(),
@@ -128,29 +113,30 @@ serve(async (req) => {
     }, { onConflict: 'email' }).select('id, asaas_customer_id').single();
     if (uErr) throw uErr;
 
-    // 4. Asaas Customer
     let asaasCustomerId = user.asaas_customer_id;
+    if (asaasCustomerId) {
+      try {
+        const existing = await asaasFetch(`${ASAAS_BASE_URL}/customers/${asaasCustomerId}`, { headers: { 'access_token': ASAAS_API_KEY } });
+        if (existing?.deleted === true) asaasCustomerId = null;
+      } catch { asaasCustomerId = null; }
+    }
     if (!asaasCustomerId) {
       const cRes = await asaasFetch(`${ASAAS_BASE_URL}/customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'access_token': ASAAS_API_KEY },
         body: JSON.stringify({
-          name: customerData.name.trim(),
-          cpfCnpj: cleanCpf,
+          name: customerData.name.trim(), cpfCnpj: cleanCpf,
           email: customerData.email.toLowerCase().trim(),
-          mobilePhone: cleanPhone,
-          postalCode: cleanCep,
+          mobilePhone: cleanPhone, postalCode: cleanCep,
           address: customerData.endereco.trim(),
           addressNumber: customerData.numero.trim(),
-          externalReference: user.id,
-          notificationDisabled: true,
+          externalReference: user.id, notificationDisabled: true,
         }),
       });
       asaasCustomerId = cRes.id;
       await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', user.id);
     }
 
-    // 5. Create Credit Card Subscription
     const nextDueDate = new Date();
     nextDueDate.setDate(nextDueDate.getDate() + 1);
 
@@ -186,71 +172,51 @@ serve(async (req) => {
       }),
     });
 
-    // 6. Fetch First Payment status
     let firstPayment: any = null;
     for (let i = 0; i < 5; i++) {
-      const pRes = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions/${sRes.id}/payments`, {
-        headers: { 'access_token': ASAAS_API_KEY },
-      });
-      if (pRes.data?.length > 0) {
-        firstPayment = pRes.data[0];
-        break;
-      }
+      const pRes = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions/${sRes.id}/payments`, { headers: { 'access_token': ASAAS_API_KEY } });
+      if (pRes.data?.length > 0) { firstPayment = pRes.data[0]; break; }
       await new Promise(r => setTimeout(r, 1500));
     }
     if (!firstPayment) throw new Error('Cobrança não localizada no Asaas.');
 
     const isApproved = ['CONFIRMED', 'RECEIVED'].includes(firstPayment.status);
 
-    // 7. DB Payment & User Status
     const { data: dbPayment } = await supabase.from('payments').insert({
-      user_id: user.id,
-      plan,
-      amount,
+      user_id: user.id, plan, amount,
       status: isApproved ? 'approved' : 'pending',
-      asaas_payment_id: firstPayment.id,
-      asaas_subscription_id: sRes.id,
+      asaas_payment_id: firstPayment.id, asaas_subscription_id: sRes.id,
     }).select('id').single();
 
     if (isApproved) {
       const expDate = new Date();
-      expDate.setFullYear(expDate.getFullYear() + 1);
+      expDate.setMonth(expDate.getMonth() + 1);
+      expDate.setDate(expDate.getDate() + 3);
       await supabase.from('users').update({
-        status: 'ativo',
-        plano_ativo: plan,
+        status: 'ativo', plano_ativo: plan,
         data_expiracao: expDate.toISOString(),
         asaas_subscription_id: sRes.id,
       }).eq('id', user.id);
     }
 
-    // 8. Affiliate tracking (Simplified for portability)
     if (affiliateSlug && dbPayment) {
       const { data: aff } = await supabase.from('affiliates').select('id, commission_percent').eq('slug', affiliateSlug).eq('status', 'active').maybeSingle();
       if (aff) {
         const { data: sale } = await supabase.from('affiliate_sales').insert({
-          affiliate_id: aff.id,
-          payment_id: dbPayment.id,
-          user_id: user.id,
-          plan_slug: plan,
-          plan_label: planLabel,
-          config: bivvoConfig || {},
-          amount_first: amount,
-          amount_recurring: recurringAmount,
+          affiliate_id: aff.id, payment_id: dbPayment.id, user_id: user.id,
+          plan_slug: plan, plan_label: planLabel, config: bivvoConfig || {},
+          amount_first: amount, amount_recurring: recurringAmount,
           commission_percent: aff.commission_percent,
           status: isApproved ? 'paid' : 'pending',
           tracking_id: trackingId,
-          asaas_payment_id: firstPayment.id,
-          asaas_subscription_id: sRes.id,
+          asaas_payment_id: firstPayment.id, asaas_subscription_id: sRes.id,
         }).select('id').single();
         if (sale) {
           await supabase.from('affiliate_commissions').insert({
-            affiliate_id: aff.id,
-            sale_id: sale.id,
-            sale_amount: amount,
-            commission_percent: aff.commission_percent,
+            affiliate_id: aff.id, sale_id: sale.id,
+            sale_amount: amount, commission_percent: aff.commission_percent,
             commission_amount: round2((amount * aff.commission_percent) / 100),
-            kind: 'first',
-            status: isApproved ? 'approved' : 'pending',
+            kind: 'first', status: isApproved ? 'approved' : 'pending',
           });
         }
       }
@@ -259,12 +225,10 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, paymentId: dbPayment?.id, asaasId: sRes.id, status: isApproved ? 'approved' : 'pending', userId: user.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-
   } catch (err) {
     console.error('Process Payment Error:', err);
     return new Response(JSON.stringify({ success: false, error: err.message }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
