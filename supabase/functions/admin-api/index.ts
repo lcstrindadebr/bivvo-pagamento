@@ -175,7 +175,7 @@ serve(async (req) => {
       const dateStart = url.searchParams.get('dateCreated[ge]');
       const dateEnd = url.searchParams.get('dateCreated[le]');
 
-      // Cache in-memory por 60s (chave = dateStart|dateEnd)
+      // Cache in-memory por 60s
       const cacheKey = `${dateStart || ''}|${dateEnd || ''}`;
       // deno-lint-ignore no-explicit-any
       const g = globalThis as any;
@@ -189,13 +189,13 @@ serve(async (req) => {
 
       const EXCLUDED_STATUSES = ['DELETED', 'REMOVED_BY_USER', 'CANCELLED', 'REFUNDED', 'REFUND_REQUESTED', 'CHARGEBACK_REQUESTED', 'CHARGEBACK_DISPUTE', 'AWAITING_CHARGEBACK_REVERSAL'];
       const PAID_STATUSES = ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'];
+      const CYCLE_TO_MONTHLY: Record<string, number> = {
+        WEEKLY: 4.33, BIWEEKLY: 2.17, MONTHLY: 1,
+        BIMONTHLY: 0.5, QUARTERLY: 1/3, SEMIANNUALLY: 1/6, YEARLY: 1/12,
+      };
 
-      // Paginação genérica do Asaas
       const asaasHeaders = { 'access_token': ASAAS_API_KEY };
-      const paginate = async (
-        path: string,
-        filterFn: (item: any) => boolean,
-      ): Promise<any[]> => {
+      const paginate = async (path: string, filterFn: (item: any) => boolean): Promise<any[]> => {
         const out: any[] = [];
         let offset = 0;
         const limit = 100;
@@ -212,33 +212,55 @@ serve(async (req) => {
         return out;
       };
 
-      const paymentDateFilter = (field: 'dateCreated' | 'paymentDate') => {
+      // Build previous range (mesmo tamanho, imediatamente anterior)
+      let previousStart: string | null = null;
+      let previousEnd: string | null = null;
+      let rangeDays = 30;
+      if (dateStart && dateEnd) {
+        const s = new Date(dateStart);
+        const e = new Date(dateEnd);
+        rangeDays = Math.max(1, Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1);
+        const prevEnd = new Date(s.getTime() - 86_400_000);
+        const prevStart = new Date(prevEnd.getTime() - (rangeDays - 1) * 86_400_000);
+        previousStart = prevStart.toISOString().slice(0, 10);
+        previousEnd = prevEnd.toISOString().slice(0, 10);
+      }
+
+      const paymentDateFilter = (field: 'dateCreated' | 'paymentDate', ds: string | null, de: string | null) => {
         let q = '';
-        if (dateStart) q += `&${field}[ge]=${dateStart}`;
-        if (dateEnd) q += `&${field}[le]=${dateEnd}`;
+        if (ds) q += `&${field}[ge]=${ds}`;
+        if (de) q += `&${field}[le]=${de}`;
         return q.replace(/^&/, '?');
       };
 
-      // 3 paginações em paralelo (subscriptions + payments por dateCreated + payments por paymentDate)
-      const [allSubs, paymentsByCreated, paymentsByPayment] = await Promise.all([
+      const fetchPayments = async (ds: string | null, de: string | null) => {
+        const [byCreated, byPayment] = await Promise.all([
+          paginate(
+            `/payments${paymentDateFilter('dateCreated', ds, de)}`,
+            (p: any) => p.subscription && !p.deleted && !EXCLUDED_STATUSES.includes(p.status),
+          ),
+          (ds || de)
+            ? paginate(
+                `/payments${paymentDateFilter('paymentDate', ds, de)}`,
+                (p: any) => p.subscription && !p.deleted && !EXCLUDED_STATUSES.includes(p.status),
+              )
+            : Promise.resolve([] as any[]),
+        ]);
+        const map = new Map<string, any>();
+        for (const p of byCreated) map.set(p.id, p);
+        for (const p of byPayment) map.set(p.id, p);
+        return Array.from(map.values());
+      };
+
+      // Todas as chamadas Asaas em paralelo (subs + payments atual + payments anterior)
+      const [allSubs, paymentsCurrent, paymentsPrevious] = await Promise.all([
         paginate('/subscriptions', (s: any) => !s.deleted),
-        paginate(
-          `/payments${paymentDateFilter('dateCreated')}`,
-          (p: any) => p.subscription && !p.deleted && !EXCLUDED_STATUSES.includes(p.status),
-        ),
-        (dateStart || dateEnd)
-          ? paginate(
-              `/payments${paymentDateFilter('paymentDate')}`,
-              (p: any) => p.subscription && !p.deleted && !EXCLUDED_STATUSES.includes(p.status),
-            )
-          : Promise.resolve([] as any[]),
+        fetchPayments(dateStart, dateEnd),
+        previousStart ? fetchPayments(previousStart, previousEnd) : Promise.resolve([] as any[]),
       ]);
 
-      const paymentsMap = new Map<string, any>();
-      for (const p of paymentsByCreated) paymentsMap.set(p.id, p);
-      for (const p of paymentsByPayment) paymentsMap.set(p.id, p);
-      let payments: any[] = Array.from(paymentsMap.values());
-
+      // Enriquecer somente pagamentos do período atual (economia)
+      let payments = paymentsCurrent;
       if (payments.length > 0) {
         const customerIds = [...new Set(payments.map((p: any) => p.customer))];
         const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
@@ -249,70 +271,122 @@ serve(async (req) => {
         }));
       }
 
+      // Ativos hoje / MRR / ARPU (snapshot atual, comum a ambos)
+      const activeSubs = allSubs.filter((s: any) => s.status === 'ACTIVE');
+      const activeSubsCount = activeSubs.length;
+      const mrr = activeSubs.reduce((a: number, s: any) => a + (Number(s.value) || 0) * (CYCLE_TO_MONTHLY[s.cycle] ?? 1), 0);
+      const arpu = activeSubsCount > 0 ? mrr / activeSubsCount : 0;
+
+      // Despesas do período (atual + anterior) em paralelo
+      const fetchExpenses = async (ds: string | null, de: string | null) => {
+        let q = supabase.from('expenses').select('amount, category');
+        if (ds) q = q.gte('date', ds);
+        if (de) q = q.lte('date', de);
+        const { data } = await q;
+        return data || [];
+      };
+      const [expensesCurrent, expensesPrevious] = await Promise.all([
+        fetchExpenses(dateStart, dateEnd),
+        previousStart ? fetchExpenses(previousStart, previousEnd) : Promise.resolve([]),
+      ]);
+
+      // Comissões pendentes (global)
+      const { data: comms } = await supabase
+        .from('affiliate_commissions')
+        .select('commission_amount, created_at, status')
+        .eq('status', 'pending');
+
+      // Cálculo por período
+      const computeRange = (
+        pays: any[],
+        exps: any[],
+        ds: string | null,
+        de: string | null,
+      ) => {
+        const paidPays = pays.filter((p: any) => PAID_STATUSES.includes(p.status));
+        const paidValue = paidPays.reduce((a, p) => a + (Number(p.value) || 0), 0);
+        const paidNetValue = paidPays.reduce((a, p) => a + (Number(p.netValue) || Number(p.value) || 0), 0);
+        const totalValue = pays.reduce((a, p) => a + (Number(p.value) || 0), 0);
+
+        // Churn do período: inactive/expired com nextDueDate dentro do intervalo
+        const rs = ds ? new Date(ds).getTime() : 0;
+        const re = de ? new Date(de).getTime() + 86_400_000 : Date.now();
+        const churnedInPeriod = allSubs.filter((s: any) => {
+          if (!['INACTIVE', 'EXPIRED'].includes(s.status)) return false;
+          if (!s.nextDueDate) return false;
+          const t = new Date(s.nextDueDate).getTime();
+          return t >= rs && t <= re;
+        }).length;
+        const activeAtStart = activeSubsCount + churnedInPeriod;
+        const periodChurn = activeAtStart > 0 ? churnedInPeriod / activeAtStart : 0;
+        const days = ds && de
+          ? Math.max(1, Math.round((new Date(de).getTime() - new Date(ds).getTime()) / 86_400_000) + 1)
+          : 30;
+        const monthlyChurn = periodChurn * (30 / days);
+        const churnRate = monthlyChurn * 100;
+        const ltv = monthlyChurn > 0 ? arpu / monthlyChurn : 0;
+
+        const otherExpenses = exps.filter((e: any) => e.category !== 'Comissões (Afiliados)');
+        const periodCommissions = exps.filter((e: any) => e.category === 'Comissões (Afiliados)');
+        const totalExpenses = otherExpenses.reduce((a: number, e: any) => a + Number(e.amount), 0);
+        const periodCommValue = periodCommissions.reduce((a: number, e: any) => a + Number(e.amount), 0);
+        const freeCash = paidNetValue - (totalExpenses + periodCommValue);
+
+        return {
+          totalPayments: pays.length,
+          paidCount: paidPays.length,
+          totalValue,
+          paidValue,
+          paidNetValue,
+          churnRate,
+          ltv,
+          totalExpenses,
+          freeCash,
+        };
+      };
+
+      const current = computeRange(paymentsCurrent, expensesCurrent, dateStart, dateEnd);
+      const previous = previousStart
+        ? computeRange(paymentsPrevious, expensesPrevious, previousStart, previousEnd)
+        : null;
+
+      // Δ helpers
+      const pctDelta = (curr: number, prev: number): number | null => {
+        if (prev === 0) return curr === 0 ? 0 : null; // infinito → null
+        return ((curr - prev) / Math.abs(prev)) * 100;
+      };
+      const ppDelta = (curr: number, prev: number) => curr - prev; // pontos percentuais
+
+      const deltas = previous ? {
+        paidValue: pctDelta(current.paidValue, previous.paidValue),
+        paidNetValue: pctDelta(current.paidNetValue, previous.paidNetValue),
+        paidCount: pctDelta(current.paidCount, previous.paidCount),
+        totalValue: pctDelta(current.totalValue, previous.totalValue),
+        freeCash: pctDelta(current.freeCash, previous.freeCash),
+        churnRate: ppDelta(current.churnRate, previous.churnRate),
+      } : null;
+
       // Conversão global
       const [{ count: totalClicks }, { count: totalSalesCount }] = await Promise.all([
         supabase.from('affiliate_clicks').select('*', { count: 'exact', head: true }),
         supabase.from('affiliate_sales').select('*', { count: 'exact', head: true }),
       ]);
 
-      // ===== MRR normalizado (item 7) =====
-      const CYCLE_TO_MONTHLY: Record<string, number> = {
-        WEEKLY: 4.33, BIWEEKLY: 2.17, MONTHLY: 1,
-        BIMONTHLY: 0.5, QUARTERLY: 1/3, SEMIANNUALLY: 1/6, YEARLY: 1/12,
-      };
-      const activeSubs = allSubs.filter((s: any) => s.status === 'ACTIVE');
-      const activeSubsCount = activeSubs.length;
-      const mrr = activeSubs.reduce((acc: number, s: any) => {
-        const factor = CYCLE_TO_MONTHLY[s.cycle] ?? 1;
-        return acc + (Number(s.value) || 0) * factor;
-      }, 0);
-      const arpu = activeSubsCount > 0 ? mrr / activeSubsCount : 0;
-
-      // ===== Churn (item 2): assinaturas Asaas que saíram nos últimos 30d =====
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const inactiveRecent = allSubs.filter((s: any) => {
-        if (s.status === 'ACTIVE') return false;
-        const ref = new Date(s.nextDueDate || s.endDate || s.dateCreated || 0);
-        return ref >= thirtyDaysAgo;
-      }).length;
-      const churnBase = activeSubsCount + inactiveRecent;
-      const churnRate = churnBase > 0 ? (inactiveRecent / churnBase) * 100 : 0;
-
-      // ===== Recebido bruto/líquido (item 3) =====
-      const paidPayments = payments.filter((p: any) => PAID_STATUSES.includes(p.status));
-      const paidValue = paidPayments.reduce((a: number, p: any) => a + (Number(p.value) || 0), 0);
-      const paidNetValue = paidPayments.reduce((a: number, p: any) => a + (Number(p.netValue) || Number(p.value) || 0), 0);
-
-      // ===== LTV (item 1): ARPU / churn mensal =====
-      const monthlyChurn = churnRate / 100;
-      const ltv = monthlyChurn > 0 ? arpu / monthlyChurn : 0;
-
       const stats: any = {
-        totalPayments: payments.length,
-        paidCount: paidPayments.length,
-        totalValue: payments.reduce((a: number, p: any) => a + (Number(p.value) || 0), 0),
-        paidValue,
-        paidNetValue,
+        ...current,
         activeSubscriptions: activeSubsCount,
         mrr,
         arpu,
-        churnRate,
-        ltv,
         conversionRate: totalClicks ? ((totalSalesCount || 0) / totalClicks * 100) : 0,
         totalClicks: totalClicks || 0,
         retainedCommissions: 0,
         pendingAffiliatePayout: 0,
-        totalExpenses: 0,
-        freeCash: 0,
         payments,
+        previous,
+        deltas,
+        previousRange: previousStart ? { start: previousStart, end: previousEnd } : null,
       };
 
-      // Comissões (regra atual, item 5 fica p/ próxima iteração)
-      const { data: comms } = await supabase
-        .from('affiliate_commissions')
-        .select('commission_amount, created_at, status')
-        .eq('status', 'pending');
       const now = new Date();
       (comms || []).forEach((c: any) => {
         const createdAt = new Date(c.created_at);
@@ -321,25 +395,14 @@ serve(async (req) => {
         else stats.pendingAffiliatePayout += Number(c.commission_amount);
       });
 
-      // Despesas do período
-      let expensesQuery = supabase.from('expenses').select('amount, category');
-      if (dateStart) expensesQuery = expensesQuery.gte('date', dateStart);
-      if (dateEnd) expensesQuery = expensesQuery.lte('date', dateEnd);
-      const { data: expenses } = await expensesQuery;
-      const otherExpenses = (expenses || []).filter((e: any) => e.category !== 'Comissões (Afiliados)');
-      const periodCommissions = (expenses || []).filter((e: any) => e.category === 'Comissões (Afiliados)');
-      stats.totalExpenses = otherExpenses.reduce((a: number, e: any) => a + Number(e.amount), 0);
-      const periodCommValue = periodCommissions.reduce((a: number, e: any) => a + Number(e.amount), 0);
-
-      // Caixa livre em regime de caixa, usando líquido (item 4 parcial)
-      stats.freeCash = paidNetValue - (stats.totalExpenses + periodCommValue);
-
       g.__finance_cache.set(cacheKey, { ts: Date.now(), data: stats });
 
       return new Response(JSON.stringify(stats), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+
 
 
     if (action === 'list-expenses') {
