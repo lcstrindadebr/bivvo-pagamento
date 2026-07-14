@@ -196,27 +196,36 @@ serve(async (req) => {
         totalCount: allSubs.filter((s: any) => s.status === 'ACTIVE').length,
       };
 
-      // 2) Paginate all payments with date filters and keep only subscription-linked, non-excluded
+      // 2) Paginate payments and keep only subscription-linked, non-excluded.
+      // Buscamos por dateCreated (para pendentes/geradas no período) E por paymentDate
+      // (para recebidas no período, mesmo que criadas antes). Depois deduplicamos por id.
       const EXCLUDED_STATUSES = ['DELETED', 'REMOVED_BY_USER', 'CANCELLED', 'REFUNDED', 'REFUND_REQUESTED', 'CHARGEBACK_REQUESTED', 'CHARGEBACK_DISPUTE', 'AWAITING_CHARGEBACK_REVERSAL'];
-      let payments: any[] = [];
-      {
+      const paymentsMap = new Map<string, any>();
+
+      const fetchPaginated = async (dateField: 'dateCreated' | 'paymentDate') => {
         let offset = 0;
         const limit = 100;
         while (true) {
           let u = `${ASAAS_BASE_URL}/payments?limit=${limit}&offset=${offset}`;
-          if (dateStart) u += `&dateCreated[ge]=${dateStart}`;
-          if (dateEnd) u += `&dateCreated[le]=${dateEnd}`;
+          if (dateStart) u += `&${dateField}[ge]=${dateStart}`;
+          if (dateEnd) u += `&${dateField}[le]=${dateEnd}`;
           const r = await fetch(u, { headers: { 'access_token': ASAAS_API_KEY } });
           const j = await r.json();
-          const batch = (j.data || []).filter((p: any) =>
-            p.subscription && !p.deleted && !EXCLUDED_STATUSES.includes(p.status)
-          );
-          payments.push(...batch);
+          for (const p of (j.data || [])) {
+            if (p.subscription && !p.deleted && !EXCLUDED_STATUSES.includes(p.status)) {
+              paymentsMap.set(p.id, p);
+            }
+          }
           if (!j.hasMore || (j.data || []).length < limit) break;
           offset += limit;
           if (offset > 5000) break; // safety
         }
-      }
+      };
+
+      await fetchPaginated('dateCreated');
+      if (dateStart || dateEnd) await fetchPaginated('paymentDate');
+
+      let payments: any[] = Array.from(paymentsMap.values());
 
       if (payments.length > 0) {
         const customerIds = [...new Set(payments.map((p: any) => p.customer))];
