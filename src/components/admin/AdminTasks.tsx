@@ -494,7 +494,7 @@ export function AdminTasks() {
             <AlertDialogAction onClick={confirmDelete}>Remover</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </Dialog>
+      </AlertDialog>
     </div>
   );
 }
