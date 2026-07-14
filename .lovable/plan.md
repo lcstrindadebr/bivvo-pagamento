@@ -1,81 +1,83 @@
-## Plano de melhorias — Dashboard Financeiro
+## Plano — Melhorias no módulo de Tarefas
 
-Após revisar `admin-api/finance-stats` e `AdminFinanceDashboard.tsx`, identifiquei 8 pontos que hoje geram distorção nos números, lentidão ou informação pouco útil. Abaixo o que cada um significa e como resolver.
+Revisei `src/components/admin/AdminTasks.tsx` e a tabela `public.tasks`. Hoje o módulo já tem Kanban + Lista + delegação, mas há vários campos criados no banco que não são usados na UI e faltam recursos básicos de gestão. Abaixo o que pode melhorar, agrupado por prioridade.
 
 ---
 
-### 1. LTV incorreto
-**Hoje:** `ltv = paidValue / activeSubscriptions` — divide o recebido do período pelo número de assinaturas ativas. Isso não é LTV, é ticket médio filtrado.
-**Melhoria:** LTV = `MRR médio por cliente / churn rate`. Se churn for 0, exibir "—". Ticket médio vira métrica separada.
+### 1. Usar os campos que já existem no banco
 
-### 2. Churn calculado com base errada
-**Hoje:** compara `affiliate_sales` cancelados x ativas do Asaas — bases diferentes.
-**Melhoria:** usar apenas Asaas. Churn = `assinaturas que passaram para INACTIVE/EXPIRED nos últimos 30 dias / ativas no início do período`. Cache do total no início do mês.
+A tabela `tasks` tem `description`, `priority` (low/medium/high) e `due_date` — nenhum aparece na tela hoje.
 
-### 3. Valor Recebido usa `value` (bruto) em vez de `netValue`
-**Hoje:** soma o valor bruto da cobrança, ignorando taxas do Asaas.
-**Melhoria:** exibir dois cartões — **Recebido Bruto** (`value`) e **Recebido Líquido** (`netValue`). Caixa livre passa a usar líquido.
+- Modal de "Nova tarefa" com título, descrição, responsável, prioridade e data de vencimento.
+- Card do Kanban mostra badge de prioridade colorida e data de vencimento (vermelho se atrasada).
+- Linha da Lista ganha colunas Prioridade e Vencimento (ordenáveis).
 
-### 4. Caixa Livre mistura regimes contábeis
-**Hoje:** recebido do período − todas as despesas do período (competência) + comissões (também por competência).
-**Melhoria:** manter tudo em regime de caixa: recebido líquido no período − despesas pagas no período − comissões pagas no período. Comissões pendentes viram cartão separado ("Passivo").
+### 2. Edição de tarefa
 
-### 5. Retidas vs a pagar de afiliados por data fixa
-**Hoje:** regra "≤ 7 dias = retida, > 7 dias = a pagar" baseada em `created_at` da comissão.
-**Melhoria:** usar o campo `release_date` da comissão (se existir) ou `created_at + release_days` configurável em `settings`. Cartão passa a mostrar "Liberadas hoje" e "A liberar em X dias".
+Hoje só dá para trocar status (drag) e responsável. Não dá para editar título/descrição depois de criar.
 
-### 6. Duas chamadas paginadas ao Asaas por request
-**Hoje:** para cada abertura do dashboard percorremos `/payments` por `dateCreated` **e** por `paymentDate`, mais `/subscriptions` inteiro. Em conta com muitos registros isso passa dos 3–5s.
-**Melhoria:**
-- Cachear resposta do `finance-stats` por 60s (in-memory na edge function).
-- Rodar as três paginações em paralelo com `Promise.all`.
-- Para o gráfico de série temporal, computar já na edge function os buckets diários e retornar apenas o resumo (hoje volta todo o array `payments`).
+- Clique no card → modal de detalhes/edição com todos os campos.
+- Suporte a marcar como concluída direto no card do Kanban (checkbox no canto).
+- adicionar subtarefas
 
-### 7. MRR conta todas as ACTIVE, inclusive canceladas neste mês
-**Hoje:** soma `value` de toda ACTIVE — não considera ciclo (algumas são semanais/anuais).
-**Melhoria:** normalizar para mensal:
-```text
-WEEKLY: value * 4.33
-BIWEEKLY: value * 2.17
-MONTHLY: value
-BIMONTHLY: value / 2
-QUARTERLY: value / 3
-SEMIANNUALLY: value / 6
-YEARLY: value / 12
-```
+### 3. Filtros e busca
 
-### 8. Sem série temporal e sem comparação com período anterior
-**Hoje:** apenas números agregados do intervalo. Não dá pra ver tendência.
-**Melhoria:**
-- Cartão principal mostra variação `%` vs período anterior de mesmo tamanho.
-- Novo gráfico de linha (recharts já está no projeto) com Recebido / Pendente por dia.
-- Top 5 clientes por valor recebido no período.
+Com o tempo a lista fica longa. Adicionar:
+
+- Campo de busca por título/descrição.
+- Filtros por responsável, prioridade e status.
+- Toggle "Mostrar concluídas" (por padrão esconde as `done` com mais de 7 dias).
+
+### 4. Ordenação e agrupamento no Kanban
+
+- Dentro de cada coluna, ordenar por prioridade (alta → baixa) e depois por vencimento.
+- Contador da coluna mostra `pendentes / total`.
+- Coluna "Concluído" limita a 20 mais recentes (link "ver todas").
+
+### 5. Notificações e responsabilidade
+
+- Ao delegar, registrar em `audit_logs` (já existe a tabela) quem delegou para quem.
+- Badge no menu lateral do admin com contagem de tarefas atribuídas ao usuário logado e ainda não concluídas.
+- Destaque visual nos cards atribuídos ao próprio usuário ("Minhas tarefas").
+
+### 6. Realtime
+
+Duas pessoas editando o Kanban hoje não veem update uma da outra sem F5.
+
+- Assinar canal realtime da tabela `tasks` e recarregar no `INSERT/UPDATE/DELETE`.
+
+### 7. UX do drag-and-drop
+
+- Feedback visual da coluna alvo (borda destacada) enquanto arrasta.
+- Suporte a mover no mobile (hoje `draggable` HTML5 não funciona bem em touch) — usar `@dnd-kit/core`, que é leve e já é o padrão do shadcn.
+
+### 8. Pequenos ajustes
+
+- Loading skeleton enquanto carrega tarefas.
+- Empty state ilustrado quando não há nenhuma tarefa.
+- Confirmação antes de excluir (`AlertDialog` do shadcn).
+- Atalho `Ctrl+Enter` no modal para salvar.
 
 ---
 
 ### Estrutura técnica
 
 ```text
-supabase/functions/admin-api/index.ts
-  ├─ finance-stats
-  │   ├─ fetchAllSubscriptions()  (Promise.all)
-  │   ├─ fetchPayments(dateCreated + paymentDate)  (Promise.all)
-  │   ├─ computeMrrNormalized(subs)
-  │   ├─ computeChurn(subs, 30d)
-  │   ├─ computeSeries(payments)    ← novo, buckets diários
-  │   ├─ computePreviousPeriod()    ← novo, mesmo range deslocado
-  │   └─ cache em Map (chave = dateStart|dateEnd, TTL 60s)
-  │
-src/components/admin/AdminFinanceDashboard.tsx
-  ├─ Cartões: adicionar "Líquido", "Δ vs período anterior"
-  ├─ Novo gráfico linha (Recharts <LineChart>)
-  └─ Nova tabela "Top clientes"
+src/components/admin/AdminTasks.tsx
+  ├─ estado: filters { search, assignee, priority, status, showDone }
+  ├─ TaskDialog.tsx           ← novo, criar/editar (título, desc, prioridade, prazo, responsável)
+  ├─ TaskCard.tsx             ← extrai card do kanban
+  ├─ useTasksRealtime()       ← hook que assina canal 'tasks'
+  └─ dnd: substituir HTML5 por @dnd-kit/core + @dnd-kit/sortable
 ```
 
-### Ordem de execução sugerida
-1. Correções de cálculo (itens 1, 2, 3, 7) — impacto imediato, baixo risco.
-2. Caixa livre e regra de comissões (4, 5) — precisa alinhar com regra de negócio.
-3. Performance/cache + paralelização (6).
-4. UI: comparação e série temporal (8).
+Banco: nenhuma migration nova é necessária — os campos já existem em `public.tasks`.
 
-Quer que eu comece por todos ou prefere priorizar algum grupo? Se aprovar, sigo pelos itens 1–3 e 7 primeiro (correções críticas de número).
+### Ordem sugerida
+
+1. Itens 1 e 2 (campos + edição) — desbloqueia uso real.
+2. Item 3 (filtros/busca) — organização.
+3. Itens 4 e 8 (ordenação + polish).
+4. Itens 5, 6, 7 (auditoria, realtime, dnd mobile) — melhorias avançadas.
+
+Quer que eu execute tudo, ou prefere priorizar só 1 → 3 primeiro?
