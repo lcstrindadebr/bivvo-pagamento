@@ -41,10 +41,13 @@ Pronto. Ao final, o site estará rodando em `https://seu-subdominio` com HTTPS a
 
 O instalador deixa a aplicação no ar, mas o **backend (Supabase)** precisa ser configurado uma única vez no painel:
 
-### 1️⃣ Criar as tabelas do banco
+### 1️⃣ Criar / atualizar as tabelas do banco
 - No painel do Supabase, abra **SQL Editor → New Query**
-- Cole o conteúdo do arquivo `new_deploy/database_schema.sql`
-- Clique em **Run**
+- **Instalação nova:** cole `new_deploy/database_schema.sql`, depois `new_deploy/migrations/003_new_features.sql`, depois `new_deploy/migrations/004_security_and_settings.sql`
+- **Atualização de uma instância já existente:** rode apenas as migrations novas em ordem (`003_new_features.sql` → `004_security_and_settings.sql`). Todas são idempotentes.
+- Clique em **Run** após cada uma.
+
+> 💡 O arquivo `004_security_and_settings.sql` traz as últimas melhorias: delegação de tarefas por admin, whitelist pública de settings (branding, contatos, GA/Meta Pixel), endurecimento de RLS em `customers`, `subscriptions`, `settings`, `storage.objects` e revogações no papel `anon` para reduzir a exposição do GraphQL.
 
 ### 2️⃣ Cadastrar os Secrets (Asaas)
 Vá em **Edge Functions → Secrets** e adicione:

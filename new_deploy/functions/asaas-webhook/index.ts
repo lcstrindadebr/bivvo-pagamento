@@ -1,3 +1,7 @@
+// ============================================================
+// asaas-webhook — autossuficiente (sem imports de _shared)
+// Recebe eventos do Asaas e atualiza pagamentos, usuários e afiliados.
+// ============================================================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -13,7 +17,6 @@ serve(async (req) => {
     const WEBHOOK_SECRET = Deno.env.get('ASAAS_WEBHOOK_SECRET');
     const authHeader = req.headers.get('asaas-access-token');
 
-    // Validação de token de segurança (configurado no Asaas)
     if (WEBHOOK_SECRET && authHeader !== WEBHOOK_SECRET) {
       console.error('Webhook: Token inválido');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
@@ -27,7 +30,6 @@ serve(async (req) => {
     const body = await req.json();
     console.log('Webhook recebido:', body.event, body.payment?.id);
 
-    // Salvar log do webhook
     await supabase.from('asaas_webhooks').insert({
       event_id: body.id,
       event_type: body.event,
@@ -40,7 +42,6 @@ serve(async (req) => {
 
     // 1. Pagamento Confirmado / Recebido
     if (['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'].includes(body.event)) {
-      // Buscar pagamento em nosso banco
       const { data: dbPayment } = await supabase
         .from('payments')
         .select('*, users(id, email)')
@@ -48,13 +49,12 @@ serve(async (req) => {
         .maybeSingle();
 
       if (dbPayment && dbPayment.status !== 'approved') {
-        // Atualizar status do pagamento
         await supabase.from('payments').update({ status: 'approved' }).eq('id', dbPayment.id);
 
-        // Ativar usuário
         const expirationDate = new Date();
-        expirationDate.setFullYear(expirationDate.getFullYear() + 1);
-        
+        expirationDate.setMonth(expirationDate.getMonth() + 1);
+        expirationDate.setDate(expirationDate.getDate() + 3);
+
         await supabase.from('users').update({
           status: 'ativo',
           plano_ativo: dbPayment.plan,
@@ -62,12 +62,10 @@ serve(async (req) => {
           asaas_subscription_id: payment.subscription || dbPayment.asaas_subscription_id
         }).eq('id', dbPayment.user_id);
 
-        // Atualizar venda do afiliado
         await supabase.from('affiliate_sales')
           .update({ status: 'paid' })
           .eq('asaas_payment_id', payment.id);
-          
-        // Aprovar comissões pendentes desta venda
+
         const { data: sale } = await supabase.from('affiliate_sales').select('id').eq('asaas_payment_id', payment.id).maybeSingle();
         if (sale) {
           await supabase.from('affiliate_commissions')
@@ -80,10 +78,9 @@ serve(async (req) => {
       }
     }
 
-    // 2. Pagamento Atrasado / Vencido
+    // 2. Pagamento Atrasado
     if (body.event === 'PAYMENT_OVERDUE') {
-       // Opcional: Notificar usuário ou marcar como atrasado
-       console.log('Pagamento atrasado:', payment.id);
+      console.log('Pagamento atrasado:', payment.id);
     }
 
     // 3. Assinatura Cancelada
