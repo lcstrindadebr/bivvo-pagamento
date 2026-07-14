@@ -249,7 +249,10 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
               <div className="flex flex-col">
-                <div className="text-2xl font-bold text-green-500">{formatCurrency(stats?.paidValue || 0)}</div>
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl font-bold text-green-500">{formatCurrency(stats?.paidValue || 0)}</div>
+                  <DeltaBadge value={stats?.deltas?.paidValue} />
+                </div>
                 <div className="text-[10px] text-muted-foreground">
                   Líquido: {formatCurrency(stats?.paidNetValue || 0)}
                 </div>
@@ -257,6 +260,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
             )}
           </CardContent>
         </Card>
+
 
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
