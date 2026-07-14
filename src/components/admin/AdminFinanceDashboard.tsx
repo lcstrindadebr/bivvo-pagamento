@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, DollarSign, Users, Calendar, Receipt, XCircle, MousePointerClick, Copy } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, DollarSign, Users, Calendar, Receipt, XCircle, MousePointerClick, Copy } from 'lucide-react';
 import { formatCurrency } from '@/lib/validators';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,7 +25,39 @@ interface FinanceStats {
   totalExpenses: number;
   freeCash: number;
   payments: any[];
+  previous: null | Record<string, number>;
+  deltas: null | {
+    paidValue: number | null;
+    paidNetValue: number | null;
+    paidCount: number | null;
+    totalValue: number | null;
+    freeCash: number | null;
+    churnRate: number; // pp diff
+  };
+  previousRange: null | { start: string; end: string };
 }
+
+function DeltaBadge({ value, kind = 'pct', inverse = false }: { value: number | null | undefined; kind?: 'pct' | 'pp'; inverse?: boolean }) {
+  if (value === null || value === undefined || !isFinite(value)) return null;
+  const positive = value > 0;
+  const neutral = Math.abs(value) < 0.05;
+  // inverse=true means "positive number is bad" (e.g. churn)
+  const good = neutral ? true : inverse ? !positive : positive;
+  const cls = neutral
+    ? 'bg-muted text-muted-foreground'
+    : good
+      ? 'bg-emerald-500/15 text-emerald-600'
+      : 'bg-red-500/15 text-red-600';
+  const Icon = neutral ? null : positive ? TrendingUp : TrendingDown;
+  const suffix = kind === 'pp' ? ' pp' : '%';
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded ${cls}`}>
+      {Icon && <Icon className="h-2.5 w-2.5" />}
+      {value > 0 ? '+' : ''}{value.toFixed(kind === 'pp' ? 2 : 1)}{suffix}
+    </span>
+  );
+}
+
 
 
 interface AdminFinanceDashboardProps {
@@ -109,7 +141,15 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h2 className="text-xl font-bold">Dashboard Financeiro</h2>
+          <div className="flex flex-col gap-0.5">
+            <h2 className="text-xl font-bold">Dashboard Financeiro</h2>
+            {stats?.previousRange && (
+              <p className="text-[10px] text-muted-foreground">
+                Comparado com {new Date(stats.previousRange.start).toLocaleDateString('pt-BR')} — {new Date(stats.previousRange.end).toLocaleDateString('pt-BR')}
+              </p>
+            )}
+          </div>
+
           <div className="flex flex-wrap gap-2">
             <Button 
               variant={period === 'today' ? 'default' : 'outline'} 
@@ -203,9 +243,13 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
           </CardHeader>
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              <div className="text-2xl font-bold">{stats?.totalPayments || 0}</div>
+              <div className="flex items-center gap-2">
+                <div className="text-2xl font-bold">{stats?.totalPayments || 0}</div>
+                <DeltaBadge value={stats?.deltas?.paidCount} />
+              </div>
             )}
           </CardContent>
+
         </Card>
 
         <Card className="card-glass border-none shadow-xl">
@@ -217,7 +261,10 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
               <div className="flex flex-col">
-                <div className="text-2xl font-bold text-green-500">{formatCurrency(stats?.paidValue || 0)}</div>
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl font-bold text-green-500">{formatCurrency(stats?.paidValue || 0)}</div>
+                  <DeltaBadge value={stats?.deltas?.paidValue} />
+                </div>
                 <div className="text-[10px] text-muted-foreground">
                   Líquido: {formatCurrency(stats?.paidNetValue || 0)}
                 </div>
@@ -225,6 +272,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
             )}
           </CardContent>
         </Card>
+
 
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
@@ -273,14 +321,17 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
               <div className="flex flex-col">
-                <div className="text-2xl font-bold text-blue-500">{formatCurrency(stats?.freeCash || 0)}</div>
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl font-bold text-blue-500">{formatCurrency(stats?.freeCash || 0)}</div>
+                  <DeltaBadge value={stats?.deltas?.freeCash} />
+                </div>
                 <div className="text-[10px] text-muted-foreground">
                   (Recebido líquido − Comissões − Despesas)
                 </div>
-
               </div>
             )}
           </CardContent>
+
         </Card>
 
         <Card className="card-glass border-none shadow-xl">
@@ -303,15 +354,24 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <XCircle className="h-4 w-4 text-red-500" /> Churn Rate (30d)
+              <XCircle className="h-4 w-4 text-red-500" /> Churn Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              <div className="text-2xl font-bold text-red-500">{stats?.churnRate.toFixed(2)}%</div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl font-bold text-red-500">{stats?.churnRate.toFixed(2)}%</div>
+                  <DeltaBadge value={stats?.deltas?.churnRate} kind="pp" inverse />
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Normalizado para 30 dias
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
+
 
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
