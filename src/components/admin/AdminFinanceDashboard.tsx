@@ -12,8 +12,10 @@ interface FinanceStats {
   paidCount: number;
   totalValue: number;
   paidValue: number;
+  paidNetValue: number;
   activeSubscriptions: number;
   mrr: number;
+  arpu: number;
   churnRate: number;
   ltv: number;
   totalClicks: number;
