@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, DollarSign, Users, Calendar, Receipt, XCircle, MousePointerClick, Copy } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, DollarSign, Users, Calendar, Receipt, XCircle, MousePointerClick, Copy } from 'lucide-react';
 import { formatCurrency } from '@/lib/validators';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,7 +25,39 @@ interface FinanceStats {
   totalExpenses: number;
   freeCash: number;
   payments: any[];
+  previous: null | Record<string, number>;
+  deltas: null | {
+    paidValue: number | null;
+    paidNetValue: number | null;
+    paidCount: number | null;
+    totalValue: number | null;
+    freeCash: number | null;
+    churnRate: number; // pp diff
+  };
+  previousRange: null | { start: string; end: string };
 }
+
+function DeltaBadge({ value, kind = 'pct', inverse = false }: { value: number | null | undefined; kind?: 'pct' | 'pp'; inverse?: boolean }) {
+  if (value === null || value === undefined || !isFinite(value)) return null;
+  const positive = value > 0;
+  const neutral = Math.abs(value) < 0.05;
+  // inverse=true means "positive number is bad" (e.g. churn)
+  const good = neutral ? true : inverse ? !positive : positive;
+  const cls = neutral
+    ? 'bg-muted text-muted-foreground'
+    : good
+      ? 'bg-emerald-500/15 text-emerald-600'
+      : 'bg-red-500/15 text-red-600';
+  const Icon = neutral ? null : positive ? TrendingUp : TrendingDown;
+  const suffix = kind === 'pp' ? ' pp' : '%';
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded ${cls}`}>
+      {Icon && <Icon className="h-2.5 w-2.5" />}
+      {value > 0 ? '+' : ''}{value.toFixed(kind === 'pp' ? 2 : 1)}{suffix}
+    </span>
+  );
+}
+
 
 
 interface AdminFinanceDashboardProps {
