@@ -118,7 +118,7 @@ update_supabase_auto() {
     echo ""
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE (FUNCTIONS + SCHEMA) ━━━━━${NC}"
 
-    SUPA_TOKEN="sbp_210e67ac1e5b09b5c8d534af0587fbda63471799"
+    SUPA_TOKEN="sbp_e47e3a8bfc02b65b9281dc900d25013effeea02b"
     SUPA_REF="bcijktxnuzsatvhammpl"
 
     # 1) Garante acesso ao diretório do projeto
