@@ -386,9 +386,9 @@ export function AdminTasks() {
                               <UserIcon className="h-2.5 w-2.5" /> {userName(task.assigned_to)}
                             </Badge>
                           )}
-                          {task.status === 'done' && task.completed_at && (
+                          {task.status === 'done' && (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
-                              <Clock className="h-2.5 w-2.5" /> Concluída {formatDateTime(task.completed_at)}
+                              <Clock className="h-2.5 w-2.5" /> Concluída
                             </Badge>
                           )}
                         </div>

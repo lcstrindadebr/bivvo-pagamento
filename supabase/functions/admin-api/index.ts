@@ -252,11 +252,18 @@ serve(async (req) => {
         return Array.from(map.values());
       };
 
-      // Todas as chamadas Asaas em paralelo (subs + payments atual + payments anterior)
-      const [allSubs, paymentsCurrent, paymentsPrevious] = await Promise.all([
+      // Todas as chamadas Asaas em paralelo (subs + payments atual + payments anterior + saldo)
+      const [allSubs, paymentsCurrent, paymentsPrevious, bankBalance] = await Promise.all([
         paginate('/subscriptions', () => true),
         fetchPayments(dateStart, dateEnd),
         previousStart ? fetchPayments(previousStart, previousEnd) : Promise.resolve([] as any[]),
+        (async () => {
+          try {
+            const r = await fetch(`${ASAAS_BASE_URL}/finance/balance`, { headers: asaasHeaders });
+            const j = await r.json();
+            return Number(j?.balance) || 0;
+          } catch { return 0; }
+        })(),
       ]);
 
       // Enriquecer somente pagamentos do período atual (economia)
@@ -335,6 +342,8 @@ serve(async (req) => {
         const totalExpenses = otherExpenses.reduce((a: number, e: any) => a + Number(e.amount), 0);
         const periodCommValue = periodCommissions.reduce((a: number, e: any) => a + Number(e.amount), 0);
         const freeCash = paidNetValue - (totalExpenses + periodCommValue);
+        const pendingValue = totalValue - paidValue;
+        const projection = paidNetValue + pendingValue - totalExpenses - periodCommValue;
 
         return {
           totalPayments: pays.length,
@@ -346,6 +355,7 @@ serve(async (req) => {
           ltv,
           totalExpenses,
           freeCash,
+          projection,
         };
       };
 
@@ -367,6 +377,7 @@ serve(async (req) => {
         paidCount: pctDelta(current.paidCount, previous.paidCount),
         totalValue: pctDelta(current.totalValue, previous.totalValue),
         freeCash: pctDelta(current.freeCash, previous.freeCash),
+        projection: pctDelta(current.projection, previous.projection),
         churnRate: ppDelta(current.churnRate, previous.churnRate),
       } : null;
 
@@ -381,6 +392,7 @@ serve(async (req) => {
         activeSubscriptions: activeSubsCount,
         mrr,
         arpu,
+        bankBalance,
         conversionRate: totalClicks ? ((totalSalesCount || 0) / totalClicks * 100) : 0,
         totalClicks: totalClicks || 0,
         retainedCommissions: 0,

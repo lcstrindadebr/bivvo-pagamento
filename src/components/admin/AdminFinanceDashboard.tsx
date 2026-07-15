@@ -24,6 +24,8 @@ interface FinanceStats {
   pendingAffiliatePayout: number;
   totalExpenses: number;
   freeCash: number;
+  bankBalance: number;
+  projection: number;
   payments: any[];
   previous: null | Record<string, number>;
   deltas: null | {
@@ -32,6 +34,7 @@ interface FinanceStats {
     paidCount: number | null;
     totalValue: number | null;
     freeCash: number | null;
+    projection: number | null;
     churnRate: number; // pp diff
   };
   previousRange: null | { start: string; end: string };
@@ -296,7 +299,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-red-500" /> Outras Despesas
+              <Receipt className="h-4 w-4 text-red-500" /> Despesas
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -312,26 +315,42 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         </Card>
 
         <Card className="card-glass border-none shadow-xl">
-
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-blue-500" /> Caixa Livre
+              <DollarSign className="h-4 w-4 text-blue-500" /> Saldo Bancário
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <div className="flex flex-col">
+                <div className="text-2xl font-bold text-blue-500">{formatCurrency(stats?.bankBalance || 0)}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Saldo atual na conta Asaas
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="card-glass border-none shadow-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-500" /> Projeção do Mês
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <div className="text-2xl font-bold text-blue-500">{formatCurrency(stats?.freeCash || 0)}</div>
-                  <DeltaBadge value={stats?.deltas?.freeCash} />
+                  <div className="text-2xl font-bold text-emerald-500">{formatCurrency(stats?.projection || 0)}</div>
+                  <DeltaBadge value={stats?.deltas?.projection} />
                 </div>
                 <div className="text-[10px] text-muted-foreground">
-                  (Recebido líquido − Comissões − Despesas)
+                  (Recebido líq. + Pendente Asaas − Despesas − Comissões)
                 </div>
               </div>
             )}
           </CardContent>
-
         </Card>
 
         <Card className="card-glass border-none shadow-xl">
