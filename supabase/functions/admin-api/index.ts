@@ -252,8 +252,13 @@ serve(async (req) => {
         return Array.from(map.values());
       };
 
-      // Todas as chamadas Asaas em paralelo (subs + payments atual + payments anterior + saldo)
-      const [allSubs, paymentsCurrent, paymentsPrevious, bankBalance] = await Promise.all([
+      // Range do mês vigente (independente do filtro selecionado)
+      const _now = new Date();
+      const monthStart = new Date(_now.getFullYear(), _now.getMonth(), 1).toISOString().slice(0, 10);
+      const monthEnd = new Date(_now.getFullYear(), _now.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+      // Todas as chamadas Asaas em paralelo (subs + payments atual + payments anterior + saldo + overdue)
+      const [allSubs, paymentsCurrent, paymentsPrevious, bankBalance, overduePayments] = await Promise.all([
         paginate('/subscriptions', () => true),
         fetchPayments(dateStart, dateEnd),
         previousStart ? fetchPayments(previousStart, previousEnd) : Promise.resolve([] as any[]),
@@ -264,7 +269,11 @@ serve(async (req) => {
             return Number(j?.balance) || 0;
           } catch { return 0; }
         })(),
+        paginate('/payments?status=OVERDUE', (p: any) => !p.deleted && p.status === 'OVERDUE'),
       ]);
+
+      const overdueValue = overduePayments.reduce((a: number, p: any) => a + (Number(p.value) || 0), 0);
+      const overdueCount = overduePayments.length;
 
       // Enriquecer somente pagamentos do período atual (economia)
       let payments = paymentsCurrent;
