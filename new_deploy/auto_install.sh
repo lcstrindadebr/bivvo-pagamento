@@ -34,13 +34,87 @@ check_root() {
 }
 
 save_env() {
+    local EXISTING_DB_URL=""
+    if [ -f "$APP_DIR/.env" ]; then
+        EXISTING_DB_URL=$(read_env_value "SUPABASE_DB_URL" "$APP_DIR/.env")
+    fi
+
     cat > "$APP_DIR/.env" <<EOF
 VITE_SUPABASE_URL=$SUPA_URL
 VITE_SUPABASE_PUBLISHABLE_KEY=$SUPA_KEY
 VITE_SUPABASE_PROJECT_ID=$SUPA_PROJECT_ID
 EOF
+
+    if [ -n "$EXISTING_DB_URL" ]; then
+        upsert_env_value "SUPABASE_DB_URL" "$EXISTING_DB_URL" "$APP_DIR/.env"
+    fi
+
     chmod 600 "$APP_DIR/.env"
     echo -e "${GREEN}✓ .env atualizado em $APP_DIR/.env${NC}"
+}
+
+trim_value() {
+    local value="$1"
+    value="${value//$'\r'/}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
+
+normalize_db_url() {
+    local value="$1"
+    value=$(trim_value "$value")
+    value="${value#export }"
+    value=$(trim_value "$value")
+    value="${value#SUPABASE_DB_URL= }"
+    value="${value#SUPABASE_DB_URL=}" 
+    value="${value#DATABASE_URL= }"
+    value="${value#DATABASE_URL=}"
+    value=$(trim_value "$value")
+
+    if [[ "$value" == \"*\" ]]; then
+        value="${value#\"}"
+        value="${value%\"}"
+    fi
+    if [[ "$value" == \'*\' ]]; then
+        value="${value#\'}"
+        value="${value%\'}"
+    fi
+
+    value=$(trim_value "$value")
+    printf '%s' "$value"
+}
+
+read_env_value() {
+    local key="$1"
+    local file="$2"
+    local line=""
+
+    [ -f "$file" ] || return 0
+    line=$(grep -E "^[[:space:]]*(export[[:space:]]+)?${key}=" "$file" | tail -n1 || true)
+    line="${line#export }"
+    line="${line#${key}=}"
+    normalize_db_url "$line"
+}
+
+upsert_env_value() {
+    local key="$1"
+    local value="$2"
+    local file="$3"
+    local tmp="${file}.tmp"
+    local safe_value="${value//\"/\\\"}"
+
+    mkdir -p "$(dirname "$file")"
+    touch "$file"
+    grep -vE "^[[:space:]]*(export[[:space:]]+)?${key}=" "$file" > "$tmp" || true
+    printf '%s="%s"\n' "$key" "$safe_value" >> "$tmp"
+    mv "$tmp" "$file"
+    chmod 600 "$file"
+}
+
+db_url_host() {
+    local value="$1"
+    printf '%s' "$value" | sed -E 's#^postgres(ql)?://([^@/]+@)?([^:/?]+).*#\3#'
 }
 
 save_secrets() {
@@ -162,7 +236,7 @@ update_supabase_auto() {
     local TMP_SUPA_HOME
     TMP_SUPA_HOME=$(mktemp -d)
 
-    if HOME="$TMP_SUPA_HOME" npx -y supabase@latest functions deploy --project-ref "$SUPA_REF" --no-verify-jwt; then
+    if HOME="$TMP_SUPA_HOME" npx -y supabase@latest functions deploy --all --project-ref "$SUPA_REF" --no-verify-jwt; then
         rm -rf "$TMP_SUPA_HOME"
         echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
     else
@@ -175,25 +249,30 @@ update_supabase_auto() {
     # Aplicação do schema + migrations no banco (via psql direto no banco)
     echo -e "${BLUE}→ Aplicando SQL (schema + migrations)...${NC}"
 
+    DB_URL=$(normalize_db_url "$DB_URL")
+
     if [ -z "$DB_URL" ] && [ -f "$APP_DIR/.env" ]; then
-        DB_URL=$(grep -E '^SUPABASE_DB_URL=' "$APP_DIR/.env" | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+        DB_URL=$(read_env_value "SUPABASE_DB_URL" "$APP_DIR/.env")
     fi
 
     if [ -z "$DB_URL" ]; then
         echo ""
         echo -e "${YELLOW}SUPABASE_DB_URL não encontrada no ambiente nem em $APP_DIR/.env.${NC}"
+        echo -e "${YELLOW}Cole somente a connection string do banco, não a API URL nem a anon key.${NC}"
+        echo -e "${YELLOW}Formato aceito: postgresql://usuario:senha@host:porta/postgres?sslmode=require${NC}"
         read -r -s -p "🔐 Cole a SUPABASE_DB_URL para aplicar schema e migrations: " DB_URL
         echo ""
+        DB_URL=$(normalize_db_url "$DB_URL")
 
-        if [ -n "$DB_URL" ] && [ -f "$APP_DIR/.env" ] && ! grep -qE '^SUPABASE_DB_URL=' "$APP_DIR/.env"; then
-            printf '\nSUPABASE_DB_URL=%s\n' "$DB_URL" >> "$APP_DIR/.env"
-            chmod 600 "$APP_DIR/.env"
+        if [ -n "$DB_URL" ]; then
+            upsert_env_value "SUPABASE_DB_URL" "$DB_URL" "$APP_DIR/.env"
             echo -e "${GREEN}✓ SUPABASE_DB_URL salva em $APP_DIR/.env para próximas atualizações.${NC}"
         fi
     fi
 
-    if [ -z "$DB_URL" ]; then
-        echo -e "${RED}❌ SUPABASE_DB_URL é obrigatória para aplicar schema e migrations.${NC}"
+    if [ -z "$DB_URL" ] || ! [[ "$DB_URL" =~ ^postgres(ql)?:// ]]; then
+        echo -e "${RED}❌ SUPABASE_DB_URL inválida ou vazia.${NC}"
+        echo -e "${YELLOW}Ela precisa começar com postgres:// ou postgresql://.${NC}"
         return 1
     fi
 
@@ -202,14 +281,18 @@ update_supabase_auto() {
         apt update && apt install -y postgresql-client
     fi
 
-    if ! psql "$DB_URL" -v ON_ERROR_STOP=1 -c "select 1;" >/dev/null; then
+    echo -e "${BLUE}→ Testando conexão com o banco: $(db_url_host "$DB_URL")${NC}"
+
+    if ! PGCONNECT_TIMEOUT=20 psql --dbname="$DB_URL" -v ON_ERROR_STOP=1 -c "select 1;" >/dev/null; then
         echo -e "${RED}❌ Não foi possível conectar ao banco com a SUPABASE_DB_URL informada.${NC}"
+        echo -e "${YELLOW}Verifique se você colou a connection string do banco, incluindo usuário, senha, host, porta e sslmode=require.${NC}"
+        echo -e "${YELLOW}Se ela foi salva errada antes, apague a linha SUPABASE_DB_URL de $APP_DIR/.env e execute novamente.${NC}"
         return 1
     fi
 
     if [ -f "new_deploy/database_schema.sql" ]; then
         echo -e "${BLUE}  → database_schema.sql${NC}"
-        psql "$DB_URL" -v ON_ERROR_STOP=0 -f new_deploy/database_schema.sql
+        PGCONNECT_TIMEOUT=20 psql --dbname="$DB_URL" -v ON_ERROR_STOP=0 -f new_deploy/database_schema.sql
     else
         echo -e "${YELLOW}⚠️  new_deploy/database_schema.sql não encontrado.${NC}"
     fi
@@ -217,7 +300,7 @@ update_supabase_auto() {
     if [ -d "new_deploy/migrations" ]; then
         while IFS= read -r -d '' MIG; do
             echo -e "${BLUE}  → $(basename "$MIG")${NC}"
-            psql "$DB_URL" -v ON_ERROR_STOP=0 -f "$MIG"
+            PGCONNECT_TIMEOUT=20 psql --dbname="$DB_URL" -v ON_ERROR_STOP=0 -f "$MIG"
         done < <(find new_deploy/migrations -maxdepth 1 -type f -name '*.sql' -print0 | sort -z)
     else
         echo -e "${YELLOW}⚠️  Pasta new_deploy/migrations não encontrada.${NC}"
