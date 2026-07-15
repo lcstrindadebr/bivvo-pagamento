@@ -319,6 +319,7 @@ serve(async (req) => {
         exps: any[],
         ds: string | null,
         de: string | null,
+        includeBankBalance: boolean,
       ) => {
         const paidPays = pays.filter((p: any) => PAID_STATUSES.includes(p.status));
         const paidValue = paidPays.reduce((a, p) => a + (Number(p.value) || 0), 0);
@@ -352,6 +353,10 @@ serve(async (req) => {
         const totalExpenses = otherExpenses.reduce((a: number, e: any) => a + Number(e.amount), 0);
         const periodCommValue = periodCommissions.reduce((a: number, e: any) => a + Number(e.amount), 0);
         const freeCash = paidNetValue - (totalExpenses + periodCommValue);
+        const pendingValue = totalValue - paidValue;
+        // Projeção do mês: (Saldo Bancário + Recebido líq. + Pendente Asaas) − (Despesas + Comissões)
+        const baseProjection = paidNetValue + pendingValue - totalExpenses - periodCommValue;
+        const projection = includeBankBalance ? bankBalance + baseProjection : baseProjection;
 
         return {
           totalPayments: pays.length,
@@ -363,12 +368,13 @@ serve(async (req) => {
           ltv,
           totalExpenses,
           freeCash,
+          projection,
         };
       };
 
-      const current = computeRange(paymentsCurrent, expensesCurrent, dateStart, dateEnd);
+      const current = computeRange(paymentsCurrent, expensesCurrent, dateStart, dateEnd, true);
       const previous = previousStart
-        ? computeRange(paymentsPrevious, expensesPrevious, previousStart, previousEnd)
+        ? computeRange(paymentsPrevious, expensesPrevious, previousStart, previousEnd, false)
         : null;
 
       // Δ helpers
