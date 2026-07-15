@@ -688,36 +688,45 @@ export type Database = {
       tasks: {
         Row: {
           assigned_to: string | null
+          completed_at: string | null
           created_at: string
           description: string | null
           due_date: string | null
           id: string
           priority: string
           status: string
+          subtasks: Json
           title: string
           updated_at: string
+          waiting_third_party: boolean
         }
         Insert: {
           assigned_to?: string | null
+          completed_at?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
           id?: string
           priority?: string
           status?: string
+          subtasks?: Json
           title: string
           updated_at?: string
+          waiting_third_party?: boolean
         }
         Update: {
           assigned_to?: string | null
+          completed_at?: string | null
           created_at?: string
           description?: string | null
           due_date?: string | null
           id?: string
           priority?: string
           status?: string
+          subtasks?: Json
           title?: string
           updated_at?: string
+          waiting_third_party?: boolean
         }
         Relationships: []
       }
