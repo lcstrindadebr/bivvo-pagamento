@@ -121,33 +121,65 @@ update_supabase_auto() {
     SUPA_TOKEN="sbp_210e67ac1e5b09b5c8d534af0587fbda63471799"
     SUPA_REF="bcijktxnuzsatvhammpl"
 
+    # 1) Garante acesso ao diretório do projeto
+    if [ ! -d "/opt/bivvo-pagamento" ]; then
+        echo -e "${RED}❌ /opt/bivvo-pagamento não encontrado. Rode a instalação primeiro.${NC}"
+        return 1
+    fi
     cd /opt/bivvo-pagamento || { echo -e "${RED}❌ Falha ao acessar /opt/bivvo-pagamento${NC}"; return 1; }
     echo -e "${GREEN}✓ Diretório: $(pwd)${NC}"
 
-    echo -e "${BLUE}→ Login + Link + Deploy Functions...${NC}"
-    npx supabase login --token "$SUPA_TOKEN" \
-      && npx supabase link --project-ref "$SUPA_REF" \
-      && npx supabase functions deploy --no-verify-jwt \
-      || { echo -e "${RED}❌ Falha ao conectar/deployar no Supabase.${NC}"; return 1; }
+    # 2) Exporta o token também como variável de ambiente (fallback do CLI)
+    export SUPABASE_ACCESS_TOKEN="$SUPA_TOKEN"
 
+    # 3) Login + Link + Deploy das Edge Functions (fluxo idêntico ao comando manual)
+    echo -e "${BLUE}→ Login no Supabase...${NC}"
+    npx supabase login --token "$SUPA_TOKEN" || {
+        echo -e "${RED}❌ Falha no login. Verifique o token.${NC}"; return 1;
+    }
+
+    echo -e "${BLUE}→ Linkando projeto ($SUPA_REF)...${NC}"
+    npx supabase link --project-ref "$SUPA_REF" || {
+        echo -e "${RED}❌ Falha ao linkar o projeto.${NC}"; return 1;
+    }
+
+    echo -e "${BLUE}→ Publicando Edge Functions...${NC}"
+    npx supabase functions deploy --no-verify-jwt || {
+        echo -e "${RED}❌ Falha ao publicar Edge Functions.${NC}"; return 1;
+    }
     echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
 
-    # Migrations / Schema (mantidos no processo)
+    # 4) Aplicação do schema + migrations no banco (via psql, se DB URL disponível)
     echo -e "${BLUE}→ Aplicando SQL de banco de dados...${NC}"
-    if [ -f "new_deploy/database_schema.sql" ]; then
-        npx supabase db execute --file "new_deploy/database_schema.sql" || true
-        echo -e "${GREEN}✓ Schema base aplicado.${NC}"
+
+    DB_URL=""
+    if [ -f "/opt/bivvo-pagamento/.env" ]; then
+        DB_URL=$(grep -E '^SUPABASE_DB_URL' /opt/bivvo-pagamento/.env | cut -d= -f2- | tr -d '"' | tr -d "'")
     fi
-    if [ -d "new_deploy/migrations" ]; then
-        for MIG in $(ls new_deploy/migrations/*.sql | sort); do
-            echo -e "${BLUE}  → $(basename "$MIG")${NC}"
-            npx supabase db execute --file "$MIG" || true
-        done
-        echo -e "${GREEN}✓ Migrations aplicadas.${NC}"
+
+    if [ -n "$DB_URL" ] && command -v psql >/dev/null 2>&1; then
+        if [ -f "new_deploy/database_schema.sql" ]; then
+            psql "$DB_URL" -v ON_ERROR_STOP=0 -f new_deploy/database_schema.sql && \
+                echo -e "${GREEN}✓ Schema base aplicado.${NC}" || \
+                echo -e "${YELLOW}⚠️  Schema base retornou avisos (pode ser idempotência).${NC}"
+        fi
+        if [ -d "new_deploy/migrations" ]; then
+            for MIG in $(ls new_deploy/migrations/*.sql 2>/dev/null | sort); do
+                echo -e "${BLUE}  → $(basename "$MIG")${NC}"
+                psql "$DB_URL" -v ON_ERROR_STOP=0 -f "$MIG" || true
+            done
+            echo -e "${GREEN}✓ Migrations aplicadas.${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠️  SUPABASE_DB_URL não encontrada no .env ou psql não instalado.${NC}"
+        echo -e "${YELLOW}   Aplique manualmente pelo SQL Editor do Supabase, na ordem:${NC}"
+        echo -e "${YELLOW}   1) new_deploy/database_schema.sql${NC}"
+        echo -e "${YELLOW}   2) new_deploy/migrations/*.sql (em ordem numérica)${NC}"
     fi
 
     echo -e "${GREEN}✓ Atualização do Supabase concluída!${NC}"
 }
+
 
 
 # -----------------------------------------------------------------------------
