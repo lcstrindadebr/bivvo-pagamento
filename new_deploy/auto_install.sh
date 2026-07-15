@@ -118,63 +118,43 @@ update_supabase_auto() {
     echo ""
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE (FUNCTIONS + SCHEMA) ━━━━━${NC}"
 
-    SUPA_TOKEN="sbp_e47e3a8bfc02b65b9281dc900d25013effeea02b"
-    SUPA_REF="bcijktxnuzsatvhammpl"
+    local SUPA_TOKEN="sbp_e47e3a8bfc02b65b9281dc900d25013effeea02b"
+    local SUPA_REF="bcijktxnuzsatvhammpl"
 
-    # 1) Garante acesso ao diretório do projeto
     if [ ! -d "/opt/bivvo-pagamento" ]; then
         echo -e "${RED}❌ /opt/bivvo-pagamento não encontrado. Rode a instalação primeiro.${NC}"
         return 1
     fi
-    cd /opt/bivvo-pagamento || { echo -e "${RED}❌ Falha ao acessar /opt/bivvo-pagamento${NC}"; return 1; }
-    echo -e "${GREEN}✓ Diretório: $(pwd)${NC}"
 
-    # 2) Exporta o token também como variável de ambiente (fallback do CLI)
     export SUPABASE_ACCESS_TOKEN="$SUPA_TOKEN"
 
-    # 3) Login + Link + Deploy das Edge Functions (fluxo idêntico ao comando manual)
-    echo -e "${BLUE}→ Login no Supabase...${NC}"
-    npx supabase login --token "$SUPA_TOKEN" || {
-        echo -e "${RED}❌ Falha no login. Verifique o token.${NC}"; return 1;
-    }
+    # Sequência simplificada — idêntica ao comando manual
+    cd /opt/bivvo-pagamento \
+        && npx supabase login --token "$SUPA_TOKEN" \
+        && npx supabase link --project-ref "$SUPA_REF" \
+        && npx supabase functions deploy --no-verify-jwt \
+        || { echo -e "${RED}❌ Falha na conexão/deploy do Supabase.${NC}"; return 1; }
 
-    echo -e "${BLUE}→ Linkando projeto ($SUPA_REF)...${NC}"
-    npx supabase link --project-ref "$SUPA_REF" || {
-        echo -e "${RED}❌ Falha ao linkar o projeto.${NC}"; return 1;
-    }
-
-    echo -e "${BLUE}→ Publicando Edge Functions...${NC}"
-    npx supabase functions deploy --no-verify-jwt || {
-        echo -e "${RED}❌ Falha ao publicar Edge Functions.${NC}"; return 1;
-    }
     echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
 
-    # 4) Aplicação do schema + migrations no banco (via psql, se DB URL disponível)
-    echo -e "${BLUE}→ Aplicando SQL de banco de dados...${NC}"
+    # Aplicação do schema + migrations no banco (via psql)
+    echo -e "${BLUE}→ Aplicando SQL (schema + migrations)...${NC}"
 
-    DB_URL=""
+    local DB_URL=""
     if [ -f "/opt/bivvo-pagamento/.env" ]; then
         DB_URL=$(grep -E '^SUPABASE_DB_URL' /opt/bivvo-pagamento/.env | cut -d= -f2- | tr -d '"' | tr -d "'")
     fi
 
     if [ -n "$DB_URL" ] && command -v psql >/dev/null 2>&1; then
-        if [ -f "new_deploy/database_schema.sql" ]; then
-            psql "$DB_URL" -v ON_ERROR_STOP=0 -f new_deploy/database_schema.sql && \
-                echo -e "${GREEN}✓ Schema base aplicado.${NC}" || \
-                echo -e "${YELLOW}⚠️  Schema base retornou avisos (pode ser idempotência).${NC}"
-        fi
-        if [ -d "new_deploy/migrations" ]; then
-            for MIG in $(ls new_deploy/migrations/*.sql 2>/dev/null | sort); do
-                echo -e "${BLUE}  → $(basename "$MIG")${NC}"
-                psql "$DB_URL" -v ON_ERROR_STOP=0 -f "$MIG" || true
-            done
-            echo -e "${GREEN}✓ Migrations aplicadas.${NC}"
-        fi
+        [ -f "new_deploy/database_schema.sql" ] && psql "$DB_URL" -v ON_ERROR_STOP=0 -f new_deploy/database_schema.sql || true
+        for MIG in $(ls new_deploy/migrations/*.sql 2>/dev/null | sort); do
+            echo -e "${BLUE}  → $(basename "$MIG")${NC}"
+            psql "$DB_URL" -v ON_ERROR_STOP=0 -f "$MIG" || true
+        done
+        echo -e "${GREEN}✓ Schema e migrations aplicados.${NC}"
     else
-        echo -e "${YELLOW}⚠️  SUPABASE_DB_URL não encontrada no .env ou psql não instalado.${NC}"
-        echo -e "${YELLOW}   Aplique manualmente pelo SQL Editor do Supabase, na ordem:${NC}"
-        echo -e "${YELLOW}   1) new_deploy/database_schema.sql${NC}"
-        echo -e "${YELLOW}   2) new_deploy/migrations/*.sql (em ordem numérica)${NC}"
+        echo -e "${YELLOW}⚠️  SUPABASE_DB_URL não encontrada ou psql não instalado.${NC}"
+        echo -e "${YELLOW}   Aplique manualmente no SQL Editor: database_schema.sql + migrations/*.sql${NC}"
     fi
 
     echo -e "${GREEN}✓ Atualização do Supabase concluída!${NC}"
