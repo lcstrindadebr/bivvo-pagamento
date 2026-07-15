@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -17,10 +18,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Plus, Trash2, CheckCircle2, Circle, LayoutGrid, List, User as UserIcon,
-  Search, Calendar, Pencil,
+  Search, Calendar, Pencil, Clock, ListChecks, Hourglass,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+
+interface Subtask {
+  id: string;
+  title: string;
+  done: boolean;
+}
 
 interface Task {
   id: string;
@@ -31,6 +38,9 @@ interface Task {
   assigned_to: string | null;
   due_date: string | null;
   created_at: string;
+  completed_at: string | null;
+  subtasks: Subtask[] | null;
+  waiting_third_party: boolean;
 }
 
 interface AdminUser {
@@ -61,17 +71,36 @@ const emptyForm = {
   status: 'todo',
   assigned_to: 'unassigned',
   due_date: '',
+  waiting_third_party: false,
+  subtasks: [] as Subtask[],
 };
 
-function formatDue(iso: string | null) {
+function formatDate(iso: string | null) {
   if (!iso) return null;
   const d = new Date(iso);
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
+function formatDateTime(iso: string | null) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
 function isOverdue(task: Task) {
   if (!task.due_date || task.status === 'done') return false;
   return new Date(task.due_date).getTime() < Date.now() - 24 * 60 * 60 * 1000;
+}
+
+function newSubtaskId() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function normalizeSubtasks(raw: any): Subtask[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((s) => s && typeof s === 'object' && typeof s.title === 'string')
+    .map((s) => ({ id: String(s.id ?? newSubtaskId()), title: String(s.title), done: !!s.done }));
 }
 
 export function AdminTasks() {
@@ -81,17 +110,25 @@ export function AdminTasks() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<typeof emptyForm>(emptyForm);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  // Filters
   const [search, setSearch] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
 
   const loadTasks = async () => {
     const { data } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
-    if (data) setTasks(data as Task[]);
+    if (data) {
+      setTasks(
+        (data as any[]).map((t) => ({
+          ...t,
+          subtasks: normalizeSubtasks(t.subtasks),
+          waiting_third_party: !!t.waiting_third_party,
+        })) as Task[],
+      );
+    }
   };
 
   const loadUsers = async () => {
@@ -139,7 +176,8 @@ export function AdminTasks() {
   };
 
   const openCreate = () => {
-    setForm({ ...emptyForm, id: undefined });
+    setForm({ ...emptyForm, id: undefined, subtasks: [] });
+    setNewSubtaskTitle('');
     setDialogOpen(true);
   };
   const openEdit = (t: Task) => {
@@ -151,20 +189,43 @@ export function AdminTasks() {
       status: t.status || 'todo',
       assigned_to: t.assigned_to || 'unassigned',
       due_date: t.due_date ? t.due_date.slice(0, 10) : '',
+      waiting_third_party: !!t.waiting_third_party,
+      subtasks: normalizeSubtasks(t.subtasks),
     });
+    setNewSubtaskTitle('');
     setDialogOpen(true);
+  };
+
+  const addSubtaskInForm = () => {
+    const title = newSubtaskTitle.trim();
+    if (!title) return;
+    setForm({ ...form, subtasks: [...form.subtasks, { id: newSubtaskId(), title, done: false }] });
+    setNewSubtaskTitle('');
+  };
+
+  const toggleSubtaskInForm = (id: string) => {
+    setForm({
+      ...form,
+      subtasks: form.subtasks.map((s) => (s.id === id ? { ...s, done: !s.done } : s)),
+    });
+  };
+
+  const removeSubtaskInForm = (id: string) => {
+    setForm({ ...form, subtasks: form.subtasks.filter((s) => s.id !== id) });
   };
 
   const saveTask = async () => {
     if (!form.title.trim()) return;
     setSaving(true);
-    const payload = {
+    const payload: any = {
       title: form.title.trim(),
       description: form.description.trim() || null,
       priority: form.priority,
       status: form.status,
       assigned_to: form.assigned_to === 'unassigned' ? null : form.assigned_to,
       due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+      waiting_third_party: form.waiting_third_party,
+      subtasks: form.subtasks,
     };
     const { error } = form.id
       ? await supabase.from('tasks').update(payload).eq('id', form.id)
@@ -179,8 +240,8 @@ export function AdminTasks() {
     setSaving(false);
   };
 
-  const updateTask = async (id: string, patch: Partial<Task>) => {
-    const { error } = await supabase.from('tasks').update(patch).eq('id', id);
+  const updateTask = async (id: string, patch: Partial<Task> | Record<string, any>) => {
+    const { error } = await supabase.from('tasks').update(patch as any).eq('id', id);
     if (!error) loadTasks();
   };
 
@@ -265,13 +326,18 @@ export function AdminTasks() {
                 <div className="space-y-2">
                   {colTasks.map((task) => {
                     const overdue = isOverdue(task);
+                    const subs = task.subtasks || [];
+                    const subsDone = subs.filter((s) => s.done).length;
                     return (
                       <Card
                         key={task.id}
                         draggable
                         onDragStart={(e) => e.dataTransfer.setData('text/plain', task.id)}
                         onClick={() => openEdit(task)}
-                        className="p-3 cursor-pointer hover:shadow-md transition-shadow group"
+                        className={cn(
+                          'p-3 cursor-pointer hover:shadow-md transition-shadow group',
+                          task.waiting_third_party && 'border-amber-500/50 bg-amber-500/5',
+                        )}
                       >
                         <div className="flex items-start gap-2">
                           <button
@@ -297,17 +363,32 @@ export function AdminTasks() {
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2 ml-6">{task.description}</p>
                         )}
                         <div className="mt-2 ml-6 flex flex-wrap items-center gap-1.5">
+                          {task.waiting_third_party && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1 bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/40">
+                              <Hourglass className="h-2.5 w-2.5" /> Aguardando terceiro
+                            </Badge>
+                          )}
                           <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-5 border', PRIORITY_VARIANT[task.priority])}>
                             {PRIORITY_LABEL[task.priority] || task.priority}
                           </Badge>
                           {task.due_date && (
                             <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-5 gap-1', overdue && 'border-destructive/40 text-destructive')}>
-                              <Calendar className="h-2.5 w-2.5" /> {formatDue(task.due_date)}
+                              <Calendar className="h-2.5 w-2.5" /> {formatDate(task.due_date)}
+                            </Badge>
+                          )}
+                          {subs.length > 0 && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1">
+                              <ListChecks className="h-2.5 w-2.5" /> {subsDone}/{subs.length}
                             </Badge>
                           )}
                           {task.assigned_to && (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1">
                               <UserIcon className="h-2.5 w-2.5" /> {userName(task.assigned_to)}
+                            </Badge>
+                          )}
+                          {task.status === 'done' && task.completed_at && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                              <Clock className="h-2.5 w-2.5" /> Concluída {formatDateTime(task.completed_at)}
                             </Badge>
                           )}
                         </div>
@@ -331,6 +412,7 @@ export function AdminTasks() {
                 <TableHead>Tarefa</TableHead>
                 <TableHead className="w-[100px]">Prioridade</TableHead>
                 <TableHead className="w-[110px]">Vencimento</TableHead>
+                <TableHead className="w-[140px]">Concluída em</TableHead>
                 <TableHead className="w-[200px]">Responsável</TableHead>
                 <TableHead className="w-[110px]">Status</TableHead>
                 <TableHead className="w-[100px]">Ações</TableHead>
@@ -347,9 +429,21 @@ export function AdminTasks() {
                     </button>
                   </TableCell>
                   <TableCell className={cn(task.status === 'done' && 'line-through')}>
-                    <button onClick={() => openEdit(task)} className="text-left hover:underline">
-                      {task.title}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openEdit(task)} className="text-left hover:underline">
+                        {task.title}
+                      </button>
+                      {task.waiting_third_party && (
+                        <Badge variant="outline" className="text-[10px] gap-1 bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/40">
+                          <Hourglass className="h-2.5 w-2.5" /> Aguardando
+                        </Badge>
+                      )}
+                      {(task.subtasks?.length ?? 0) > 0 && (
+                        <Badge variant="outline" className="text-[10px] gap-1">
+                          <ListChecks className="h-2.5 w-2.5" /> {task.subtasks!.filter((s) => s.done).length}/{task.subtasks!.length}
+                        </Badge>
+                      )}
+                    </div>
                     {task.description && (
                       <p className="text-xs text-muted-foreground truncate max-w-md">{task.description}</p>
                     )}
@@ -360,7 +454,10 @@ export function AdminTasks() {
                     </Badge>
                   </TableCell>
                   <TableCell className={cn('text-xs', isOverdue(task) && 'text-destructive font-medium')}>
-                    {formatDue(task.due_date) || '—'}
+                    {formatDate(task.due_date) || '—'}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {task.completed_at ? formatDateTime(task.completed_at) : '—'}
                   </TableCell>
                   <TableCell>
                     <Select
@@ -396,7 +493,7 @@ export function AdminTasks() {
               ))}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Nenhuma tarefa encontrada.
                   </TableCell>
                 </TableRow>
@@ -408,7 +505,7 @@ export function AdminTasks() {
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{form.id ? 'Editar tarefa' : 'Nova tarefa'}</DialogTitle>
           </DialogHeader>
@@ -470,6 +567,53 @@ export function AdminTasks() {
                     {users.map((u) => <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-md border p-3 bg-amber-500/5">
+              <Checkbox
+                id="t-waiting"
+                checked={form.waiting_third_party}
+                onCheckedChange={(v) => setForm({ ...form, waiting_third_party: !!v })}
+              />
+              <Label htmlFor="t-waiting" className="cursor-pointer flex items-center gap-1.5">
+                <Hourglass className="h-3.5 w-3.5 text-amber-600" />
+                Aguardando ação de terceiro
+              </Label>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <ListChecks className="h-4 w-4" /> Subtarefas
+                {form.subtasks.length > 0 && (
+                  <span className="text-xs text-muted-foreground font-normal">
+                    ({form.subtasks.filter((s) => s.done).length}/{form.subtasks.length})
+                  </span>
+                )}
+              </Label>
+              <div className="space-y-1.5">
+                {form.subtasks.map((s) => (
+                  <div key={s.id} className="flex items-center gap-2 rounded-md border p-2">
+                    <Checkbox checked={s.done} onCheckedChange={() => toggleSubtaskInForm(s.id)} />
+                    <span className={cn('flex-1 text-sm', s.done && 'line-through text-muted-foreground')}>
+                      {s.title}
+                    </span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeSubtaskInForm(s.id)}>
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Nova subtarefa..."
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSubtaskInForm(); } }}
+                />
+                <Button type="button" variant="outline" onClick={addSubtaskInForm} disabled={!newSubtaskTitle.trim()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
