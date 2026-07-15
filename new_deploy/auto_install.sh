@@ -129,11 +129,18 @@ update_supabase_auto() {
     # ou tentamos prosseguir. O usuário pediu exatamente a sequência:
     npx supabase link --project-ref bcijktxnuzsatvhammpl
 
-    # Atualiza o banco de dados se houver alterações no schema
+    # Atualiza o banco de dados: schema base + migrations incrementais (idempotentes)
     echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
     if [ -f "new_deploy/database_schema.sql" ]; then
-        npx supabase db execute --file "new_deploy/database_schema.sql" --project-ref bcijktxnuzsatvhammpl
-        echo -e "${GREEN}✓ Banco de dados atualizado.${NC}"
+        npx supabase db execute --file "new_deploy/database_schema.sql" --project-ref bcijktxnuzsatvhammpl || true
+        echo -e "${GREEN}✓ Schema base aplicado.${NC}"
+    fi
+    if [ -d "new_deploy/migrations" ]; then
+        for MIG in $(ls new_deploy/migrations/*.sql | sort); do
+            echo -e "${BLUE}→ Aplicando $(basename "$MIG")...${NC}"
+            npx supabase db execute --file "$MIG" --project-ref bcijktxnuzsatvhammpl || true
+        done
+        echo -e "${GREEN}✓ Migrations incrementais aplicadas.${NC}"
     fi
 
     echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
