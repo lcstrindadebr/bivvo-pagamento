@@ -51,6 +51,35 @@ O instalador deixa a aplicação no ar, mas o **backend (Supabase)** precisa ser
 > 💡 `005_task_enhancements.sql` adiciona ao Kanban: **log automático da data de conclusão** (`completed_at`), **subtarefas** (checklist dentro da tarefa) e o marcador **"Aguardando ação de terceiro"** visível nos cards.
 > 💡 `006_finance_metrics.sql` cria índices em `expenses(date)` e `expenses(category)` para acelerar os cards do dashboard: **Despesas do Mês Vigente**, **Total Despesas (Mês)** e o novo **Cobranças em Atraso** (que substituiu o antigo "Total Cobranças").
 
+#### 🖥️ Opção via terminal (CLI)
+
+Se preferir aplicar o SQL pelo terminal em vez de copiar/colar no SQL Editor, use o **Supabase CLI**:
+
+1. Gere um **Access Token** em `https://supabase.com/dashboard/account/tokens`.
+2. Na VPS, execute os comandos abaixo (substitua `SEU_ACCESS_TOKEN` e `SEU_PROJECT_REF`):
+
+```bash
+cd /opt/bivvo-pagamento
+
+# Autentica e vincula o projeto
+npx supabase login --token SEU_ACCESS_TOKEN
+npx supabase link --project-ref SEU_PROJECT_REF
+
+# Aplica o schema base
+npx supabase db execute --file new_deploy/database_schema.sql
+
+# Aplica as migrations em ordem
+for f in new_deploy/migrations/*.sql; do
+  echo "→ Aplicando $f..."
+  npx supabase db execute --file "$f"
+done
+
+# Se você mantém as migrations versionadas em supabase/migrations, use também:
+# npx supabase db push
+```
+
+> 💡 Em atualizações futuras, basta rodar os novos arquivos de `new_deploy/migrations/` (ou `npx supabase db push`) novamente.
+
 ### 2️⃣ Cadastrar os Secrets (Asaas)
 Vá em **Edge Functions → Secrets** e adicione:
 
