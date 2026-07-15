@@ -187,8 +187,7 @@ update_supabase_auto() {
 
     echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
     if [ -d "supabase/functions" ]; then
-        # Seguindo o comando exato solicitado:
-        npx supabase functions deploy --no-verify-jwt
+        npx supabase functions deploy --no-verify-jwt --project-ref "$SUPA_REF"
         echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
     fi
 
