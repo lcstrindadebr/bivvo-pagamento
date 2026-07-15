@@ -118,30 +118,68 @@ update_supabase_auto() {
     echo ""
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE (FUNCTIONS + SCHEMA) ━━━━━${NC}"
 
-    # Sequência exata solicitada pelo usuário:
-    # cd /opt/bivvo-pagamento && npx supabase login --token <TOKEN> \
-    #   && npx supabase link --project-ref <REF> \
-    #   && npx supabase functions deploy --no-verify-jwt
-    cd "/opt/bivvo-pagamento"
+    # Garante que estamos na pasta do projeto (obrigatório para o CLI encontrar supabase/)
+    if [ ! -d "$APP_DIR" ]; then
+        echo -e "${RED}❌ Diretório $APP_DIR não encontrado. Rode a instalação primeiro.${NC}"
+        return 1
+    fi
+    cd "$APP_DIR" || { echo -e "${RED}❌ Falha ao acessar $APP_DIR${NC}"; return 1; }
+    echo -e "${GREEN}✓ Diretório atual: $(pwd)${NC}"
 
-    export SUPABASE_ACCESS_TOKEN="sbp_210e67ac1e5b09b5c8d534af0587fbda63471799"
+    # Descobre o project-ref padrão a partir do .env (VITE_SUPABASE_PROJECT_ID ou URL)
+    DEFAULT_REF=""
+    if [ -f "$APP_DIR/.env" ]; then
+        DEFAULT_REF=$(grep -E '^VITE_SUPABASE_PROJECT_ID' "$APP_DIR/.env" | cut -d= -f2 | tr -d '"' | tr -d "'")
+        if [ -z "$DEFAULT_REF" ]; then
+            DEFAULT_REF=$(grep -E '^VITE_SUPABASE_URL' "$APP_DIR/.env" | cut -d= -f2 | tr -d '"' | sed -E 's|https?://([^.]+)\..*|\1|')
+        fi
+    fi
+
+    echo ""
+    echo -e "${YELLOW}⚠️  Você precisa de um Access Token pessoal do Supabase.${NC}"
+    echo -e "${YELLOW}   Gere em: https://supabase.com/dashboard/account/tokens${NC}"
+    echo -e "${YELLOW}   O token DEVE pertencer à conta dona do projeto (senão retorna Unauthorized).${NC}"
+    echo ""
+    read -p "🔑 Supabase Access Token (sbp_...): " SUPA_TOKEN
+    if [ -z "$SUPA_TOKEN" ]; then
+        echo -e "${RED}❌ Token vazio. Abortando atualização do Supabase.${NC}"
+        return 1
+    fi
+
+    read -p "🆔 Project Ref [${DEFAULT_REF}]: " SUPA_REF
+    SUPA_REF=${SUPA_REF:-$DEFAULT_REF}
+    if [ -z "$SUPA_REF" ]; then
+        echo -e "${RED}❌ Project Ref vazio. Abortando.${NC}"
+        return 1
+    fi
+
+    export SUPABASE_ACCESS_TOKEN="$SUPA_TOKEN"
 
     echo -e "${BLUE}Autenticando no Supabase...${NC}"
-    npx supabase login --token "$SUPABASE_ACCESS_TOKEN"
+    npx supabase login --token "$SUPABASE_ACCESS_TOKEN" || {
+        echo -e "${RED}❌ Falha no login. Verifique o token.${NC}"; return 1;
+    }
 
-    echo -e "${BLUE}Linkando projeto bcijktxnuzsatvhammpl...${NC}"
-    npx supabase link --project-ref bcijktxnuzsatvhammpl
+    echo -e "${BLUE}Linkando projeto $SUPA_REF...${NC}"
+    if ! npx supabase link --project-ref "$SUPA_REF"; then
+        echo -e "${RED}❌ Falha ao linkar o projeto.${NC}"
+        echo -e "${YELLOW}   Causas comuns:${NC}"
+        echo -e "${YELLOW}   • Token não pertence à conta dona do projeto ($SUPA_REF)${NC}"
+        echo -e "${YELLOW}   • Project Ref incorreto${NC}"
+        echo -e "${YELLOW}   • Token expirado ou revogado${NC}"
+        return 1
+    fi
 
     # Atualiza o banco de dados: schema base + migrations incrementais (idempotentes)
     echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
     if [ -f "new_deploy/database_schema.sql" ]; then
-        npx supabase db execute --file "new_deploy/database_schema.sql" --project-ref bcijktxnuzsatvhammpl || true
+        npx supabase db execute --file "new_deploy/database_schema.sql" --project-ref "$SUPA_REF" || true
         echo -e "${GREEN}✓ Schema base aplicado.${NC}"
     fi
     if [ -d "new_deploy/migrations" ]; then
         for MIG in $(ls new_deploy/migrations/*.sql | sort); do
             echo -e "${BLUE}→ Aplicando $(basename "$MIG")...${NC}"
-            npx supabase db execute --file "$MIG" --project-ref bcijktxnuzsatvhammpl || true
+            npx supabase db execute --file "$MIG" --project-ref "$SUPA_REF" || true
         done
         echo -e "${GREEN}✓ Migrations incrementais aplicadas.${NC}"
     fi
