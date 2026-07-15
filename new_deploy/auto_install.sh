@@ -135,16 +135,14 @@ update_supabase_auto() {
         fi
     fi
 
+    DEFAULT_TOKEN="sbp_210e67ac1e5b09b5c8d534af0587fbda63471799"
+
     echo ""
-    echo -e "${YELLOW}⚠️  Você precisa de um Access Token pessoal do Supabase.${NC}"
-    echo -e "${YELLOW}   Gere em: https://supabase.com/dashboard/account/tokens${NC}"
-    echo -e "${YELLOW}   O token DEVE pertencer à conta dona do projeto (senão retorna Unauthorized).${NC}"
+    echo -e "${YELLOW}⚠️  O token padrão está pré-configurado. Pressione ENTER para usá-lo${NC}"
+    echo -e "${YELLOW}   ou informe outro (gere em https://supabase.com/dashboard/account/tokens).${NC}"
     echo ""
-    read -p "🔑 Supabase Access Token (sbp_...): " SUPA_TOKEN
-    if [ -z "$SUPA_TOKEN" ]; then
-        echo -e "${RED}❌ Token vazio. Abortando atualização do Supabase.${NC}"
-        return 1
-    fi
+    read -p "🔑 Supabase Access Token [padrão pré-configurado]: " SUPA_TOKEN
+    SUPA_TOKEN=${SUPA_TOKEN:-$DEFAULT_TOKEN}
 
     read -p "🆔 Project Ref [${DEFAULT_REF}]: " SUPA_REF
     SUPA_REF=${SUPA_REF:-$DEFAULT_REF}
