@@ -118,7 +118,7 @@ update_supabase_auto() {
     echo ""
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE (FUNCTIONS + SCHEMA) ━━━━━${NC}"
 
-    local SUPA_TOKEN="sbp_e47e3a8bfc02b65b9281dc900d25013effeea02b"
+    local SUPA_TOKEN="sbp_8c384d7999edfa4078dd8a0f1a15cfd7b8e4ad32"
     local SUPA_REF="bcijktxnuzsatvhammpl"
 
     if [ ! -d "/opt/bivvo-pagamento" ]; then
