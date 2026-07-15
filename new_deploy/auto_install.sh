@@ -117,16 +117,19 @@ run_build() {
 update_supabase_auto() {
     echo ""
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE (FUNCTIONS + SCHEMA) ━━━━━${NC}"
-    
-    # Seguindo exatamente a sequência solicitada pelo usuário
+
+    # Sequência exata solicitada pelo usuário:
+    # cd /opt/bivvo-pagamento && npx supabase login --token <TOKEN> \
+    #   && npx supabase link --project-ref <REF> \
+    #   && npx supabase functions deploy --no-verify-jwt
     cd "/opt/bivvo-pagamento"
 
+    export SUPABASE_ACCESS_TOKEN="sbp_210e67ac1e5b09b5c8d534af0587fbda63471799"
+
     echo -e "${BLUE}Autenticando no Supabase...${NC}"
-    npx supabase login --token sbp_88c1fc9ce6f6b6d9f6a411d82bbb38937df9af44
+    npx supabase login --token "$SUPABASE_ACCESS_TOKEN"
 
     echo -e "${BLUE}Linkando projeto bcijktxnuzsatvhammpl...${NC}"
-    # O comando link geralmente exige confirmação ou senha da DB, usamos --non-interactive se possível
-    # ou tentamos prosseguir. O usuário pediu exatamente a sequência:
     npx supabase link --project-ref bcijktxnuzsatvhammpl
 
     # Atualiza o banco de dados: schema base + migrations incrementais (idempotentes)
@@ -142,6 +145,7 @@ update_supabase_auto() {
         done
         echo -e "${GREEN}✓ Migrations incrementais aplicadas.${NC}"
     fi
+
 
     echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
     if [ -d "supabase/functions" ]; then
