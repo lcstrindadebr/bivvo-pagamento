@@ -43,12 +43,13 @@ O instalador deixa a aplicação no ar, mas o **backend (Supabase)** precisa ser
 
 ### 1️⃣ Criar / atualizar as tabelas do banco
 - No painel do Supabase, abra **SQL Editor → New Query**
-- **Instalação nova:** cole em ordem `new_deploy/database_schema.sql` → `migrations/003_new_features.sql` → `migrations/004_security_and_settings.sql` → `migrations/005_task_enhancements.sql`
-- **Atualização de uma instância já existente:** rode apenas as migrations novas em ordem (`003` → `004` → `005`). Todas são idempotentes.
+- **Instalação nova:** cole em ordem `new_deploy/database_schema.sql` → `migrations/003_new_features.sql` → `migrations/004_security_and_settings.sql` → `migrations/005_task_enhancements.sql` → `migrations/006_finance_metrics.sql`
+- **Atualização de uma instância já existente:** rode apenas as migrations novas em ordem (`003` → `004` → `005` → `006`). Todas são idempotentes.
 - Clique em **Run** após cada uma.
 
 > 💡 `004_security_and_settings.sql` traz delegação de tarefas por admin, whitelist pública de settings e endurecimento de RLS.
 > 💡 `005_task_enhancements.sql` adiciona ao Kanban: **log automático da data de conclusão** (`completed_at`), **subtarefas** (checklist dentro da tarefa) e o marcador **"Aguardando ação de terceiro"** visível nos cards.
+> 💡 `006_finance_metrics.sql` cria índices em `expenses(date)` e `expenses(category)` para acelerar os cards do dashboard: **Despesas do Mês Vigente**, **Total Despesas (Mês)** e o novo **Cobranças em Atraso** (que substituiu o antigo "Total Cobranças").
 
 ### 2️⃣ Cadastrar os Secrets (Asaas)
 Vá em **Edge Functions → Secrets** e adicione:

@@ -262,8 +262,13 @@ serve(async (req) => {
         return Array.from(map.values());
       };
 
-      // Todas as chamadas Asaas em paralelo (subs + payments atual + payments anterior + saldo)
-      const [allSubs, paymentsCurrent, paymentsPrevious, bankBalance] = await Promise.all([
+      // Range do mês vigente (independente do filtro selecionado)
+      const _now = new Date();
+      const monthStart = new Date(_now.getFullYear(), _now.getMonth(), 1).toISOString().slice(0, 10);
+      const monthEnd = new Date(_now.getFullYear(), _now.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+      // Todas as chamadas Asaas em paralelo (subs + payments atual + payments anterior + saldo + overdue)
+      const [allSubs, paymentsCurrent, paymentsPrevious, bankBalance, overduePayments] = await Promise.all([
         paginate('/subscriptions', () => true),
         fetchPayments(dateStart, dateEnd),
         previousStart ? fetchPayments(previousStart, previousEnd) : Promise.resolve([] as any[]),
@@ -274,7 +279,11 @@ serve(async (req) => {
             return Number(j?.balance) || 0;
           } catch { return 0; }
         })(),
+        paginate('/payments?status=OVERDUE', (p: any) => !p.deleted && p.status === 'OVERDUE'),
       ]);
+
+      const overdueValue = overduePayments.reduce((a: number, p: any) => a + (Number(p.value) || 0), 0);
+      const overdueCount = overduePayments.length;
 
       // Enriquecer somente pagamentos do período atual (economia)
       let payments = paymentsCurrent;
@@ -302,10 +311,12 @@ serve(async (req) => {
         const { data } = await q;
         return data || [];
       };
-      const [expensesCurrent, expensesPrevious] = await Promise.all([
+      const [expensesCurrent, expensesPrevious, expensesMonth] = await Promise.all([
         fetchExpenses(dateStart, dateEnd),
         previousStart ? fetchExpenses(previousStart, previousEnd) : Promise.resolve([]),
+        fetchExpenses(monthStart, monthEnd),
       ]);
+      const monthlyExpenses = expensesMonth.reduce((a: number, e: any) => a + Number(e.amount), 0);
 
       // Comissões pendentes (global)
       const { data: comms } = await supabase
@@ -406,6 +417,9 @@ serve(async (req) => {
         mrr,
         arpu,
         bankBalance,
+        monthlyExpenses,
+        overdueValue,
+        overdueCount,
         conversionRate: totalClicks ? ((totalSalesCount || 0) / totalClicks * 100) : 0,
         totalClicks: totalClicks || 0,
         retainedCommissions: 0,
