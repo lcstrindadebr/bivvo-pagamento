@@ -346,7 +346,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                   <DeltaBadge value={stats?.deltas?.projection} />
                 </div>
                 <div className="text-[10px] text-muted-foreground">
-                  (Recebido líq. + Pendente Asaas − Despesas − Comissões)
+                  (Saldo Bancário + Recebido líq. + Pendente Asaas − Despesas − Comissões)
                 </div>
               </div>
             )}
