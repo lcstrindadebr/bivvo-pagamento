@@ -236,7 +236,7 @@ update_supabase_auto() {
     local TMP_SUPA_HOME
     TMP_SUPA_HOME=$(mktemp -d)
 
-    if HOME="$TMP_SUPA_HOME" npx -y supabase@latest functions deploy --all --project-ref "$SUPA_REF" --no-verify-jwt; then
+    if HOME="$TMP_SUPA_HOME" npx -y supabase@latest functions deploy --project-ref "$SUPA_REF" --no-verify-jwt; then
         rm -rf "$TMP_SUPA_HOME"
         echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
     else
