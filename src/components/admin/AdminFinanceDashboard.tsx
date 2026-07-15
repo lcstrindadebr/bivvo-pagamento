@@ -23,6 +23,9 @@ interface FinanceStats {
   retainedCommissions: number;
   pendingAffiliatePayout: number;
   totalExpenses: number;
+  monthlyExpenses: number;
+  overdueValue: number;
+  overdueCount: number;
   freeCash: number;
   bankBalance: number;
   projection: number;
@@ -241,14 +244,18 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-accent" /> Total Cobranças
+              <AlertTriangle className="h-4 w-4 text-red-500" /> Cobranças em Atraso
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              <div className="flex items-center gap-2">
-                <div className="text-2xl font-bold">{stats?.totalPayments || 0}</div>
-                <DeltaBadge value={stats?.deltas?.paidCount} />
+              <div className="flex flex-col">
+                <div className="text-2xl font-bold text-red-500">
+                  {formatCurrency(stats?.overdueValue || 0)}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {stats?.overdueCount || 0} cobrança(s) vencida(s) e não pagas
+                </div>
               </div>
             )}
           </CardContent>
@@ -299,15 +306,15 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-red-500" /> Despesas
+              <Receipt className="h-4 w-4 text-red-500" /> Despesas (Mês Vigente)
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
               <div className="flex flex-col">
-                <div className="text-xl font-bold text-red-500">{formatCurrency(stats?.totalExpenses || 0)}</div>
+                <div className="text-xl font-bold text-red-500">{formatCurrency(stats?.monthlyExpenses || 0)}</div>
                 <div className="text-[10px] text-muted-foreground">
-                  Lançamentos manuais e automáticos
+                  Soma dos débitos do mês corrente
                 </div>
               </div>
             )}
