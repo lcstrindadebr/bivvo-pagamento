@@ -24,6 +24,8 @@ interface FinanceStats {
   pendingAffiliatePayout: number;
   totalExpenses: number;
   freeCash: number;
+  bankBalance: number;
+  projection: number;
   payments: any[];
   previous: null | Record<string, number>;
   deltas: null | {
@@ -32,6 +34,7 @@ interface FinanceStats {
     paidCount: number | null;
     totalValue: number | null;
     freeCash: number | null;
+    projection: number | null;
     churnRate: number; // pp diff
   };
   previousRange: null | { start: string; end: string };
