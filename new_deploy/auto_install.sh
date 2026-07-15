@@ -130,8 +130,8 @@ update_supabase_auto() {
 
     # Sequência simplificada — idêntica ao comando manual
     cd /opt/bivvo-pagamento \
-        && npx supabase login --token "$SUPA_TOKEN" \
-        && npx supabase link --project-ref "$SUPA_REF" \
+        && npx supabase login --token sbp_4cd19295618d3b64bfba823a56070002471593ed \
+        && npx supabase link --project-ref bcijktxnuzsatvhammpl \
         && npx supabase functions deploy --no-verify-jwt \
         || { echo -e "${RED}❌ Falha na conexão/deploy do Supabase.${NC}"; return 1; }
 
