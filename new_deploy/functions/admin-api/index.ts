@@ -262,11 +262,18 @@ serve(async (req) => {
         return Array.from(map.values());
       };
 
-      // Todas as chamadas Asaas em paralelo (subs + payments atual + payments anterior)
-      const [allSubs, paymentsCurrent, paymentsPrevious] = await Promise.all([
+      // Todas as chamadas Asaas em paralelo (subs + payments atual + payments anterior + saldo)
+      const [allSubs, paymentsCurrent, paymentsPrevious, bankBalance] = await Promise.all([
         paginate('/subscriptions', () => true),
         fetchPayments(dateStart, dateEnd),
         previousStart ? fetchPayments(previousStart, previousEnd) : Promise.resolve([] as any[]),
+        (async () => {
+          try {
+            const r = await fetch(`${ASAAS_BASE_URL}/finance/balance`, { headers: asaasHeaders });
+            const j = await r.json();
+            return Number(j?.balance) || 0;
+          } catch { return 0; }
+        })(),
       ]);
 
       // Enriquecer somente pagamentos do período atual (economia)
