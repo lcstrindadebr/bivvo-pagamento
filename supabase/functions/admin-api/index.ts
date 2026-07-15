@@ -362,9 +362,9 @@ serve(async (req) => {
         };
       };
 
-      const current = computeRange(paymentsCurrent, expensesCurrent, dateStart, dateEnd);
+      const current = computeRange(paymentsCurrent, expensesCurrent, dateStart, dateEnd, true);
       const previous = previousStart
-        ? computeRange(paymentsPrevious, expensesPrevious, previousStart, previousEnd)
+        ? computeRange(paymentsPrevious, expensesPrevious, previousStart, previousEnd, false)
         : null;
 
       // Δ helpers
