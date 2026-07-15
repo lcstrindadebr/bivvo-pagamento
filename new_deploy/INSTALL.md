@@ -112,6 +112,40 @@ npx supabase functions deploy --all --no-verify-jwt
 
 ---
 
+## 🗄️ Atualização de Schema e Migrations via CLI
+
+Para atualizar o banco de dados (schema base + migrations incrementais) direto pelo terminal da VPS:
+
+```bash
+cd /opt/bivvo-pagamento
+
+# Siga as instruções para logar e linkar o projeto
+npx supabase login
+npx supabase link --project-ref SEU_PROJECT_ID
+
+# Publica todas as Edge Functions
+npx supabase functions deploy --all --no-verify-jwt
+```
+
+Em seguida, aplique o SQL do banco (schema + migrations) usando `psql` (a `SUPABASE_DB_URL` fica no `.env` do projeto):
+
+```bash
+# Schema base (apenas para instalação nova; é idempotente)
+psql "$SUPABASE_DB_URL" -f new_deploy/database_schema.sql
+
+# Migrations incrementais em ordem
+psql "$SUPABASE_DB_URL" -f new_deploy/migrations/003_new_features.sql
+psql "$SUPABASE_DB_URL" -f new_deploy/migrations/004_security_and_settings.sql
+psql "$SUPABASE_DB_URL" -f new_deploy/migrations/005_task_enhancements.sql
+psql "$SUPABASE_DB_URL" -f new_deploy/migrations/006_finance_metrics.sql
+```
+
+> 💡 O opção **3 do `auto_install.sh` (Atualizar Supabase)** faz todos esses passos automaticamente (login + link + deploy + schema + migrations).
+
+
+
+---
+
 ## 🔍 Resolução de problemas (Troubleshooting)
 
 ### Erro: "non-2xx status code" ou "Module not found"
