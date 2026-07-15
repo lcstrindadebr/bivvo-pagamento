@@ -107,7 +107,7 @@ cd /opt/bivvo-pagamento
 # Siga as instruções para logar e linkar o projeto
 npx supabase login
 npx supabase link --project-ref SEU_PROJECT_ID
-npx supabase functions deploy --all --no-verify-jwt
+npx supabase functions deploy --no-verify-jwt
 ```
 
 ---
@@ -124,7 +124,7 @@ npx supabase login
 npx supabase link --project-ref SEU_PROJECT_ID
 
 # Publica todas as Edge Functions
-npx supabase functions deploy --all --no-verify-jwt
+npx supabase functions deploy --no-verify-jwt
 ```
 
 Em seguida, aplique o SQL do banco (schema + migrations) usando `psql` (a `SUPABASE_DB_URL` fica no `.env` do projeto). A URL precisa ser a **connection string do banco**, começando com `postgresql://` ou `postgres://` — não use a URL pública da API nem a chave anon:
