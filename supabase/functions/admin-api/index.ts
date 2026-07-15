@@ -342,6 +342,8 @@ serve(async (req) => {
         const totalExpenses = otherExpenses.reduce((a: number, e: any) => a + Number(e.amount), 0);
         const periodCommValue = periodCommissions.reduce((a: number, e: any) => a + Number(e.amount), 0);
         const freeCash = paidNetValue - (totalExpenses + periodCommValue);
+        const pendingValue = totalValue - paidValue;
+        const projection = paidNetValue + pendingValue - totalExpenses - periodCommValue;
 
         return {
           totalPayments: pays.length,
@@ -353,6 +355,7 @@ serve(async (req) => {
           ltv,
           totalExpenses,
           freeCash,
+          projection,
         };
       };
 
