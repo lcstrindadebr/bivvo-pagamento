@@ -311,10 +311,12 @@ serve(async (req) => {
         const { data } = await q;
         return data || [];
       };
-      const [expensesCurrent, expensesPrevious] = await Promise.all([
+      const [expensesCurrent, expensesPrevious, expensesMonth] = await Promise.all([
         fetchExpenses(dateStart, dateEnd),
         previousStart ? fetchExpenses(previousStart, previousEnd) : Promise.resolve([]),
+        fetchExpenses(monthStart, monthEnd),
       ]);
+      const monthlyExpenses = expensesMonth.reduce((a: number, e: any) => a + Number(e.amount), 0);
 
       // Comissões pendentes (global)
       const { data: comms } = await supabase
