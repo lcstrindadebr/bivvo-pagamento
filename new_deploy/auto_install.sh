@@ -118,15 +118,11 @@ update_supabase_auto() {
     echo ""
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE (FUNCTIONS + SCHEMA) ━━━━━${NC}"
 
-    # Garante que estamos na pasta do projeto (obrigatório para o CLI encontrar supabase/)
     if [ ! -d "$APP_DIR" ]; then
         echo -e "${RED}❌ Diretório $APP_DIR não encontrado. Rode a instalação primeiro.${NC}"
         return 1
     fi
-    cd "$APP_DIR" || { echo -e "${RED}❌ Falha ao acessar $APP_DIR${NC}"; return 1; }
-    echo -e "${GREEN}✓ Diretório atual: $(pwd)${NC}"
 
-    # Descobre o project-ref padrão a partir do .env (VITE_SUPABASE_PROJECT_ID ou URL)
     DEFAULT_REF=""
     if [ -f "$APP_DIR/.env" ]; then
         DEFAULT_REF=$(grep -E '^VITE_SUPABASE_PROJECT_ID' "$APP_DIR/.env" | cut -d= -f2 | tr -d '"' | tr -d "'")
@@ -134,16 +130,14 @@ update_supabase_auto() {
             DEFAULT_REF=$(grep -E '^VITE_SUPABASE_URL' "$APP_DIR/.env" | cut -d= -f2 | tr -d '"' | sed -E 's|https?://([^.]+)\..*|\1|')
         fi
     fi
+    [ -z "$DEFAULT_REF" ] && DEFAULT_REF="bcijktxnuzsatvhammpl"
 
     DEFAULT_TOKEN="sbp_210e67ac1e5b09b5c8d534af0587fbda63471799"
 
     echo ""
-    echo -e "${YELLOW}⚠️  O token padrão está pré-configurado. Pressione ENTER para usá-lo${NC}"
-    echo -e "${YELLOW}   ou informe outro (gere em https://supabase.com/dashboard/account/tokens).${NC}"
-    echo ""
+    echo -e "${YELLOW}⚠️  Pressione ENTER para usar o token/projeto padrão ou informe outros valores.${NC}"
     read -p "🔑 Supabase Access Token [padrão pré-configurado]: " SUPA_TOKEN
     SUPA_TOKEN=${SUPA_TOKEN:-$DEFAULT_TOKEN}
-
     read -p "🆔 Project Ref [${DEFAULT_REF}]: " SUPA_REF
     SUPA_REF=${SUPA_REF:-$DEFAULT_REF}
     if [ -z "$SUPA_REF" ]; then
@@ -151,45 +145,57 @@ update_supabase_auto() {
         return 1
     fi
 
+    # Limpa cache/credenciais antigos que causam "Unauthorized" mesmo com token válido
+    echo -e "${BLUE}Limpando cache do Supabase CLI...${NC}"
+    rm -rf "$HOME/.supabase" 2>/dev/null || true
+    rm -rf "$APP_DIR/supabase/.temp" 2>/dev/null || true
+    unset SUPABASE_ACCESS_TOKEN
     export SUPABASE_ACCESS_TOKEN="$SUPA_TOKEN"
 
-    echo -e "${BLUE}Autenticando no Supabase...${NC}"
-    npx supabase login --token "$SUPABASE_ACCESS_TOKEN" || {
-        echo -e "${RED}❌ Falha no login. Verifique o token.${NC}"; return 1;
-    }
+    # Usa CLI mais recente (o erro mostra "currently installed v" -> versão corrompida)
+    SUPA_CLI="npx -y supabase@latest"
 
-    echo -e "${BLUE}Linkando projeto $SUPA_REF...${NC}"
-    if ! npx supabase link --project-ref "$SUPA_REF"; then
-        echo -e "${RED}❌ Falha ao linkar o projeto.${NC}"
-        echo -e "${YELLOW}   Causas comuns:${NC}"
-        echo -e "${YELLOW}   • Token não pertence à conta dona do projeto ($SUPA_REF)${NC}"
-        echo -e "${YELLOW}   • Project Ref incorreto${NC}"
-        echo -e "${YELLOW}   • Token expirado ou revogado${NC}"
-        return 1
-    fi
+    echo -e "${GREEN}✓ Executando toda a rotina dentro de $APP_DIR${NC}"
 
-    # Atualiza o banco de dados: schema base + migrations incrementais (idempotentes)
-    echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
-    if [ -f "new_deploy/database_schema.sql" ]; then
-        npx supabase db execute --file "new_deploy/database_schema.sql" --project-ref "$SUPA_REF" || true
-        echo -e "${GREEN}✓ Schema base aplicado.${NC}"
-    fi
-    if [ -d "new_deploy/migrations" ]; then
-        for MIG in $(ls new_deploy/migrations/*.sql | sort); do
-            echo -e "${BLUE}→ Aplicando $(basename "$MIG")...${NC}"
-            npx supabase db execute --file "$MIG" --project-ref "$SUPA_REF" || true
-        done
-        echo -e "${GREEN}✓ Migrations incrementais aplicadas.${NC}"
-    fi
+    (
+        cd "$APP_DIR" || exit 1
+        echo -e "${BLUE}[1/4] Autenticando no Supabase...${NC}"
+        $SUPA_CLI login --token "$SUPA_TOKEN" || exit 10
 
+        echo -e "${BLUE}[2/4] Linkando projeto $SUPA_REF...${NC}"
+        $SUPA_CLI link --project-ref "$SUPA_REF" || exit 11
 
-    echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
-    if [ -d "supabase/functions" ]; then
-        npx supabase functions deploy --no-verify-jwt --project-ref "$SUPA_REF"
-        echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
-    fi
+        echo -e "${BLUE}[3/4] Aplicando SQL de banco de dados...${NC}"
+        if [ -f "new_deploy/database_schema.sql" ]; then
+            $SUPA_CLI db execute --file "new_deploy/database_schema.sql" || true
+            echo -e "${GREEN}✓ Schema base aplicado.${NC}"
+        fi
+        if [ -d "new_deploy/migrations" ]; then
+            for MIG in $(ls new_deploy/migrations/*.sql 2>/dev/null | sort); do
+                echo -e "${BLUE}→ Aplicando $(basename "$MIG")...${NC}"
+                $SUPA_CLI db execute --file "$MIG" || true
+            done
+            echo -e "${GREEN}✓ Migrations aplicadas.${NC}"
+        fi
 
-    echo -e "${GREEN}✓ Atualização do Supabase concluída!${NC}"
+        echo -e "${BLUE}[4/4] Deploy de Edge Functions...${NC}"
+        if [ -d "supabase/functions" ]; then
+            $SUPA_CLI functions deploy --no-verify-jwt || exit 12
+            echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
+        fi
+    )
+    RC=$?
+    case $RC in
+        0)  echo -e "${GREEN}✓ Atualização do Supabase concluída!${NC}" ;;
+        10) echo -e "${RED}❌ Falha no login. Verifique o token.${NC}"; return 1 ;;
+        11) echo -e "${RED}❌ Falha ao linkar o projeto ($SUPA_REF).${NC}"
+            echo -e "${YELLOW}   • Token não pertence à conta dona do projeto${NC}"
+            echo -e "${YELLOW}   • Project Ref incorreto${NC}"
+            echo -e "${YELLOW}   • Token expirado ou revogado${NC}"
+            return 1 ;;
+        12) echo -e "${RED}❌ Falha no deploy das Edge Functions.${NC}"; return 1 ;;
+        *)  echo -e "${RED}❌ Falha inesperada (código $RC).${NC}"; return 1 ;;
+    esac
 }
 
 # -----------------------------------------------------------------------------
