@@ -118,79 +118,37 @@ update_supabase_auto() {
     echo ""
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE (FUNCTIONS + SCHEMA) ━━━━━${NC}"
 
-    # Garante que estamos na pasta do projeto (obrigatório para o CLI encontrar supabase/)
-    if [ ! -d "$APP_DIR" ]; then
-        echo -e "${RED}❌ Diretório $APP_DIR não encontrado. Rode a instalação primeiro.${NC}"
-        return 1
-    fi
-    cd "$APP_DIR" || { echo -e "${RED}❌ Falha ao acessar $APP_DIR${NC}"; return 1; }
-    echo -e "${GREEN}✓ Diretório atual: $(pwd)${NC}"
+    SUPA_TOKEN="sbp_210e67ac1e5b09b5c8d534af0587fbda63471799"
+    SUPA_REF="bcijktxnuzsatvhammpl"
 
-    # Descobre o project-ref padrão a partir do .env (VITE_SUPABASE_PROJECT_ID ou URL)
-    DEFAULT_REF=""
-    if [ -f "$APP_DIR/.env" ]; then
-        DEFAULT_REF=$(grep -E '^VITE_SUPABASE_PROJECT_ID' "$APP_DIR/.env" | cut -d= -f2 | tr -d '"' | tr -d "'")
-        if [ -z "$DEFAULT_REF" ]; then
-            DEFAULT_REF=$(grep -E '^VITE_SUPABASE_URL' "$APP_DIR/.env" | cut -d= -f2 | tr -d '"' | sed -E 's|https?://([^.]+)\..*|\1|')
-        fi
-    fi
+    cd /opt/bivvo-pagamento || { echo -e "${RED}❌ Falha ao acessar /opt/bivvo-pagamento${NC}"; return 1; }
+    echo -e "${GREEN}✓ Diretório: $(pwd)${NC}"
 
-    DEFAULT_TOKEN="sbp_210e67ac1e5b09b5c8d534af0587fbda63471799"
+    echo -e "${BLUE}→ Login + Link + Deploy Functions...${NC}"
+    npx supabase login --token "$SUPA_TOKEN" \
+      && npx supabase link --project-ref "$SUPA_REF" \
+      && npx supabase functions deploy --no-verify-jwt \
+      || { echo -e "${RED}❌ Falha ao conectar/deployar no Supabase.${NC}"; return 1; }
 
-    echo ""
-    echo -e "${YELLOW}⚠️  O token padrão está pré-configurado. Pressione ENTER para usá-lo${NC}"
-    echo -e "${YELLOW}   ou informe outro (gere em https://supabase.com/dashboard/account/tokens).${NC}"
-    echo ""
-    read -p "🔑 Supabase Access Token [padrão pré-configurado]: " SUPA_TOKEN
-    SUPA_TOKEN=${SUPA_TOKEN:-$DEFAULT_TOKEN}
+    echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
 
-    read -p "🆔 Project Ref [${DEFAULT_REF}]: " SUPA_REF
-    SUPA_REF=${SUPA_REF:-$DEFAULT_REF}
-    if [ -z "$SUPA_REF" ]; then
-        echo -e "${RED}❌ Project Ref vazio. Abortando.${NC}"
-        return 1
-    fi
-
-    export SUPABASE_ACCESS_TOKEN="$SUPA_TOKEN"
-
-    echo -e "${BLUE}Autenticando no Supabase...${NC}"
-    npx supabase login --token "$SUPABASE_ACCESS_TOKEN" || {
-        echo -e "${RED}❌ Falha no login. Verifique o token.${NC}"; return 1;
-    }
-
-    echo -e "${BLUE}Linkando projeto $SUPA_REF...${NC}"
-    if ! npx supabase link --project-ref "$SUPA_REF"; then
-        echo -e "${RED}❌ Falha ao linkar o projeto.${NC}"
-        echo -e "${YELLOW}   Causas comuns:${NC}"
-        echo -e "${YELLOW}   • Token não pertence à conta dona do projeto ($SUPA_REF)${NC}"
-        echo -e "${YELLOW}   • Project Ref incorreto${NC}"
-        echo -e "${YELLOW}   • Token expirado ou revogado${NC}"
-        return 1
-    fi
-
-    # Atualiza o banco de dados: schema base + migrations incrementais (idempotentes)
-    echo -e "${BLUE}Aplicando SQL de banco de dados...${NC}"
+    # Migrations / Schema (mantidos no processo)
+    echo -e "${BLUE}→ Aplicando SQL de banco de dados...${NC}"
     if [ -f "new_deploy/database_schema.sql" ]; then
-        npx supabase db execute --file "new_deploy/database_schema.sql" --project-ref "$SUPA_REF" || true
+        npx supabase db execute --file "new_deploy/database_schema.sql" || true
         echo -e "${GREEN}✓ Schema base aplicado.${NC}"
     fi
     if [ -d "new_deploy/migrations" ]; then
         for MIG in $(ls new_deploy/migrations/*.sql | sort); do
-            echo -e "${BLUE}→ Aplicando $(basename "$MIG")...${NC}"
-            npx supabase db execute --file "$MIG" --project-ref "$SUPA_REF" || true
+            echo -e "${BLUE}  → $(basename "$MIG")${NC}"
+            npx supabase db execute --file "$MIG" || true
         done
-        echo -e "${GREEN}✓ Migrations incrementais aplicadas.${NC}"
-    fi
-
-
-    echo -e "${BLUE}Fazendo Deploy de Edge Functions...${NC}"
-    if [ -d "supabase/functions" ]; then
-        npx supabase functions deploy --no-verify-jwt --project-ref "$SUPA_REF"
-        echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
+        echo -e "${GREEN}✓ Migrations aplicadas.${NC}"
     fi
 
     echo -e "${GREEN}✓ Atualização do Supabase concluída!${NC}"
 }
+
 
 # -----------------------------------------------------------------------------
 # Menu Principal
