@@ -255,26 +255,45 @@ update_supabase_auto() {
         DB_URL=$(read_env_value "SUPABASE_DB_URL" "$APP_DIR/.env")
     fi
 
-    if [ -z "$DB_URL" ]; then
-        echo ""
-        echo -e "${YELLOW}SUPABASE_DB_URL não encontrada no ambiente nem em $APP_DIR/.env.${NC}"
-        echo -e "${YELLOW}Cole somente a connection string do banco, não a API URL nem a anon key.${NC}"
-        echo -e "${YELLOW}Formato aceito: postgresql://usuario:senha@host:porta/postgres?sslmode=require${NC}"
-        read -r -s -p "🔐 Cole a SUPABASE_DB_URL para aplicar schema e migrations: " DB_URL
-        echo ""
-        DB_URL=$(normalize_db_url "$DB_URL")
-
-        if [ -n "$DB_URL" ]; then
-            upsert_env_value "SUPABASE_DB_URL" "$DB_URL" "$APP_DIR/.env"
-            echo -e "${GREEN}✓ SUPABASE_DB_URL salva em $APP_DIR/.env para próximas atualizações.${NC}"
+    # Loop até obter uma URL válida (ou desistir após 3 tentativas)
+    local ATTEMPTS=0
+    while [ -z "$DB_URL" ] || ! [[ "$DB_URL" =~ ^postgres(ql)?:// ]]; do
+        ATTEMPTS=$((ATTEMPTS+1))
+        if [ "$ATTEMPTS" -gt 3 ]; then
+            echo -e "${RED}❌ SUPABASE_DB_URL inválida após várias tentativas. Abortando.${NC}"
+            return 1
         fi
-    fi
 
-    if [ -z "$DB_URL" ] || ! [[ "$DB_URL" =~ ^postgres(ql)?:// ]]; then
-        echo -e "${RED}❌ SUPABASE_DB_URL inválida ou vazia.${NC}"
-        echo -e "${YELLOW}Ela precisa começar com postgres:// ou postgresql://.${NC}"
-        return 1
-    fi
+        # Remove qualquer linha antiga inválida do .env
+        if [ -f "$APP_DIR/.env" ]; then
+            sed -i.bak -E '/^[[:space:]]*(export[[:space:]]+)?SUPABASE_DB_URL=/d' "$APP_DIR/.env" 2>/dev/null || true
+            rm -f "$APP_DIR/.env.bak"
+        fi
+
+        echo ""
+        echo -e "${YELLOW}SUPABASE_DB_URL ausente ou inválida.${NC}"
+        echo -e "${YELLOW}Cole SOMENTE a connection string do banco (não a API URL nem a anon key).${NC}"
+        echo -e "${YELLOW}Formato: postgresql://usuario:senha@host:porta/postgres?sslmode=require${NC}"
+        echo -e "${YELLOW}Encontre em: Supabase Dashboard → Project Settings → Database → Connection string (URI).${NC}"
+        read -r -p "🔐 Cole a SUPABASE_DB_URL: " DB_URL_RAW
+        DB_URL=$(normalize_db_url "$DB_URL_RAW")
+
+        if [ -z "$DB_URL" ]; then
+            echo -e "${RED}❌ Nada foi colado. Tente novamente.${NC}"
+            continue
+        fi
+
+        if ! [[ "$DB_URL" =~ ^postgres(ql)?:// ]]; then
+            echo -e "${RED}❌ A string precisa começar com postgres:// ou postgresql://.${NC}"
+            echo -e "${YELLOW}Você colou: '$(printf '%s' "$DB_URL" | cut -c1-40)...'${NC}"
+            DB_URL=""
+            continue
+        fi
+    done
+
+    # Salva no .env somente após validação
+    upsert_env_value "SUPABASE_DB_URL" "$DB_URL" "$APP_DIR/.env"
+    echo -e "${GREEN}✓ SUPABASE_DB_URL válida e salva em $APP_DIR/.env.${NC}"
 
     if ! command -v psql >/dev/null 2>&1; then
         echo -e "${YELLOW}psql não encontrado. Instalando postgresql-client...${NC}"
