@@ -118,44 +118,112 @@ update_supabase_auto() {
     echo ""
     echo -e "${BLUE}━━━━━ ATUALIZANDO SUPABASE (FUNCTIONS + SCHEMA) ━━━━━${NC}"
 
-    local SUPA_TOKEN="sbp_d9d180ffac7b61b99141e190255a3d85e6dc9745"
-    local SUPA_REF="bcijktxnuzsatvhammpl"
+    local DEFAULT_SUPA_REF="bcijktxnuzsatvhammpl"
+    local SUPA_REF="${SUPABASE_PROJECT_REF:-$DEFAULT_SUPA_REF}"
+    local SUPA_TOKEN="${SUPABASE_ACCESS_TOKEN:-}"
+    local DB_URL="${SUPABASE_DB_URL:-}"
 
-    if [ ! -d "/opt/bivvo-pagamento" ]; then
-        echo -e "${RED}❌ /opt/bivvo-pagamento não encontrado. Rode a instalação primeiro.${NC}"
+    if [ ! -d "$APP_DIR" ]; then
+        echo -e "${RED}❌ $APP_DIR não encontrado. Rode a instalação primeiro.${NC}"
+        return 1
+    fi
+
+    cd "$APP_DIR" || return 1
+    echo -e "${GREEN}✓ Diretório atual: $(pwd)${NC}"
+
+    echo ""
+    echo -e "${YELLOW}Novo método: deploy direto pelo Project Ref, sem 'login' e sem 'link'.${NC}"
+    echo -e "${YELLOW}Isso evita conflito com sessão/cache antigo do Supabase CLI.${NC}"
+    echo ""
+
+    if [ -z "$SUPA_TOKEN" ]; then
+        read -r -s -p "🔑 Cole o Supabase Access Token: " SUPA_TOKEN
+        echo ""
+    fi
+
+    if [ -z "$SUPA_TOKEN" ]; then
+        echo -e "${RED}❌ Access Token é obrigatório para publicar as Edge Functions.${NC}"
+        return 1
+    fi
+
+    read -r -p "🆔 Project Ref [$SUPA_REF]: " INPUT_SUPA_REF
+    SUPA_REF="${INPUT_SUPA_REF:-$SUPA_REF}"
+
+    if [ -z "$SUPA_REF" ]; then
+        echo -e "${RED}❌ Project Ref é obrigatório.${NC}"
         return 1
     fi
 
     export SUPABASE_ACCESS_TOKEN="$SUPA_TOKEN"
 
-    # Sequência simplificada — idêntica ao comando manual
-    cd /opt/bivvo-pagamento \
-        && npx supabase login --token sbp_4cd19295618d3b64bfba823a56070002471593ed \
-        && npx supabase link --project-ref bcijktxnuzsatvhammpl \
-        && npx supabase functions deploy --no-verify-jwt \
-        || { echo -e "${RED}❌ Falha na conexão/deploy do Supabase.${NC}"; return 1; }
+    echo ""
+    echo -e "${BLUE}→ Publicando Edge Functions com deploy direto...${NC}"
 
-    echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
+    local TMP_SUPA_HOME
+    TMP_SUPA_HOME=$(mktemp -d)
 
-    # Aplicação do schema + migrations no banco (via psql)
+    if HOME="$TMP_SUPA_HOME" npx -y supabase@latest functions deploy --all --project-ref "$SUPA_REF" --no-verify-jwt; then
+        rm -rf "$TMP_SUPA_HOME"
+        echo -e "${GREEN}✓ Edge Functions publicadas.${NC}"
+    else
+        rm -rf "$TMP_SUPA_HOME"
+        echo -e "${RED}❌ Falha ao publicar as Edge Functions pelo método direto.${NC}"
+        echo -e "${YELLOW}Verifique se o token pertence à conta dona do projeto e se o Project Ref está correto.${NC}"
+        return 1
+    fi
+
+    # Aplicação do schema + migrations no banco (via psql direto no banco)
     echo -e "${BLUE}→ Aplicando SQL (schema + migrations)...${NC}"
 
-    local DB_URL=""
-    if [ -f "/opt/bivvo-pagamento/.env" ]; then
-        DB_URL=$(grep -E '^SUPABASE_DB_URL' /opt/bivvo-pagamento/.env | cut -d= -f2- | tr -d '"' | tr -d "'")
+    if [ -z "$DB_URL" ] && [ -f "$APP_DIR/.env" ]; then
+        DB_URL=$(grep -E '^SUPABASE_DB_URL=' "$APP_DIR/.env" | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'")
     fi
 
-    if [ -n "$DB_URL" ] && command -v psql >/dev/null 2>&1; then
-        [ -f "new_deploy/database_schema.sql" ] && psql "$DB_URL" -v ON_ERROR_STOP=0 -f new_deploy/database_schema.sql || true
-        for MIG in $(ls new_deploy/migrations/*.sql 2>/dev/null | sort); do
-            echo -e "${BLUE}  → $(basename "$MIG")${NC}"
-            psql "$DB_URL" -v ON_ERROR_STOP=0 -f "$MIG" || true
-        done
-        echo -e "${GREEN}✓ Schema e migrations aplicados.${NC}"
-    else
-        echo -e "${YELLOW}⚠️  SUPABASE_DB_URL não encontrada ou psql não instalado.${NC}"
-        echo -e "${YELLOW}   Aplique manualmente no SQL Editor: database_schema.sql + migrations/*.sql${NC}"
+    if [ -z "$DB_URL" ]; then
+        echo ""
+        echo -e "${YELLOW}SUPABASE_DB_URL não encontrada no ambiente nem em $APP_DIR/.env.${NC}"
+        read -r -s -p "🔐 Cole a SUPABASE_DB_URL para aplicar schema e migrations: " DB_URL
+        echo ""
+
+        if [ -n "$DB_URL" ] && [ -f "$APP_DIR/.env" ] && ! grep -qE '^SUPABASE_DB_URL=' "$APP_DIR/.env"; then
+            printf '\nSUPABASE_DB_URL=%s\n' "$DB_URL" >> "$APP_DIR/.env"
+            chmod 600 "$APP_DIR/.env"
+            echo -e "${GREEN}✓ SUPABASE_DB_URL salva em $APP_DIR/.env para próximas atualizações.${NC}"
+        fi
     fi
+
+    if [ -z "$DB_URL" ]; then
+        echo -e "${RED}❌ SUPABASE_DB_URL é obrigatória para aplicar schema e migrations.${NC}"
+        return 1
+    fi
+
+    if ! command -v psql >/dev/null 2>&1; then
+        echo -e "${YELLOW}psql não encontrado. Instalando postgresql-client...${NC}"
+        apt update && apt install -y postgresql-client
+    fi
+
+    if ! psql "$DB_URL" -v ON_ERROR_STOP=1 -c "select 1;" >/dev/null; then
+        echo -e "${RED}❌ Não foi possível conectar ao banco com a SUPABASE_DB_URL informada.${NC}"
+        return 1
+    fi
+
+    if [ -f "new_deploy/database_schema.sql" ]; then
+        echo -e "${BLUE}  → database_schema.sql${NC}"
+        psql "$DB_URL" -v ON_ERROR_STOP=0 -f new_deploy/database_schema.sql
+    else
+        echo -e "${YELLOW}⚠️  new_deploy/database_schema.sql não encontrado.${NC}"
+    fi
+
+    if [ -d "new_deploy/migrations" ]; then
+        while IFS= read -r -d '' MIG; do
+            echo -e "${BLUE}  → $(basename "$MIG")${NC}"
+            psql "$DB_URL" -v ON_ERROR_STOP=0 -f "$MIG"
+        done < <(find new_deploy/migrations -maxdepth 1 -type f -name '*.sql' -print0 | sort -z)
+    else
+        echo -e "${YELLOW}⚠️  Pasta new_deploy/migrations não encontrada.${NC}"
+    fi
+
+    echo -e "${GREEN}✓ Schema e migrations aplicados.${NC}"
 
     echo -e "${GREEN}✓ Atualização do Supabase concluída!${NC}"
 }
