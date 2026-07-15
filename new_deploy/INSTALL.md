@@ -127,18 +127,20 @@ npx supabase link --project-ref SEU_PROJECT_ID
 npx supabase functions deploy --all --no-verify-jwt
 ```
 
-Em seguida, aplique o SQL do banco (schema + migrations) usando `psql` (a `SUPABASE_DB_URL` fica no `.env` do projeto):
+Em seguida, aplique o SQL do banco (schema + migrations) usando `psql` (a `SUPABASE_DB_URL` fica no `.env` do projeto). A URL precisa ser a **connection string do banco**, começando com `postgresql://` ou `postgres://` — não use a URL pública da API nem a chave anon:
 
 ```bash
 # Schema base (apenas para instalação nova; é idempotente)
-psql "$SUPABASE_DB_URL" -f new_deploy/database_schema.sql
+psql --dbname="$SUPABASE_DB_URL" -f new_deploy/database_schema.sql
 
 # Migrations incrementais em ordem
-psql "$SUPABASE_DB_URL" -f new_deploy/migrations/003_new_features.sql
-psql "$SUPABASE_DB_URL" -f new_deploy/migrations/004_security_and_settings.sql
-psql "$SUPABASE_DB_URL" -f new_deploy/migrations/005_task_enhancements.sql
-psql "$SUPABASE_DB_URL" -f new_deploy/migrations/006_finance_metrics.sql
+psql --dbname="$SUPABASE_DB_URL" -f new_deploy/migrations/003_new_features.sql
+psql --dbname="$SUPABASE_DB_URL" -f new_deploy/migrations/004_security_and_settings.sql
+psql --dbname="$SUPABASE_DB_URL" -f new_deploy/migrations/005_task_enhancements.sql
+psql --dbname="$SUPABASE_DB_URL" -f new_deploy/migrations/006_finance_metrics.sql
 ```
+
+Se aparecer erro tentando conectar no socket local `/var/run/postgresql/.s.PGSQL.5432`, a `SUPABASE_DB_URL` foi colada/salva em formato incorreto. Apague a linha `SUPABASE_DB_URL=` do arquivo `/opt/bivvo-pagamento/.env` e execute o instalador novamente, colando somente a connection string completa do banco.
 
 > 💡 O opção **3 do `auto_install.sh` (Atualizar Supabase)** faz todos esses passos automaticamente (login + link + deploy + schema + migrations).
 
