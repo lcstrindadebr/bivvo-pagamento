@@ -377,6 +377,7 @@ serve(async (req) => {
         paidCount: pctDelta(current.paidCount, previous.paidCount),
         totalValue: pctDelta(current.totalValue, previous.totalValue),
         freeCash: pctDelta(current.freeCash, previous.freeCash),
+        projection: pctDelta(current.projection, previous.projection),
         churnRate: ppDelta(current.churnRate, previous.churnRate),
       } : null;
 
@@ -391,6 +392,7 @@ serve(async (req) => {
         activeSubscriptions: activeSubsCount,
         mrr,
         arpu,
+        bankBalance,
         conversionRate: totalClicks ? ((totalSalesCount || 0) / totalClicks * 100) : 0,
         totalClicks: totalClicks || 0,
         retainedCommissions: 0,
