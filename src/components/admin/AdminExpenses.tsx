@@ -274,46 +274,64 @@ export default function AdminExpenses({ adminFetch, adminPost }: AdminExpensesPr
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="card-glass border-none shadow-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-red-500" /> Total Despesas (Mês)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-500">
-              {formatCurrency(expenses.reduce((acc, curr) => acc + Number(curr.amount), 0))}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="card-glass border-none shadow-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Tag className="h-4 w-4 text-blue-500" /> Despesas Fixas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-500">
-              {formatCurrency(expenses.filter(e => e.type === 'fixed').reduce((acc, curr) => acc + Number(curr.amount), 0))}
-            </div>
-          </CardContent>
-        </Card>
+      {(() => {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+        const inCurrentMonth = (e: Expense) => {
+          const d = new Date(e.date);
+          return d.getFullYear() === y && d.getMonth() === m;
+        };
+        const monthExpenses = expenses.filter(inCurrentMonth);
+        const totalMonth = monthExpenses.reduce((acc, curr) => acc + Number(curr.amount), 0);
+        const fixedMonth = monthExpenses.filter(e => e.type === 'fixed').reduce((acc, curr) => acc + Number(curr.amount), 0);
+        const variableMonth = monthExpenses.filter(e => e.type === 'variable').reduce((acc, curr) => acc + Number(curr.amount), 0);
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="card-glass border-none shadow-xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-red-500" /> Total Despesas (Mês)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-500">
+                  {formatCurrency(totalMonth)}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  Soma dos débitos do mês vigente (inclui parcelas/recorrentes deste mês)
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card className="card-glass border-none shadow-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Tag className="h-4 w-4 text-amber-500" /> Despesas Variáveis
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-500">
-              {formatCurrency(expenses.filter(e => e.type === 'variable').reduce((acc, curr) => acc + Number(curr.amount), 0))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Card className="card-glass border-none shadow-xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-blue-500" /> Despesas Fixas (Mês)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-500">
+                  {formatCurrency(fixedMonth)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="card-glass border-none shadow-xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-amber-500" /> Despesas Variáveis (Mês)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-500">
+                  {formatCurrency(variableMonth)}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
 
       <div className="card-glass rounded-xl overflow-hidden">
         <Table>
