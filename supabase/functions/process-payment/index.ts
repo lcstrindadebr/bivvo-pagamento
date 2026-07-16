@@ -4,6 +4,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { quoteBivvo, round2 } from "../_shared/bivvo-logic.ts";
 import { asaasFetch } from "../_shared/asaas.ts";
 import { runProvisionAndPersist } from "../_shared/bivvo-api.ts";
+import { validateAndLoadCoupon, incrementCouponUse } from "../_shared/coupon.ts";
 
 
 serve(async (req) => {
@@ -20,7 +21,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { plan, customerData, cardData, bivvoConfig, affiliateSlug, trackingId } = body;
+    const { plan, customerData, cardData, bivvoConfig, affiliateSlug, trackingId, couponCode } = body;
     
     // Get remote IP from headers (Supabase adds this)
     const remoteIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";

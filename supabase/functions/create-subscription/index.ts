@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { quoteBivvo, round2 } from "../_shared/bivvo-logic.ts";
 import { asaasFetch } from "../_shared/asaas.ts";
+import { runProvisionAndPersist } from "../_shared/bivvo-api.ts";
+import { validateAndLoadCoupon, incrementCouponUse } from "../_shared/coupon.ts";
 
 // --- Validation Utils ---
 const VALID_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -37,7 +39,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { plan, billingType, customerData, bivvoConfig, affiliateSlug, trackingId } = body;
+    const { plan, billingType, customerData, bivvoConfig, affiliateSlug, trackingId, couponCode } = body;
     
     // Get remote IP from headers (Supabase adds this)
     const remoteIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
