@@ -1,6 +1,8 @@
 // Helper para provisionar tenant + usuário na API adm.bivvo.com.br
 // Utilizado por process-payment, create-subscription e asaas-webhook.
 
+import { log } from './logger.ts';
+
 const BIVVO_API_URL = Deno.env.get('BIVVO_API_URL') || 'https://adm.bivvo.com.br';
 
 // Menu base SEM MassDispatch — MassDispatch só é adicionado se cliente contratar disparo em massa.
@@ -107,6 +109,9 @@ async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string)
   };
 
   console.log('[Bivvo] storeTenant →', tenantName, `${maxUsers}u`, `${maxConnections}c`);
+  await log.info('bivvo-api', `storeTenant → ${tenantName}`, {
+    userId: user.id, email: user.email, maxUsers, maxConnections, limits, payload: storePayload,
+  });
   const res = await fetch(`${BIVVO_API_URL}/tenantApiStoreTenant`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: bearer() },
@@ -116,7 +121,11 @@ async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string)
   let json: any = null;
   try { json = JSON.parse(text); } catch { /* keep text */ }
   console.log('[Bivvo] storeTenant status:', res.status, 'body:', text.slice(0, 800));
+  await log.info('bivvo-api', `storeTenant response ${res.status}`, {
+    userId: user.id, status: res.status, ok: res.ok, body: json ?? text.slice(0, 2000),
+  });
   if (!res.ok) {
+    await log.error('bivvo-api', `storeTenant falhou ${res.status}`, { userId: user.id, body: text.slice(0, 2000) });
     throw new Error(`storeTenant ${res.status}: ${text.slice(0, 500)}`);
   }
   const tenantId = String(
@@ -145,6 +154,9 @@ async function callUpdateTenant(
   };
 
   console.log('[Bivvo] updateTenant →', identity, 'menu:', updatePayload.menuVisibility, 'limits:', ctx.limits);
+  await log.info('bivvo-api', `updateTenant → ${identity}`, {
+    userId: user.id, payload: updatePayload,
+  });
   const res = await fetch(`${BIVVO_API_URL}/tenantApiUpdateTenant`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: bearer() },
@@ -152,11 +164,15 @@ async function callUpdateTenant(
   });
   const text = await res.text();
   console.log('[Bivvo] updateTenant status:', res.status, 'body:', text.slice(0, 800));
-  if (!res.ok) {
-    throw new Error(`updateTenant ${res.status}: ${text.slice(0, 500)}`);
-  }
   let json: any = null;
   try { json = JSON.parse(text); } catch { /* keep text */ }
+  await log.info('bivvo-api', `updateTenant response ${res.status}`, {
+    userId: user.id, status: res.status, ok: res.ok, body: json ?? text.slice(0, 2000),
+  });
+  if (!res.ok) {
+    await log.error('bivvo-api', `updateTenant falhou ${res.status}`, { userId: user.id, body: text.slice(0, 2000) });
+    throw new Error(`updateTenant ${res.status}: ${text.slice(0, 500)}`);
+  }
   return json ?? { raw: text };
 }
 
@@ -225,10 +241,12 @@ export async function runProvisionAndPersist(supabase: any, userId: string) {
     }).eq('id', userId);
     return res;
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error('[Bivvo] Erro provisionando tenant:', err);
+    await log.error('bivvo-api', `runProvisionAndPersist erro: ${msg}`, { userId });
     await supabase.from('users').update({
-      tenant_provision_error: (err instanceof Error ? err.message : String(err)).slice(0, 1000),
+      tenant_provision_error: msg.slice(0, 1000),
     }).eq('id', userId);
-    return { skipped: false, error: err instanceof Error ? err.message : String(err) };
+    return { skipped: false, error: msg };
   }
 }
