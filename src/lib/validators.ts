@@ -27,6 +27,37 @@ export function validateCPF(cpf: string): boolean {
   return true;
 }
 
+// Validação de CNPJ brasileiro
+export function validateCNPJ(cnpj: string): boolean {
+  const clean = cnpj.replace(/\D/g, '');
+  if (clean.length !== 14) return false;
+  if (/^(\d)\1+$/.test(clean)) return false;
+
+  const calc = (base: string, weights: number[]) => {
+    let sum = 0;
+    for (let i = 0; i < weights.length; i++) sum += parseInt(base.charAt(i)) * weights[i];
+    const rem = sum % 11;
+    return rem < 2 ? 0 : 11 - rem;
+  };
+
+  const w1 = [5,4,3,2,9,8,7,6,5,4,3,2];
+  const w2 = [6,5,4,3,2,9,8,7,6,5,4,3,2];
+  const d1 = calc(clean, w1);
+  if (d1 !== parseInt(clean.charAt(12))) return false;
+  const d2 = calc(clean, w2);
+  return d2 === parseInt(clean.charAt(13));
+}
+
+// Máscara para CNPJ
+export function maskCNPJ(value: string): string {
+  const clean = value.replace(/\D/g, '').slice(0, 14);
+  return clean
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+}
+
 // Validação de número de cartão (algoritmo de Luhn)
 export function validateCardNumber(cardNumber: string): boolean {
   const cleanCard = cardNumber.replace(/\s/g, '');
