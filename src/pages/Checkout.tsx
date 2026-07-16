@@ -307,7 +307,7 @@ const Checkout = () => {
       if (!formData.estado.trim()) newErrors.estado = 'Estado obrigatório';
     }
 
-    if (step === 'payment' && paymentMethod === 'CREDIT_CARD') {
+    if (step === 'payment' && paymentMethod === 'CREDIT_CARD' && !isFreeCoupon) {
       if (!formData.cardName.trim()) newErrors.cardName = 'Nome obrigatório';
       if (!validateCardNumber(formData.cardNumber)) newErrors.cardNumber = 'Cartão inválido';
       if (!validateExpiry(formData.cardExpiry)) {
@@ -358,10 +358,11 @@ const Checkout = () => {
 
     const result = await processPayment({
       plan: plan.slug,
-      amount: plan.price,
+      amount: discountedPrice,
       bivvoConfig,
       affiliateSlug: affiliateSlug || undefined,
       trackingId: cfgParam || undefined,
+      couponCode: appliedCoupon?.code,
       customerData: {
         personType: formData.personType,
         name: formData.name,
@@ -409,10 +410,11 @@ const Checkout = () => {
         },
         body: JSON.stringify({
           plan: plan.slug,
-          billingType: paymentMethod,
+          billingType: paymentMethod === 'CREDIT_CARD' ? 'PIX' : paymentMethod,
           bivvoConfig,
           affiliateSlug: affiliateSlug || undefined,
           trackingId: cfgParam || undefined,
+          couponCode: appliedCoupon?.code,
           customerData: {
             personType: formData.personType,
             name: formData.name,
