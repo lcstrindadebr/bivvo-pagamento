@@ -37,11 +37,18 @@ interface OverdueCustomer {
 interface FinanceSeriesPoint {
   bucket: string;
   revenue: number;
+  receivedRevenue: number;
+  receivedNet: number;
+  asaasFees: number;
+  forecastRevenue: number;
   expenses: number;
   commissions: number;
   refunds: number;
   netProfit: number;
+  netFlow: number;
+  runningBalance: number;
   cashFlow: number;
+  isFuture: boolean;
 }
 
 interface FinanceStats {
