@@ -263,7 +263,23 @@ const Admin = () => {
     }
   };
 
-  // Verificação de tenant é automática no backend durante list-subscriptions.
+  const handleRefreshAllBivvo = async () => {
+    setRefreshingBivvo(true);
+    try {
+      const res: any = await adminPost('refresh-all-bivvo-statuses', {});
+      const s = res?.summary || {};
+      toast({
+        title: 'Consulta Bivvo concluída',
+        description: `Total: ${s.total ?? 0} · Ativos: ${s.active ?? 0} · Inativos: ${s.inactive ?? 0} · Sem tenant: ${s.none ?? 0} · Preencher ID: ${s.fill ?? 0} · Erros: ${s.error ?? 0}`,
+      });
+      await loadSubscriptions({});
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao consultar Bivvo', variant: 'destructive' });
+    } finally {
+      setRefreshingBivvo(false);
+    }
+  };
+
 
 
 
