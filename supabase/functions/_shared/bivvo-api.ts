@@ -154,6 +154,9 @@ async function callUpdateTenant(
   };
 
   console.log('[Bivvo] updateTenant →', identity, 'menu:', updatePayload.menuVisibility, 'limits:', ctx.limits);
+  await log.info('bivvo-api', `updateTenant → ${identity}`, {
+    userId: user.id, payload: updatePayload,
+  });
   const res = await fetch(`${BIVVO_API_URL}/tenantApiUpdateTenant`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: bearer() },
@@ -161,11 +164,15 @@ async function callUpdateTenant(
   });
   const text = await res.text();
   console.log('[Bivvo] updateTenant status:', res.status, 'body:', text.slice(0, 800));
-  if (!res.ok) {
-    throw new Error(`updateTenant ${res.status}: ${text.slice(0, 500)}`);
-  }
   let json: any = null;
   try { json = JSON.parse(text); } catch { /* keep text */ }
+  await log.info('bivvo-api', `updateTenant response ${res.status}`, {
+    userId: user.id, status: res.status, ok: res.ok, body: json ?? text.slice(0, 2000),
+  });
+  if (!res.ok) {
+    await log.error('bivvo-api', `updateTenant falhou ${res.status}`, { userId: user.id, body: text.slice(0, 2000) });
+    throw new Error(`updateTenant ${res.status}: ${text.slice(0, 500)}`);
+  }
   return json ?? { raw: text };
 }
 
