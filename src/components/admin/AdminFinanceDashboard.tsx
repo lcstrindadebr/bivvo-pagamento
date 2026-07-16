@@ -376,68 +376,6 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="card-glass border-none shadow-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <XCircle className="h-4 w-4 text-red-500" /> Churn Rate
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <div className="text-2xl font-bold text-red-500">{stats?.churnRate.toFixed(2)}%</div>
-                  <DeltaBadge value={stats?.deltas?.churnRate} kind="pp" inverse />
-                </div>
-                <div className="text-[10px] text-muted-foreground">
-                  Normalizado para 30 dias
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-
-        <Card className="card-glass border-none shadow-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-blue-500" /> LTV
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              <div className="flex flex-col">
-                <div className="text-2xl font-bold text-blue-500">
-                  {stats && stats.churnRate > 0 ? formatCurrency(stats.ltv) : '—'}
-                </div>
-                <div className="text-[10px] text-muted-foreground">
-                  ARPU {formatCurrency(stats?.arpu || 0)} / mês
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="card-glass border-none shadow-xl">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <MousePointerClick className="h-4 w-4 text-purple-500" /> Conversão Global
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-              <div className="flex flex-col">
-                <div className="text-2xl font-bold text-purple-500">{stats?.conversionRate.toFixed(2)}%</div>
-                <div className="text-[10px] text-muted-foreground">
-                  {stats?.totalClicks || 0} cliques totais
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       <Card className="card-glass border-none shadow-xl overflow-hidden">
         <CardHeader>
           <CardTitle>Últimas Cobranças de Assinaturas</CardTitle>
