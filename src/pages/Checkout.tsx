@@ -185,6 +185,9 @@ const Checkout = () => {
       case 'cpf':
         maskedValue = maskCPF(value);
         break;
+      case 'cnpj':
+        maskedValue = maskCNPJ(value);
+        break;
       case 'whatsapp':
         maskedValue = maskPhone(value);
         break;
