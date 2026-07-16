@@ -54,6 +54,12 @@ const Checkout = () => {
   const { toast } = useToast();
   const { fetchAddress, loading: cepLoading } = useViaCep();
   const { processPayment, loading: paymentLoading, error: paymentError, status: paymentStatus, reset } = usePayment();
+  const { data: siteSettings } = useSiteSettings();
+  const supportWhatsapp = (siteSettings?.support_whatsapp || '5511936230279').replace(/\D/g, '');
+  const goToSupport = () => {
+    const msg = encodeURIComponent(`Olá! Acabei de contratar o ${plan?.name || 'plano Bivvo'} e gostaria de iniciar a configuração.`);
+    window.location.href = `https://wa.me/${supportWhatsapp}?text=${msg}`;
+  };
 
   const [plan, setPlan] = useState<Plan | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
