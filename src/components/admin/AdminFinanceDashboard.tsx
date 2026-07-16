@@ -8,8 +8,10 @@ import { formatCurrency } from '@/lib/validators';
 import { useToast } from '@/hooks/use-toast';
 import {
   ResponsiveContainer,
+  ComposedChart,
   BarChart,
   Bar,
+  Line,
   AreaChart,
   Area,
   XAxis,
