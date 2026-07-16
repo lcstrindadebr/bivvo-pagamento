@@ -230,7 +230,6 @@ const Admin = () => {
         description: selectedSub.description || ''
       });
       setTenantBivvo(selectedSub.tenantBivvo || '');
-      setTenantCheck(null);
       setContactForm({
         name: selectedSub.customerName || '',
         email: selectedSub.customerEmail || '',
