@@ -685,14 +685,18 @@ const Checkout = () => {
             <div className="card-glass rounded-2xl p-5 space-y-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Tipo de cadastro</Label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="relative grid grid-cols-2 p-1 rounded-xl bg-muted/40 border border-border/60">
+                  <div
+                    aria-hidden
+                    className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg bg-gradient-to-br from-accent to-primary shadow-md shadow-accent/20 transition-transform duration-300 ease-out ${
+                      formData.personType === 'JURIDICA' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
+                    }`}
+                  />
                   <button
                     type="button"
                     onClick={() => setFormData((p) => ({ ...p, personType: 'FISICA' }))}
-                    className={`h-12 rounded-xl border text-sm font-medium transition-all ${
-                      formData.personType === 'FISICA'
-                        ? 'bg-gradient-to-br from-accent to-primary text-white border-transparent shadow-lg shadow-accent/30'
-                        : 'bg-muted/30 text-muted-foreground border-border hover:border-accent/40'
+                    className={`relative z-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                      formData.personType === 'FISICA' ? 'text-white' : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     Pessoa Física
@@ -700,10 +704,8 @@ const Checkout = () => {
                   <button
                     type="button"
                     onClick={() => setFormData((p) => ({ ...p, personType: 'JURIDICA' }))}
-                    className={`h-12 rounded-xl border text-sm font-medium transition-all ${
-                      formData.personType === 'JURIDICA'
-                        ? 'bg-gradient-to-br from-accent to-primary text-white border-transparent shadow-lg shadow-accent/30'
-                        : 'bg-muted/30 text-muted-foreground border-border hover:border-accent/40'
+                    className={`relative z-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                      formData.personType === 'JURIDICA' ? 'text-white' : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     Pessoa Jurídica
