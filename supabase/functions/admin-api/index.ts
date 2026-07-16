@@ -651,7 +651,108 @@ serve(async (req) => {
       });
     }
 
+    // ── CUSTOMER (Asaas customer + local users) ─────────────
+    if (action === 'update-customer' && req.method === 'POST') {
+      const body = await req.json();
+      const { asaasCustomerId, name, email, phone, mobilePhone, cpfCnpj,
+              address, addressNumber, complement, province, postalCode,
+              additionalEmails, observations } = body;
+      if (!asaasCustomerId) throw new Error('asaasCustomerId é obrigatório');
+
+      // Envia apenas campos preenchidos ao Asaas (evita sobrescrever com vazio)
+      const asaasPayload: Record<string, any> = {};
+      const map: Record<string, any> = {
+        name, email, phone, mobilePhone, cpfCnpj,
+        address, addressNumber, complement, province, postalCode,
+        additionalEmails, observations,
+      };
+      for (const [k, v] of Object.entries(map)) {
+        if (v !== undefined && v !== null && String(v).trim() !== '') asaasPayload[k] = v;
+      }
+
+      const asaasResp = await fetch(`${ASAAS_BASE_URL}/customers/${asaasCustomerId}`, {
+        method: 'PUT',
+        headers: {
+          'access_token': ASAAS_API_KEY,
+          'Content-Type': 'application/json',
+          'User-Agent': 'BivvoAdmin/1.0',
+        },
+        body: JSON.stringify(asaasPayload),
+      });
+      const asaasResult = await asaasResp.json();
+      if (!asaasResp.ok) {
+        console.error('Erro Asaas update-customer:', JSON.stringify(asaasResult));
+        throw new Error(asaasResult.errors?.[0]?.description || `Asaas Error ${asaasResp.status}`);
+      }
+
+      // Sincroniza local `users` sem duplicar
+      const localUpdate: Record<string, any> = {};
+      if (name) localUpdate.name = name;
+      if (email) localUpdate.email = email;
+      if (mobilePhone || phone) localUpdate.whatsapp = mobilePhone || phone;
+      if (cpfCnpj) localUpdate.cpf = cpfCnpj;
+      if (postalCode) localUpdate.cep = postalCode;
+      if (address) localUpdate.endereco = address;
+      if (addressNumber) localUpdate.numero = addressNumber;
+      if (complement) localUpdate.complemento = complement;
+      if (province) localUpdate.bairro = province;
+
+      const { data: existing } = await supabase
+        .from('users').select('id').eq('asaas_customer_id', asaasCustomerId).maybeSingle();
+
+      if (existing) {
+        await supabase.from('users').update(localUpdate).eq('id', existing.id);
+      } else {
+        // Não existe: cria (sem duplicar por email se possível)
+        const byEmail = email
+          ? (await supabase.from('users').select('id').eq('email', email).maybeSingle()).data
+          : null;
+        if (byEmail) {
+          await supabase.from('users').update({ ...localUpdate, asaas_customer_id: asaasCustomerId }).eq('id', byEmail.id);
+        } else {
+          await supabase.from('users').insert({ ...localUpdate, asaas_customer_id: asaasCustomerId, status: 'active' });
+        }
+      }
+
+      await logAction(supabase, user, 'update-customer', 'users', asaasCustomerId, null, asaasPayload);
+
+      return new Response(JSON.stringify({ ok: true, asaas: asaasResult }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'update-user-tenant' && req.method === 'POST') {
+      const body = await req.json();
+      const { asaasCustomerId, tenantBivvo } = body;
+      if (!asaasCustomerId) throw new Error('asaasCustomerId é obrigatório');
+
+      const { data: existing } = await supabase
+        .from('users').select('id').eq('asaas_customer_id', asaasCustomerId).maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase.from('users')
+          .update({ tenant_bivvo: tenantBivvo || null }).eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('users').insert({
+          asaas_customer_id: asaasCustomerId,
+          tenant_bivvo: tenantBivvo || null,
+          name: 'Cliente Asaas',
+          email: `${asaasCustomerId}@asaas.local`,
+          status: 'active',
+        });
+        if (error) throw error;
+      }
+
+      await logAction(supabase, user, 'update-user-tenant', 'users', asaasCustomerId, null, { tenantBivvo });
+
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── AFFILIATES ──────────────────────────────────────────
+
 
     if (action === 'list-affiliates') {
       const { data, error } = await supabase
