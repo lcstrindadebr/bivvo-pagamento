@@ -136,7 +136,10 @@ interface AdminFinanceDashboardProps {
 export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps) {
   const { toast } = useToast();
   const [stats, setStats] = useState<FinanceStats | null>(null);
-  const [series, setSeries] = useState<FinanceSeriesPoint[]>([]);
+  const [revenueSeries, setRevenueSeries] = useState<RevenuePoint[]>([]);
+  const [profitSeries, setProfitSeries] = useState<ProfitPoint[]>([]);
+  const [balanceSeries, setBalanceSeries] = useState<BalancePoint[]>([]);
+  const [seriesMeta, setSeriesMeta] = useState<SeriesMeta | null>(null);
   const [granularity, setGranularity] = useState<'day' | 'month'>('day');
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'today' | '7days' | '30days' | 'month' | 'custom'>('month');
@@ -179,10 +182,13 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
 
       const [statsData, seriesData] = await Promise.all([
         adminFetch('finance-stats', params),
-        adminFetch('finance-series', { start: startStr, end: endStr, granularity: gran }).catch(() => ({ series: [] })),
+        adminFetch('finance-series', { start: startStr, end: endStr, granularity: gran }).catch(() => ({})),
       ]);
       setStats(statsData);
-      setSeries(seriesData?.series || []);
+      setRevenueSeries(seriesData?.revenueSeries || []);
+      setProfitSeries(seriesData?.profitSeries || []);
+      setBalanceSeries(seriesData?.balanceSeries || []);
+      setSeriesMeta(seriesData?.meta || null);
     } catch (err) {
       console.error('Failed to load finance stats:', err);
     } finally {
