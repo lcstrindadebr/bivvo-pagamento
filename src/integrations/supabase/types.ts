@@ -906,6 +906,7 @@ export type Database = {
           id: string
           name: string
           numero: string | null
+          overdue_since: string | null
           person_type: string | null
           plano_ativo: string | null
           status: string | null
@@ -937,6 +938,7 @@ export type Database = {
           id?: string
           name: string
           numero?: string | null
+          overdue_since?: string | null
           person_type?: string | null
           plano_ativo?: string | null
           status?: string | null
@@ -968,6 +970,7 @@ export type Database = {
           id?: string
           name?: string
           numero?: string | null
+          overdue_since?: string | null
           person_type?: string | null
           plano_ativo?: string | null
           status?: string | null

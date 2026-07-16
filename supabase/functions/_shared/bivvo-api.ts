@@ -137,12 +137,12 @@ async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string)
 async function callUpdateTenant(
   user: UserRow,
   cfg: BivvoCfg,
-  ctx: { maxUsers: number; maxConnections: number; limits: ReturnType<typeof computeChannelLimits> },
+  ctx: { maxUsers: number; maxConnections: number; limits: ReturnType<typeof computeChannelLimits>; status?: string },
 ) {
   const identity = (user.cpf || '').replace(/\D/g, '');
   const updatePayload = {
     identity,
-    status: 'active',
+    status: ctx.status || 'active',
     maxUsers: ctx.maxUsers,
     maxConnections: ctx.maxConnections,
     paymentGateway: 'asaas',
@@ -280,6 +280,41 @@ export async function runUpdateAndPersist(supabase: any, userId: string) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[Bivvo] Erro atualizando tenant:', err);
     await log.error('bivvo-api', `runUpdateAndPersist erro: ${msg}`, { userId });
+    await supabase.from('users').update({
+      tenant_provision_error: msg.slice(0, 1000),
+    }).eq('id', userId);
+    return { skipped: false, error: msg };
+  }
+}
+
+export async function runInactivateAndPersist(supabase: any, userId: string) {
+  const { data: user } = await supabase
+    .from('users')
+    .select('id, name, email, cpf, company_name, person_type, asaas_customer_id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at')
+    .eq('id', userId)
+    .maybeSingle();
+  if (!user) throw new Error('Usuário não encontrado: ' + userId);
+  if (!user.cpf) {
+    return { skipped: true, reason: 'no_cpf' };
+  }
+
+  const cfg = (user.bivvo_config as BivvoCfg) || {};
+  const limits = computeChannelLimits(cfg);
+  const maxUsers = computeUsers(cfg);
+  const maxConnections = Math.max(1, totalConnections(limits));
+
+  try {
+    await log.info('bivvo-api', `runInactivateAndPersist → ${user.id}`, { userId });
+    const updateResponse = await callUpdateTenant(user, cfg, { maxUsers, maxConnections, limits, status: 'inactive' });
+    await supabase.from('users').update({
+      status: 'inativo',
+      tenant_provision_error: null,
+    }).eq('id', userId);
+    return { skipped: false, tenantId: user.bivvo_tenant_id || null, updateResponse };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[Bivvo] Erro inativando tenant:', err);
+    await log.error('bivvo-api', `runInactivateAndPersist erro: ${msg}`, { userId });
     await supabase.from('users').update({
       tenant_provision_error: msg.slice(0, 1000),
     }).eq('id', userId);

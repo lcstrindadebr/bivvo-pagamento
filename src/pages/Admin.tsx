@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp, Receipt, Share2, Copy, Settings, Smartphone, CheckCircle2, FileText, RefreshCw } from 'lucide-react';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp, Receipt, Share2, Copy, Settings, Smartphone, CheckCircle2, FileText, RefreshCw, Ban } from 'lucide-react';
 
 import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
@@ -322,6 +322,33 @@ const Admin = () => {
       setProvisioningTenant(false);
     }
   };
+
+  const handleInactivateTenant = async () => {
+    if (!tenantInfo?.id) {
+      toast({ title: 'Erro', description: 'Cliente não encontrado no banco.', variant: 'destructive' });
+      return;
+    }
+    if (!confirm('Tem certeza que deseja INATIVAR a conta Bivvo deste cliente? O acesso do cliente será bloqueado.')) return;
+    setProvisioningTenant(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('provision-bivvo-tenant', {
+        body: { userId: tenantInfo.id, mode: 'inactivate' },
+      });
+      if (error) throw error;
+      if (data?.result?.error) throw new Error(data.result.error);
+      toast({ title: 'Conta inativada', description: 'A conta Bivvo foi marcada como inativa via API.' });
+      const { data: refreshed } = await supabase.from('users')
+        .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name')
+        .eq('id', tenantInfo.id)
+        .maybeSingle();
+      if (refreshed) setTenantInfo(refreshed);
+    } catch (err) {
+      toast({ title: 'Erro ao inativar', description: err instanceof Error ? err.message : 'Falha ao inativar conta', variant: 'destructive' });
+    } finally {
+      setProvisioningTenant(false);
+    }
+  };
+
 
 
   const handleRefreshAllBivvo = async () => {
@@ -1283,6 +1310,27 @@ const Admin = () => {
                                   ? 'Atualiza o tenant já criado na API Bivvo com base na configuração contratada atual.'
                                   : 'Dispara manualmente a criação/atualização do tenant na API Bivvo com base na configuração contratada.'}
                               </p>
+                              {isProvisioned && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="w-full h-8 text-xs mt-2"
+                                    onClick={handleInactivateTenant}
+                                    disabled={provisioningTenant || !tenantInfo?.id}
+                                  >
+                                    {provisioningTenant ? (
+                                      <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                    ) : (
+                                      <Ban className="h-3 w-3 mr-2" />
+                                    )}
+                                    Inativar Conta Bivvo
+                                  </Button>
+                                  <p className="text-[10px] text-muted-foreground mt-1">
+                                    Envia a inativação ao Bivvo via API. O acesso do cliente será bloqueado. Contas com 5+ dias de inadimplência são inativadas automaticamente todos os dias.
+                                  </p>
+                                </>
+                              )}
                             </div>
                           </>
 
