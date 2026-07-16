@@ -61,32 +61,39 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
   const entries = Array.from(userMap.entries());
 
   await Promise.all(entries.map(async ([key, u]: [string, any]) => {
-    if (!u || !u.id) return;
-
-    // No tenant assigned → status "Inserir ID"
-    if (!u.tenant_bivvo || String(u.tenant_bivvo).trim() === '') {
-      if (u.bivvo_status !== 'Inserir ID') {
-        await supabase.from('users').update({
-          bivvo_status: 'Inserir ID',
-          bivvo_status_checked_at: new Date().toISOString(),
-        }).eq('id', u.id);
-        u.bivvo_status = 'Inserir ID';
-      }
+    if (!u || !u.id) {
+      console.warn('[Bivvo] skip: user sem id', key);
       return;
     }
 
-    // Sempre reconsulta a API Bivvo a cada carregamento (sem cache).
+    const persist = async (newStatus: string) => {
+      const { error: upErr } = await supabase.from('users').update({
+        bivvo_status: newStatus,
+        bivvo_status_checked_at: new Date().toISOString(),
+      }).eq('id', u.id);
+      if (upErr) {
+        console.error(`[Bivvo] falha ao atualizar users.id=${u.id}:`, upErr.message);
+      } else {
+        console.log(`[Bivvo] persist user=${u.id} status=${newStatus}`);
+      }
+      u.bivvo_status = newStatus;
+    };
 
+    // No tenant assigned → status "Inserir ID"
+    if (!u.tenant_bivvo || String(u.tenant_bivvo).trim() === '') {
+      await persist('Inserir ID');
+      return;
+    }
 
-    if (!auth) return; // token não configurado — não sobrescreve
+    if (!auth) {
+      console.warn('[Bivvo] token não configurado — pulando consulta e mantendo status');
+      await persist('Erro API');
+      return;
+    }
 
     const parsedId = Number(String(u.tenant_bivvo).trim());
     if (!Number.isFinite(parsedId)) {
-      await supabase.from('users').update({
-        bivvo_status: 'ID inválido',
-        bivvo_status_checked_at: new Date().toISOString(),
-      }).eq('id', u.id);
-      u.bivvo_status = 'ID inválido';
+      await persist('ID inválido');
       return;
     }
 
@@ -119,18 +126,10 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
         newStatus = 'Erro API';
       }
 
-      await supabase.from('users').update({
-        bivvo_status: newStatus,
-        bivvo_status_checked_at: new Date().toISOString(),
-      }).eq('id', u.id);
-      u.bivvo_status = newStatus;
+      await persist(newStatus);
     } catch (e) {
       console.error('[Bivvo] check failed user', u.id, 'tenant', parsedId, e);
-      await supabase.from('users').update({
-        bivvo_status: 'Erro API',
-        bivvo_status_checked_at: new Date().toISOString(),
-      }).eq('id', u.id);
-      u.bivvo_status = 'Erro API';
+      await persist('Erro API');
     }
   }));
 }
