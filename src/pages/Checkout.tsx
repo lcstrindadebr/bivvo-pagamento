@@ -307,7 +307,7 @@ const Checkout = () => {
       if (!formData.estado.trim()) newErrors.estado = 'Estado obrigatório';
     }
 
-    if (step === 'payment' && paymentMethod === 'CREDIT_CARD' && !isFreeCoupon) {
+    if (step === 'payment' && paymentMethod === 'CREDIT_CARD') {
       if (!formData.cardName.trim()) newErrors.cardName = 'Nome obrigatório';
       if (!validateCardNumber(formData.cardNumber)) newErrors.cardNumber = 'Cartão inválido';
       if (!validateExpiry(formData.cardExpiry)) {
