@@ -228,11 +228,64 @@ const Admin = () => {
         nextDueDate: selectedSub.nextDueDate || '',
         description: selectedSub.description || ''
       });
+      setTenantBivvo(selectedSub.tenantBivvo || '');
+      setContactForm({
+        name: selectedSub.customerName || '',
+        email: selectedSub.customerEmail || '',
+        mobilePhone: selectedSub.customerWhatsapp || '',
+        cpfCnpj: selectedSub.customerCpf || '',
+        postalCode: '', address: '', addressNumber: '', complement: '', province: '',
+      });
       loadSubPayments(selectedSub.id);
     } else {
       setSelectedSubPayments([]);
     }
   }, [selectedSub]);
+
+  const handleSaveTenant = async () => {
+    if (!selectedSub) return;
+    setSavingTenant(true);
+    try {
+      await adminPost('update-user-tenant', {
+        asaasCustomerId: selectedSub.customer,
+        tenantBivvo: tenantBivvo.trim(),
+      });
+      toast({ title: 'Salvo', description: 'Tenant Bivvo atualizado.' });
+      // reflete no card selecionado + lista
+      setSelectedSub(prev => prev ? { ...prev, tenantBivvo: tenantBivvo.trim() } : prev);
+      setSubscriptions(prev => prev.map(s => s.customer === selectedSub.customer ? { ...s, tenantBivvo: tenantBivvo.trim() } : s));
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao salvar tenant', variant: 'destructive' });
+    } finally {
+      setSavingTenant(false);
+    }
+  };
+
+  const handleSaveContact = async () => {
+    if (!selectedSub) return;
+    setSavingContact(true);
+    try {
+      await adminPost('update-customer', {
+        asaasCustomerId: selectedSub.customer,
+        ...contactForm,
+      });
+      toast({ title: 'Sucesso', description: 'Dados de contato atualizados no Asaas e no banco.' });
+      setSelectedSub(prev => prev ? {
+        ...prev,
+        customerName: contactForm.name || prev.customerName,
+        customerEmail: contactForm.email || prev.customerEmail,
+        customerWhatsapp: contactForm.mobilePhone || prev.customerWhatsapp,
+        customerCpf: contactForm.cpfCnpj || prev.customerCpf,
+      } : prev);
+      loadSubscriptions();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao atualizar', variant: 'destructive' });
+    } finally {
+      setSavingContact(false);
+    }
+  };
+
+
 
   const loadSubPayments = async (id: string) => {
     setLoadingSubPayments(true);
