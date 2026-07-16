@@ -29,6 +29,7 @@ import {
   formatCurrency,
 } from '@/lib/validators';
 import { quoteBivvo, decodeBivvoConfig, loadPlansFromDB, PLANS, type BivvoConfig } from '@/lib/bivvo-calc';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 type Step = 'personal' | 'address' | 'payment' | 'processing' | 'success' | 'error' | 'awaiting_payment';
 
