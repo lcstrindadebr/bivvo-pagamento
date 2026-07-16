@@ -65,6 +65,7 @@ interface Subscription {
   customerWhatsapp?: string;
   customerCpf?: string;
   tenantBivvo?: string;
+  bivvoStatus?: string;
   localUserId?: string | null;
   externalReference?: string;
 }
