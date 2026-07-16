@@ -1310,27 +1310,33 @@ const Admin = () => {
                                   ? 'Atualiza o tenant já criado na API Bivvo com base na configuração contratada atual.'
                                   : 'Dispara manualmente a criação/atualização do tenant na API Bivvo com base na configuração contratada.'}
                               </p>
-                              {isProvisioned && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    className="w-full h-8 text-xs mt-2"
-                                    onClick={handleInactivateTenant}
-                                    disabled={provisioningTenant || !tenantInfo?.id}
-                                  >
-                                    {provisioningTenant ? (
-                                      <Loader2 className="h-3 w-3 animate-spin mr-2" />
-                                    ) : (
-                                      <Ban className="h-3 w-3 mr-2" />
-                                    )}
-                                    Inativar Conta Bivvo
-                                  </Button>
-                                  <p className="text-[10px] text-muted-foreground mt-1">
-                                    Envia a inativação ao Bivvo via API. O acesso do cliente será bloqueado. Contas com 5+ dias de inadimplência são inativadas automaticamente todos os dias.
-                                  </p>
-                                </>
-                              )}
+                              {(() => {
+                                const bivvoStatus = String(selectedSub?.bivvoStatus || '').toLowerCase();
+                                const isBivvoActive = bivvoStatus === 'active' || bivvoStatus === 'ativo';
+                                const hasTenantId = !!tenantInfo?.bivvo_tenant_id;
+                                if (!isBivvoActive || !hasTenantId) return null;
+                                return (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      className="w-full h-8 text-xs mt-2"
+                                      onClick={handleInactivateTenant}
+                                      disabled={provisioningTenant || !tenantInfo?.id}
+                                    >
+                                      {provisioningTenant ? (
+                                        <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                      ) : (
+                                        <Ban className="h-3 w-3 mr-2" />
+                                      )}
+                                      Inativar Conta Bivvo (ID {tenantInfo.bivvo_tenant_id})
+                                    </Button>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                      Envia a inativação ao Bivvo via API usando o ID do tenant como referência. Contas com 5+ dias de inadimplência são inativadas automaticamente todos os dias.
+                                    </p>
+                                  </>
+                                );
+                              })()}
                             </div>
                           </>
 
