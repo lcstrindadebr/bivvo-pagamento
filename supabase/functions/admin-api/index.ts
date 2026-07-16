@@ -75,9 +75,8 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
       return;
     }
 
-    // Cache: skip if checked recently
-    const last = u.bivvo_status_checked_at ? new Date(u.bivvo_status_checked_at).getTime() : 0;
-    if (u.bivvo_status && (now - last) < BIVVO_STATUS_CACHE_MS) return;
+    // Sempre reconsulta a API Bivvo a cada carregamento (sem cache).
+
 
     if (!auth) return; // token não configurado — não sobrescreve
 
