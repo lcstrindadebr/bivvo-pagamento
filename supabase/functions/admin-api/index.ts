@@ -267,6 +267,7 @@ serve(async (req) => {
         const customerIds = [...new Set(result.data.map((s: any) => s.customer))].filter(Boolean) as string[];
         console.log(`Enriquecendo ${customerIds.length} clientes para assinaturas`);
         const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
+        await refreshBivvoStatuses(supabase, userMap);
         
         result.data = result.data.map((s: any) => {
           const userData: any = userMap.get(s.customer);
@@ -277,6 +278,7 @@ serve(async (req) => {
             customerWhatsapp: userData?.whatsapp || '',
             customerCpf: userData?.cpf || '',
             tenantBivvo: userData?.tenant_bivvo || '',
+            bivvoStatus: userData?.bivvo_status || (userData?.tenant_bivvo ? 'Não possui Tenant' : 'Preencher ID'),
             localUserId: userData?.id || null,
           };
         });
