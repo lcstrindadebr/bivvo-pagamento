@@ -111,9 +111,17 @@ const Admin = () => {
     description: ''
   });
 
+  // Tenant Bivvo (por cliente Asaas)
+  const [tenantBivvo, setTenantBivvo] = useState('');
+  const [savingTenant, setSavingTenant] = useState(false);
 
+  // Contato do cliente (Asaas + local)
+  const [contactForm, setContactForm] = useState({
+    name: '', email: '', mobilePhone: '', cpfCnpj: '',
+    postalCode: '', address: '', addressNumber: '', complement: '', province: '',
+  });
+  const [savingContact, setSavingContact] = useState(false);
 
-  const [subsFilter, setSubsFilter] = useState('');
 
   const [subsBillingFilter, setSubsBillingFilter] = useState('');
   const [subsCustomerSearch, setSubsCustomerSearch] = useState('');
