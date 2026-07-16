@@ -145,6 +145,59 @@ serve(async (req) => {
       await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', user.id);
     }
 
+    // ===== 100% coupon: primeiro mês grátis, mas assinatura recorrente segue no Asaas =====
+    if (isFreeCoupon) {
+      const nextDue = new Date();
+      nextDue.setDate(nextDue.getDate() + 30); // pula o primeiro ciclo
+      console.log('[Cupom 100%] Criando assinatura recorrente com 1º mês grátis:', billingType);
+      const sRes = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'access_token': ASAAS_API_KEY },
+        body: JSON.stringify({
+          customer: asaasCustomerId,
+          billingType,
+          nextDueDate: nextDue.toISOString().split('T')[0],
+          value: recurringAmount,
+          cycle: 'MONTHLY',
+          description: `Assinatura ${planLabel} (1º mês grátis - cupom ${appliedCoupon!.code})`,
+          externalReference: `${user.id}_${plan}`,
+          remoteIp,
+        }),
+      });
+
+      const { data: dbPayment } = await supabase.from('payments').insert({
+        user_id: user.id,
+        plan,
+        amount: 0,
+        status: 'approved',
+        paid_at: new Date().toISOString(),
+        asaas_subscription_id: sRes.id,
+        bivvo_config: bivvoConfig || null,
+      }).select('id').single();
+
+      const expDate = new Date();
+      expDate.setMonth(expDate.getMonth() + 1);
+      expDate.setDate(expDate.getDate() + 3);
+      await supabase.from('users').update({
+        status: 'ativo',
+        plano_ativo: plan,
+        data_expiracao: expDate.toISOString(),
+        asaas_subscription_id: sRes.id,
+      }).eq('id', user.id);
+
+      await incrementCouponUse(supabase, appliedCoupon!.id);
+      try { await runProvisionAndPersist(supabase, user.id); }
+      catch (e) { console.error('Falha provisionamento (cupom 100%):', e); }
+
+      return new Response(JSON.stringify({
+        success: true,
+        paymentId: dbPayment?.id,
+        subscriptionId: sRes.id,
+        status: 'approved',
+        freeCoupon: true,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
 
     // 5. Create Subscription
     const nextDueDate = new Date();
