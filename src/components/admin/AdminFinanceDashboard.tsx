@@ -551,134 +551,224 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         </Card>
       </div>
 
-      {/* Gráfico Fluxo de Caixa 360°: previsto + recebido + saldo bancário projetado */}
-      <div className="grid grid-cols-1 gap-4">
-        <Card className="card-glass border-none shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-accent" /> Fluxo de Caixa (Previsto × Recebido × Saldo)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="h-72 flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-accent" />
-              </div>
-            ) : series.length === 0 ? (
-              <div className="h-72 flex items-center justify-center text-xs text-muted-foreground">
-                Sem dados no período. Rode o backfill para popular o histórico.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={340}>
-                <ComposedChart data={series} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
-                  <defs>
-                    <pattern id="forecastPattern" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
-                      <rect width="6" height="6" fill="#3b82f6" fillOpacity="0.15" />
-                      <line x1="0" y1="0" x2="0" y2="6" stroke="#3b82f6" strokeWidth="2" strokeOpacity="0.6" />
-                    </pattern>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                  <XAxis
-                    dataKey="bucket"
-                    tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => {
-                      if (!v) return '';
-                      const [y, m, d] = String(v).split('-');
-                      if (!d) return `${m}/${y}`;
-                      return granularity === 'month' ? `${m}/${y}` : `${d}/${m}`;
-                    }}
-                  />
-                  <YAxis
-                    yAxisId="left"
-                    tick={{ fontSize: 10 }}
-                    width={70}
-                    tickFormatter={(v) => {
-                      const n = Number(v);
-                      if (Math.abs(n) >= 1000) return `R$${(n / 1000).toFixed(1)}k`;
-                      return `R$${Math.round(n)}`;
-                    }}
-                  />
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    tick={{ fontSize: 10 }}
-                    width={70}
-                    tickFormatter={(v) => {
-                      const n = Number(v);
-                      if (Math.abs(n) >= 1000) return `R$${(n / 1000).toFixed(1)}k`;
-                      return `R$${Math.round(n)}`;
-                    }}
-                  />
-                  <Tooltip
-                    formatter={(v: any, name: string) => [formatCurrency(Number(v)), name]}
-                    labelFormatter={(v) => {
-                      if (!v) return '';
-                      const [y, m, d] = String(v).split('-');
-                      const label = !d
-                        ? `${m}/${y}`
-                        : granularity === 'month'
-                          ? `${m}/${y}`
-                          : `${d}/${m}/${y}`;
-                      return `Período: ${label}`;
-                    }}
-                  />
+      {/* Gráficos financeiros dedicados */}
+      {(() => {
+        const fmtBucket = (v: string) => {
+          if (!v) return '';
+          const [y, m, d] = String(v).split('-');
+          if (!d) return `${m}/${y}`;
+          return granularity === 'month' ? `${m}/${y}` : `${d}/${m}`;
+        };
+        const fmtBucketLong = (v: string) => {
+          if (!v) return '';
+          const [y, m, d] = String(v).split('-');
+          if (!d) return `${m}/${y}`;
+          return granularity === 'month' ? `${m}/${y}` : `${d}/${m}/${y}`;
+        };
+        const compactCurrency = (v: any) => {
+          const n = Number(v);
+          if (!isFinite(n)) return '';
+          const abs = Math.abs(n);
+          if (abs >= 1_000_000) return `R$${(n / 1_000_000).toFixed(1)}M`;
+          if (abs >= 1_000) return `R$${(n / 1000).toFixed(1)}k`;
+          return `R$${Math.round(n)}`;
+        };
+        const tooltipFmt = (v: any, name: string) => [formatCurrency(Number(v)), name];
+        const labelFmt = (v: any) => `Período: ${fmtBucketLong(String(v))}`;
+        const hasWarnings = (seriesMeta?.warnings?.length ?? 0) > 0;
+        const emptyRevenue = revenueSeries.every((r) => !r.forecastRevenue && !r.receivedNet);
+        const emptyProfit = profitSeries.every((r) => !r.receivedNet && !r.expenses && !r.commissions);
+        const emptyBalance = balanceSeries.every((r) => r.closingBalance === null && r.projectedBalance === null);
 
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <ReferenceLine yAxisId="left" y={0} stroke="hsl(var(--border))" />
-                  {/* Previsto: barra listrada azul clara */}
-                  <Bar
-                    yAxisId="left"
-                    dataKey="forecastRevenue"
-                    name="Previsto"
-                    fill="url(#forecastPattern)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  {/* Recebido líquido (do extrato Asaas): verde sólido */}
-                  <Bar
-                    yAxisId="left"
-                    dataKey="receivedNet"
-                    name="Recebido (líq.)"
-                    radius={[4, 4, 0, 0]}
-                  >
-                    {series.map((entry: any, index: number) => (
-                      <Cell
-                        key={`recv-${index}`}
-                        fill={entry.isFuture ? 'transparent' : '#10b981'}
-                      />
-                    ))}
-                  </Bar>
-                  {/* Despesas + comissões: barra vermelha para baixo (negativa) */}
-                  <Bar
-                    yAxisId="left"
-                    dataKey="expenses"
-                    name="Despesas"
-                    fill="#ef4444"
-                    fillOpacity={0.85}
-                    radius={[4, 4, 0, 0]}
-                  />
-                  {/* Saldo bancário real/projetado (eixo direito) */}
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="runningBalance"
-                    name="Saldo Bancário"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ r: 2 }}
-                    activeDot={{ r: 4 }}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+        return (
+          <div className="space-y-4">
+            {hasWarnings && (
+              <div className="flex flex-wrap items-center gap-2 rounded-md bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-[11px] text-yellow-700">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <span className="font-medium">Dados parciais:</span>
+                <span>{seriesMeta?.warnings?.join(' · ')}</span>
+              </div>
             )}
-            <div className="mt-2 text-[10px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-              <span>▓ Previsto: cobranças com vencimento no período (Asaas /payments)</span>
-              <span>▓ Recebido (líq.): PAYMENT_RECEIVED − tarifas (extrato Asaas)</span>
-              <span>▓ Despesas: despesas + comissões pagas no período</span>
-              <span>— Saldo: fechamento diário do extrato Asaas (projetado após hoje)</span>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* 1. Receita: Previsto × Recebido */}
+              <Card className="card-glass border-none shadow-xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-green-500" /> Receita: Previsto × Recebido
+                  </CardTitle>
+                  <p className="text-[10px] text-muted-foreground">
+                    Cobranças agendadas por vencimento vs. o que realmente entrou (extrato Asaas)
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="h-64 flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-accent" />
+                    </div>
+                  ) : emptyRevenue ? (
+                    <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
+                      Sem cobranças agendadas ou recebidas no período.
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={revenueSeries} margin={{ top: 10, right: 12, left: 0, bottom: 4 }}>
+                        <defs>
+                          <pattern id="forecastPattern" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+                            <rect width="6" height="6" fill="#94a3b8" fillOpacity="0.15" />
+                            <line x1="0" y1="0" x2="0" y2="6" stroke="#94a3b8" strokeWidth="2" strokeOpacity="0.6" />
+                          </pattern>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                        <XAxis dataKey="bucket" tick={{ fontSize: 10 }} tickFormatter={fmtBucket} />
+                        <YAxis tick={{ fontSize: 10 }} width={68} tickFormatter={compactCurrency} />
+                        <Tooltip formatter={tooltipFmt} labelFormatter={labelFmt} />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                        <Bar dataKey="forecastRevenue" name="Previsto" fill="url(#forecastPattern)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="receivedNet" name="Recebido (líq.)" radius={[4, 4, 0, 0]}>
+                          {revenueSeries.map((entry, index) => (
+                            <Cell key={`rev-${index}`} fill={entry.isFuture ? 'transparent' : '#10b981'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 2. Lucro Líquido diário */}
+              <Card className="card-glass border-none shadow-xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <PiggyBank className="h-4 w-4 text-emerald-500" /> Lucro Líquido por Período
+                  </CardTitle>
+                  <p className="text-[10px] text-muted-foreground">
+                    Recebido líquido − Despesas − Comissões pagas
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="h-64 flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-accent" />
+                    </div>
+                  ) : emptyProfit ? (
+                    <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
+                      Sem movimentação no período.
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={profitSeries} margin={{ top: 10, right: 12, left: 0, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                        <XAxis dataKey="bucket" tick={{ fontSize: 10 }} tickFormatter={fmtBucket} />
+                        <YAxis tick={{ fontSize: 10 }} width={68} tickFormatter={compactCurrency} />
+                        <Tooltip
+                          formatter={(v: any, name: string) => [formatCurrency(Number(v)), name]}
+                          labelFormatter={labelFmt}
+                          content={({ active, payload, label }: any) => {
+                            if (!active || !payload?.length) return null;
+                            const row = payload[0].payload as ProfitPoint;
+                            return (
+                              <div className="rounded-md bg-background border border-border shadow-lg px-3 py-2 text-[11px] space-y-0.5">
+                                <div className="font-medium mb-1">{labelFmt(label)}</div>
+                                <div className="flex justify-between gap-4"><span className="text-emerald-600">Recebido líq.</span><span>{formatCurrency(row.receivedNet)}</span></div>
+                                <div className="flex justify-between gap-4"><span className="text-red-500">Despesas</span><span>{formatCurrency(row.expenses)}</span></div>
+                                <div className="flex justify-between gap-4"><span className="text-amber-500">Comissões</span><span>{formatCurrency(row.commissions)}</span></div>
+                                <div className="flex justify-between gap-4 border-t border-border mt-1 pt-1 font-bold">
+                                  <span>Lucro</span>
+                                  <span className={row.netProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}>{formatCurrency(row.netProfit)}</span>
+                                </div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <ReferenceLine y={0} stroke="hsl(var(--border))" />
+                        <Bar dataKey="netProfit" name="Lucro Líquido" radius={[4, 4, 0, 0]}>
+                          {profitSeries.map((entry, index) => (
+                            <Cell
+                              key={`p-${index}`}
+                              fill={entry.isFuture ? '#94a3b8' : entry.netProfit >= 0 ? '#10b981' : '#ef4444'}
+                              fillOpacity={entry.isFuture ? 0.35 : 1}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+
+            {/* 3. Saldo Bancário (linha inteira) */}
+            <Card className="card-glass border-none shadow-xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-blue-500" /> Evolução do Saldo Bancário
+                </CardTitle>
+                <p className="text-[10px] text-muted-foreground">
+                  Fechamento diário real (extrato Asaas) até hoje · projetado nos períodos futuros
+                </p>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="h-64 flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-accent" />
+                  </div>
+                ) : emptyBalance ? (
+                  <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
+                    Sem saldo disponível no período.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <AreaChart data={balanceSeries} margin={{ top: 10, right: 12, left: 0, bottom: 4 }}>
+                      <defs>
+                        <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="projectedGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.25} />
+                          <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                      <XAxis dataKey="bucket" tick={{ fontSize: 10 }} tickFormatter={fmtBucket} />
+                      <YAxis tick={{ fontSize: 10 }} width={68} tickFormatter={compactCurrency} />
+                      <Tooltip formatter={tooltipFmt} labelFormatter={labelFmt} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <ReferenceLine y={0} stroke="hsl(var(--border))" />
+                      <Area
+                        type="monotone"
+                        dataKey="closingBalance"
+                        name="Saldo real"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        fill="url(#balanceGradient)"
+                        connectNulls
+                        dot={{ r: 2 }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="projectedBalance"
+                        name="Projeção"
+                        stroke="#8b5cf6"
+                        strokeWidth={2}
+                        strokeDasharray="5 4"
+                        fill="url(#projectedGradient)"
+                        connectNulls
+                        dot={false}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+                <div className="mt-2 text-[10px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+                  <span>Saldo Asaas atual: <strong>{formatCurrency(seriesMeta?.bankBalance || 0)}</strong></span>
+                  <span>— Real: fechamento diário via extrato · Projeção: ancorada no saldo atual + fluxo futuro previsto</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
 
 
       {/* Clientes inadimplentes */}
