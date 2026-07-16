@@ -17,9 +17,11 @@ import bivvoLogo from '@/assets/bivvo-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import {
   validateCPF,
+  validateCNPJ,
   validateCardNumber,
   validateExpiry,
   maskCPF,
+  maskCNPJ,
   maskCardNumber,
   maskCEP,
   maskExpiry,
