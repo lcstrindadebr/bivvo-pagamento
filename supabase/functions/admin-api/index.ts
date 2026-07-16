@@ -439,16 +439,7 @@ serve(async (req) => {
         churnRate: ppDelta(current.churnRate, previous.churnRate),
       } : null;
 
-        paidValue: pctDelta(current.paidValue, previous.paidValue),
-        paidNetValue: pctDelta(current.paidNetValue, previous.paidNetValue),
-        paidCount: pctDelta(current.paidCount, previous.paidCount),
-        totalValue: pctDelta(current.totalValue, previous.totalValue),
-        freeCash: pctDelta(current.freeCash, previous.freeCash),
-        projection: pctDelta(current.projection, previous.projection),
-        churnRate: ppDelta(current.churnRate, previous.churnRate),
-      } : null;
-
-      // Conversão global
+      // Conversão global (mantida no backend para compat, UI substitui por Lucro Líquido)
       const [{ count: totalClicks }, { count: totalSalesCount }] = await Promise.all([
         supabase.from('affiliate_clicks').select('*', { count: 'exact', head: true }),
         supabase.from('affiliate_sales').select('*', { count: 'exact', head: true }),
@@ -463,6 +454,7 @@ serve(async (req) => {
         monthlyExpenses,
         overdueValue,
         overdueCount,
+        overdueCustomers,
         conversionRate: totalClicks ? ((totalSalesCount || 0) / totalClicks * 100) : 0,
         totalClicks: totalClicks || 0,
         retainedCommissions: 0,
@@ -472,6 +464,7 @@ serve(async (req) => {
         deltas,
         previousRange: previousStart ? { start: previousStart, end: previousEnd } : null,
       };
+
 
       const now = new Date();
       (comms || []).forEach((c: any) => {
