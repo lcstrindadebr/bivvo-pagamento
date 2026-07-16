@@ -326,6 +326,36 @@ const Admin = () => {
     }
   };
 
+  const [customerActionLoading, setCustomerActionLoading] = useState(false);
+  const handleDeleteCustomer = async () => {
+    if (!selectedSub) return;
+    if (!confirm(`Remover o cliente ${selectedSub.customerName} do Asaas?\n\nIsso cancelará futuras cobranças. O cliente poderá ser restaurado depois.`)) return;
+    setCustomerActionLoading(true);
+    try {
+      await adminPost('delete-customer', { asaasCustomerId: selectedSub.customer });
+      toast({ title: 'Cliente removido', description: 'Cliente marcado como removido no Asaas.' });
+      loadSubscriptions();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao remover cliente', variant: 'destructive' });
+    } finally {
+      setCustomerActionLoading(false);
+    }
+  };
+  const handleRestoreCustomer = async () => {
+    if (!selectedSub) return;
+    if (!confirm(`Restaurar o cliente ${selectedSub.customerName} no Asaas?`)) return;
+    setCustomerActionLoading(true);
+    try {
+      await adminPost('restore-customer', { asaasCustomerId: selectedSub.customer });
+      toast({ title: 'Cliente restaurado', description: 'Cliente reativado no Asaas.' });
+      loadSubscriptions();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao restaurar cliente', variant: 'destructive' });
+    } finally {
+      setCustomerActionLoading(false);
+    }
+  };
+
 
 
   const loadSubPayments = async (id: string) => {
