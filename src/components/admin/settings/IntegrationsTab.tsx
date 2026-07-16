@@ -119,23 +119,53 @@ export function IntegrationsTab({ settings, loading }: Props) {
       <Card className="card-glass border-none shadow-xl">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-accent" /> Bivvo
+            <ShieldCheck className="h-5 w-5 text-accent" /> Integração Bivvo
+            {bivvoDirty && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600">não salvo</span>}
           </CardTitle>
           <CardDescription>
-            Token da API Bivvo usado para provisionar contas e sincronizar tenants. Armazenado com segurança como secret (BIVVO_API_TOKEN) — não fica exposto no frontend.
+            Token da API Bivvo usado para provisionar contas e sincronizar tenants. Armazenado com acesso restrito a administradores.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
-              <Check className="h-3 w-3 mr-1" /> Gerenciado pelo Lovable Cloud
-            </Badge>
+            {bivvoLoading ? (
+              <Badge variant="outline"><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Carregando</Badge>
+            ) : bivvoToken ? (
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                <Check className="h-3 w-3 mr-1" /> Token configurado
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                Nenhum token cadastrado
+              </Badge>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Para adicionar ou trocar o token, peça no chat: "Adicionar token da API Bivvo" — abrirá um formulário seguro para colar o valor.
-          </p>
+          <div className="space-y-1.5">
+            <Label htmlFor="bivvo_token">Token da API Bivvo</Label>
+            <div className="flex gap-2">
+              <Input
+                id="bivvo_token"
+                type={showBivvo ? 'text' : 'password'}
+                value={bivvoToken}
+                onChange={(e) => { setBivvoToken(e.target.value); setBivvoDirty(true); }}
+                placeholder="Cole aqui o token da API Bivvo"
+                className="font-mono text-xs"
+                disabled={bivvoLoading}
+              />
+              <Button variant="outline" size="icon" onClick={() => setShowBivvo(v => !v)} title={showBivvo ? 'Ocultar' : 'Mostrar'}>
+                {showBivvo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+          <div className="pt-2 flex justify-end">
+            <Button onClick={saveBivvo} disabled={bivvoSaving || !bivvoDirty} className="gap-2">
+              {bivvoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Salvar token
+            </Button>
+          </div>
         </CardContent>
       </Card>
+
 
 
 
