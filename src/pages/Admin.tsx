@@ -915,10 +915,7 @@ const Admin = () => {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex flex-col gap-1">
-                                <Badge variant="outline" className={`${badgeBase} w-fit ${payCls}`}>{payLabel}</Badge>
-                                <span className="text-[10px] text-muted-foreground">{sub.billingType} · {sub.cycle}</span>
-                              </div>
+                              <Badge variant="outline" className={`${badgeBase} w-fit ${payCls}`}>{payLabel}</Badge>
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline" className={`${badgeBase} w-fit ${asaasCls}`}>{asaasLabel}</Badge>
