@@ -201,8 +201,8 @@ export function AdminTasks() {
         const pa = PRIORITY_ORDER[a.priority] ?? 3;
         const pb = PRIORITY_ORDER[b.priority] ?? 3;
         if (pa !== pb) return pa - pb;
-        const da = a.due_date ? new Date(a.due_date).getTime() : Infinity;
-        const db = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+        const da = a.due_date ? (parseDate(a.due_date)?.getTime() ?? Infinity) : Infinity;
+        const db = b.due_date ? (parseDate(b.due_date)?.getTime() ?? Infinity) : Infinity;
         return da - db;
       });
   };
