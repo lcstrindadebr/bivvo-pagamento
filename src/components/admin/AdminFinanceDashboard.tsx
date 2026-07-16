@@ -8,10 +8,9 @@ import { formatCurrency } from '@/lib/validators';
 import { useToast } from '@/hooks/use-toast';
 import {
   ResponsiveContainer,
-  BarChart,
+  ComposedChart,
   Bar,
-  AreaChart,
-  Area,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -523,83 +522,97 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         </Card>
       </div>
 
-      {/* Gráficos: Receita × Despesas e Fluxo de Caixa acumulado */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Gráfico Fluxo de Caixa 360°: previsto + recebido + saldo bancário projetado */}
+      <div className="grid grid-cols-1 gap-4">
         <Card className="card-glass border-none shadow-xl">
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-accent" /> Fluxo de Caixa (por período)
+              <TrendingUp className="h-4 w-4 text-accent" /> Fluxo de Caixa (Previsto × Recebido × Saldo)
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="h-64 flex items-center justify-center">
+              <div className="h-72 flex items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-accent" />
               </div>
             ) : series.length === 0 ? (
-              <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
-                Sem dados históricos ainda. Rode o backfill para popular.
+              <div className="h-72 flex items-center justify-center text-xs text-muted-foreground">
+                Sem dados no período. Rode o backfill para popular o histórico.
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={series}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                  <XAxis dataKey="bucket" tick={{ fontSize: 10 }} tickFormatter={(v) => (v || '').slice(5)} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `R$${Math.round(v)}`} />
-                  <Tooltip
-                    formatter={(v: any) => formatCurrency(Number(v))}
-                    labelFormatter={(v) => `Período: ${v}`}
-                  />
-                  <ReferenceLine y={0} stroke="hsl(var(--border))" />
-                  <Bar dataKey="netProfit" name="Fluxo Líquido" radius={[4, 4, 4, 4]}>
-                    {series.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={Number(entry.netProfit) >= 0 ? '#10b981' : '#ef4444'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="card-glass border-none shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-blue-500" /> Fluxo de Caixa Acumulado
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="h-64 flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-accent" />
-              </div>
-            ) : series.length === 0 ? (
-              <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
-                Sem dados históricos ainda.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={series}>
+              <ResponsiveContainer width="100%" height={320}>
+                <ComposedChart data={series}>
                   <defs>
-                    <linearGradient id="cashFlowGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.5} />
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
+                    <pattern id="forecastPattern" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+                      <rect width="6" height="6" fill="#3b82f6" fillOpacity="0.25" />
+                      <line x1="0" y1="0" x2="0" y2="6" stroke="#3b82f6" strokeWidth="2" strokeOpacity="0.6" />
+                    </pattern>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                   <XAxis dataKey="bucket" tick={{ fontSize: 10 }} tickFormatter={(v) => (v || '').slice(5)} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `R$${Math.round(v)}`} />
+                  <YAxis
+                    yAxisId="left"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => `R$${Math.round(v)}`}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => `R$${Math.round(v)}`}
+                  />
                   <Tooltip
-                    formatter={(v: any) => formatCurrency(Number(v))}
+                    formatter={(v: any, name: string) => [formatCurrency(Number(v)), name]}
                     labelFormatter={(v) => `Período: ${v}`}
                   />
-                  <Area type="monotone" dataKey="cashFlow" name="Fluxo de Caixa" stroke="#3b82f6" strokeWidth={2} fill="url(#cashFlowGrad)" />
-                </AreaChart>
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <ReferenceLine yAxisId="left" y={0} stroke="hsl(var(--border))" />
+                  <ReferenceLine yAxisId="right" y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
+                  {/* Previsto: barra listrada azul clara */}
+                  <Bar
+                    yAxisId="left"
+                    dataKey="forecastRevenue"
+                    name="Previsto"
+                    fill="url(#forecastPattern)"
+                    radius={[4, 4, 0, 0]}
+                  />
+                  {/* Recebido: barra verde sólida (sobreposta) */}
+                  <Bar
+                    yAxisId="left"
+                    dataKey="receivedRevenue"
+                    name="Recebido"
+                    radius={[4, 4, 0, 0]}
+                  >
+                    {series.map((entry: any, index: number) => (
+                      <Cell
+                        key={`recv-${index}`}
+                        fill={entry.isFuture ? 'transparent' : '#10b981'}
+                      />
+                    ))}
+                  </Bar>
+                  {/* Saldo bancário projetado (eixo direito) */}
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="runningBalance"
+                    name="Saldo Bancário"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
+                    activeDot={{ r: 4 }}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             )}
+            <div className="mt-2 text-[10px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+              <span>▓ Previsto: cobranças com vencimento no período (qualquer status)</span>
+              <span>▓ Recebido: valor líquido efetivamente entrou no caixa</span>
+              <span>— Saldo: projeção ancorada no saldo Asaas atual</span>
+            </div>
           </CardContent>
         </Card>
       </div>
+
 
       {/* Clientes inadimplentes */}
       <Card className="card-glass border-none shadow-xl overflow-hidden">
