@@ -4,9 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plug, Save, Loader2, Copy, Check, ShieldCheck } from 'lucide-react';
+import { Plug, Save, Loader2, Copy, Check, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useSaveSetting } from '@/hooks/useSaveSetting';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   settings: Record<string, string>;
@@ -20,6 +21,13 @@ export function IntegrationsTab({ settings, loading }: Props) {
   const [dirty, setDirty] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Bivvo token (guardado em admin_secrets, admin-only via RLS)
+  const [bivvoToken, setBivvoToken] = useState('');
+  const [bivvoDirty, setBivvoDirty] = useState(false);
+  const [bivvoLoading, setBivvoLoading] = useState(true);
+  const [bivvoSaving, setBivvoSaving] = useState(false);
+  const [showBivvo, setShowBivvo] = useState(false);
+
   useEffect(() => {
     if (!loading) {
       setForm({
@@ -30,6 +38,20 @@ export function IntegrationsTab({ settings, loading }: Props) {
     }
   }, [settings, loading]);
 
+  useEffect(() => {
+    (async () => {
+      setBivvoLoading(true);
+      const { data } = await supabase
+        .from('admin_secrets')
+        .select('value')
+        .eq('key', 'bivvo_api_token')
+        .maybeSingle();
+      setBivvoToken((data as any)?.value || '');
+      setBivvoDirty(false);
+      setBivvoLoading(false);
+    })();
+  }, []);
+
   const update = (patch: Partial<typeof form>) => {
     setForm((f) => ({ ...f, ...patch }));
     setDirty(true);
@@ -39,6 +61,23 @@ export function IntegrationsTab({ settings, loading }: Props) {
     const ok = await save(form, { previous: settings, label: 'Integrações' });
     if (ok) setDirty(false);
   };
+
+  const saveBivvo = async () => {
+    setBivvoSaving(true);
+    try {
+      const { error } = await supabase
+        .from('admin_secrets')
+        .upsert({ key: 'bivvo_api_token', value: bivvoToken.trim() }, { onConflict: 'key' });
+      if (error) throw error;
+      toast({ title: 'Salvo', description: 'Token da API Bivvo atualizado.' });
+      setBivvoDirty(false);
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao salvar', variant: 'destructive' });
+    } finally {
+      setBivvoSaving(false);
+    }
+  };
+
 
   const webhookUrl = `${(settings.site_url || window.location.origin).replace(/\/$/, '')}/functions/v1/asaas-webhook`;
   const copy = async () => {
