@@ -1001,16 +1001,8 @@ const Admin = () => {
                             </TableCell>
                             <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex justify-end gap-2">
-                                {!internalSub?.account_created && internalCustomer && (
-                                  <Button 
-                                    size="sm" 
-                                    className="h-8 bg-accent hover:bg-accent/90 text-[10px] px-2"
-                                    onClick={() => handleCreateAccount(internalCustomer)}
-                                    disabled={creatingAccount === internalCustomer.id}
-                                  >
-                                    {creatingAccount === internalCustomer.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Ativar Conta'}
-                                  </Button>
-                                )}
+                                
+
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
                                   setSelectedSub(sub);
                                   setSubDetailsDialog(true);
