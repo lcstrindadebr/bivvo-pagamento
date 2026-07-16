@@ -188,11 +188,15 @@ serve(async (req) => {
         const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
         
         result.data = result.data.map((s: any) => {
-          const userData = userMap.get(s.customer);
+          const userData: any = userMap.get(s.customer);
           return {
             ...s,
             customerName: userData?.name || 'Desconhecido',
             customerEmail: userData?.email || '',
+            customerWhatsapp: userData?.whatsapp || '',
+            customerCpf: userData?.cpf || '',
+            tenantBivvo: userData?.tenant_bivvo || '',
+            localUserId: userData?.id || null,
           };
         });
       }
