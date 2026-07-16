@@ -62,6 +62,10 @@ interface Subscription {
   cycle: string;
   customerName?: string;
   customerEmail?: string;
+  customerWhatsapp?: string;
+  customerCpf?: string;
+  tenantBivvo?: string;
+  localUserId?: string | null;
   externalReference?: string;
 }
 
