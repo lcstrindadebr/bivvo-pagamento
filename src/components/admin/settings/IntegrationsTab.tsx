@@ -80,6 +80,29 @@ export function IntegrationsTab({ settings, loading }: Props) {
       <Card className="card-glass border-none shadow-xl">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-accent" /> Bivvo
+          </CardTitle>
+          <CardDescription>
+            Token da API Bivvo usado para provisionar contas e sincronizar tenants. Armazenado com segurança como secret (BIVVO_API_TOKEN) — não fica exposto no frontend.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+              <Check className="h-3 w-3 mr-1" /> Gerenciado pelo Lovable Cloud
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Para adicionar ou trocar o token, peça no chat: "Adicionar token da API Bivvo" — abrirá um formulário seguro para colar o valor.
+          </p>
+        </CardContent>
+      </Card>
+
+
+
+      <Card className="card-glass border-none shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
             <Plug className="h-5 w-5 text-accent" /> Analytics
             {dirty && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600">não salvo</span>}
           </CardTitle>
