@@ -117,6 +117,8 @@ const Admin = () => {
   const [tenantBivvo, setTenantBivvo] = useState('');
   const [savingTenant, setSavingTenant] = useState(false);
   const [refreshingBivvo, setRefreshingBivvo] = useState(false);
+  const [contractedConfig, setContractedConfig] = useState<any>(null);
+  const [tenantInfo, setTenantInfo] = useState<{ bivvo_tenant_id?: string | null; tenant_provisioned_at?: string | null; tenant_provision_error?: string | null; person_type?: string | null; company_name?: string | null } | null>(null);
 
   // Contato do cliente (Asaas + local)
   const [contactForm, setContactForm] = useState({
