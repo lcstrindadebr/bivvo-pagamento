@@ -1232,6 +1232,7 @@ const Admin = () => {
                       </h3>
                       {(() => {
                         const apiLocked = !!tenantInfo?.bivvo_tenant_id;
+                        const isProvisioned = !!tenantInfo?.bivvo_tenant_id && !!tenantInfo?.tenant_provisioned_at;
                         return (
                           <>
                             <div className="flex gap-2">
@@ -1275,10 +1276,12 @@ const Admin = () => {
                                 ) : (
                                   <RefreshCw className="h-3 w-3 mr-2" />
                                 )}
-                                {apiLocked ? 'Atualizar Tenant via API Bivvo' : 'Provisionar Tenant via API Bivvo'}
+                                {isProvisioned ? 'Atualizar Tenant via API Bivvo' : 'Provisionar Tenant via API Bivvo'}
                               </Button>
                               <p className="text-[10px] text-muted-foreground mt-1">
-                                Dispara manualmente a criação/atualização do tenant na API Bivvo com base na configuração contratada.
+                                {isProvisioned
+                                  ? 'Atualiza o tenant já criado na API Bivvo com base na configuração contratada atual.'
+                                  : 'Dispara manualmente a criação/atualização do tenant na API Bivvo com base na configuração contratada.'}
                               </p>
                             </div>
                           </>
