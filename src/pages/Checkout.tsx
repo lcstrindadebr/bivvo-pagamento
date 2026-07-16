@@ -478,11 +478,8 @@ const Checkout = () => {
   };
 
   const handleSubmit = () => {
-    // Cupom 100%: fluxo grátis via create-subscription (curto-circuito no servidor)
-    if (isFreeCoupon) {
-      handleSubmitPixOrBoleto();
-      return;
-    }
+    // Cupom 100%: para CC precisamos capturar o cartão (cobrança futura);
+    // para PIX/Boleto vamos direto pelo create-subscription (fluxo grátis).
     if (paymentMethod === 'CREDIT_CARD') {
       handleSubmitCreditCard();
     } else {
@@ -1060,28 +1057,28 @@ const Checkout = () => {
               </div>
             )}
 
-            {/* Payment Method Selector - oculto para cupom 100% */}
-            {!isFreeCoupon && (
-              <PaymentMethodSelector selected={paymentMethod} onChange={setPaymentMethod} />
-            )}
+            {/* Payment Method Selector */}
+            <PaymentMethodSelector selected={paymentMethod} onChange={setPaymentMethod} />
 
-            {/* Free Coupon Info */}
+            {/* Free Coupon Info (1º mês grátis, mesmo assim escolhe forma de pagamento futura) */}
             {isFreeCoupon && (
               <div className="card-glass rounded-2xl p-5 space-y-3 text-center border-success/30">
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-success/10 flex items-center justify-center">
                   <CheckCircle2 className="h-8 w-8 text-success" />
                 </div>
                 <div className="space-y-1">
-                  <p className="font-semibold">Assinatura 100% gratuita</p>
+                  <p className="font-semibold">1º mês grátis com o cupom {appliedCoupon?.code}</p>
                   <p className="text-sm text-muted-foreground">
-                    Nenhum pagamento é necessário. Clique em finalizar para ativar sua conta.
+                    {paymentMethod === 'CREDIT_CARD'
+                      ? `Nada será cobrado agora. A partir do 2º mês, ${formatCurrency(plan.price)} serão cobrados automaticamente no cartão.`
+                      : `Nada será cobrado agora. A partir do 2º mês, você receberá a cobrança de ${formatCurrency(plan.price)} via ${paymentMethod === 'PIX' ? 'PIX' : 'Boleto'}.`}
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Credit Card Form */}
-            {!isFreeCoupon && paymentMethod === 'CREDIT_CARD' && (
+            {/* Credit Card Form (sempre visível quando CC selecionado — cupom 100% ainda exige cartão para meses futuros) */}
+            {paymentMethod === 'CREDIT_CARD' && (
               <>
                 <CardBrands />
                 <div className="card-glass rounded-2xl p-5 space-y-4">
