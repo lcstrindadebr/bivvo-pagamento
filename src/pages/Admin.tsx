@@ -287,6 +287,41 @@ const Admin = () => {
     }
   };
 
+  const handleProvisionTenant = async () => {
+    if (!tenantInfo?.id) {
+      toast({ title: 'Erro', description: 'Cliente não encontrado no banco.', variant: 'destructive' });
+      return;
+    }
+    setProvisioningTenant(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('provision-bivvo-tenant', {
+        body: { userId: tenantInfo.id },
+      });
+      if (error) throw error;
+      if (data?.result?.error) throw new Error(data.result.error);
+      toast({
+        title: 'Tenant atualizado',
+        description: data?.result?.skipped
+          ? 'Tenant já estava provisionado.'
+          : `Provisionamento executado com sucesso${data?.result?.tenantId ? ` (ID: ${data.result.tenantId})` : ''}.`,
+      });
+      // Recarrega tenantInfo
+      const { data: refreshed } = await supabase.from('users')
+        .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name')
+        .eq('id', tenantInfo.id)
+        .maybeSingle();
+      if (refreshed) {
+        setTenantInfo(refreshed);
+        if (refreshed.bivvo_tenant_id) setTenantBivvo(String(refreshed.bivvo_tenant_id));
+      }
+    } catch (err) {
+      toast({ title: 'Erro no provisionamento', description: err instanceof Error ? err.message : 'Falha ao provisionar tenant', variant: 'destructive' });
+    } finally {
+      setProvisioningTenant(false);
+    }
+  };
+
+
   const handleRefreshAllBivvo = async () => {
     setRefreshingBivvo(true);
     try {
