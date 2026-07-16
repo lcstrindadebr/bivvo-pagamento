@@ -333,7 +333,8 @@ const Admin = () => {
     setCustomerActionLoading(true);
     try {
       await adminPost('delete-customer', { asaasCustomerId: selectedSub.customer });
-      toast({ title: 'Cliente removido', description: 'Cliente marcado como removido no Asaas.' });
+      toast({ title: 'Cliente removido', description: 'Cliente removido do Asaas e do banco de dados.' });
+      setSubDetailsDialog(false);
       loadSubscriptions();
     } catch (err) {
       toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao remover cliente', variant: 'destructive' });
