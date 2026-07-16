@@ -114,6 +114,8 @@ const Admin = () => {
   // Tenant Bivvo (por cliente Asaas)
   const [tenantBivvo, setTenantBivvo] = useState('');
   const [savingTenant, setSavingTenant] = useState(false);
+  const [checkingTenant, setCheckingTenant] = useState(false);
+  const [tenantCheck, setTenantCheck] = useState<{ exists: boolean; info?: any; error?: string } | null>(null);
 
   // Contato do cliente (Asaas + local)
   const [contactForm, setContactForm] = useState({
