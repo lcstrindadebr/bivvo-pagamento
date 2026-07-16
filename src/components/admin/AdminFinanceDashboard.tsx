@@ -379,15 +379,20 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-red-500" /> Despesas (Mês Vigente)
+              <Receipt className="h-4 w-4 text-red-500" /> Despesas (Período)
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
               <div className="flex flex-col">
-                <div className="text-xl font-bold text-red-500">{formatCurrency(stats?.monthlyExpenses || 0)}</div>
+                <div className="text-xl font-bold text-red-500">
+                  {formatCurrency((stats?.totalExpenses || 0) + (stats?.periodCommissions || 0))}
+                </div>
                 <div className="text-[10px] text-muted-foreground">
-                  Soma dos débitos do mês corrente
+                  Despesas {formatCurrency(stats?.totalExpenses || 0)} + Comissões {formatCurrency(stats?.periodCommissions || 0)}
+                </div>
+                <div className="text-[10px] text-muted-foreground/70 mt-1">
+                  Mês vigente: {formatCurrency(stats?.monthlyExpenses || 0)}
                 </div>
               </div>
             )}
