@@ -1489,8 +1489,13 @@ const Admin = () => {
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-2">
-
+                    <div className="flex justify-end gap-2 pt-2 flex-wrap">
+                      <Button variant="destructive" size="sm" onClick={handleDeleteCustomer} disabled={customerActionLoading}>
+                        <Trash2 className="h-3 w-3 mr-2" /> Excluir Cliente
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleRestoreCustomer} disabled={customerActionLoading}>
+                        <CheckCircle2 className="h-3 w-3 mr-2" /> Restaurar Cliente
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => setSubDetailsDialog(false)}>Fechar</Button>
                       <Button size="sm" variant="secondary" onClick={() => window.open(`https://app.asaas.com/subscription/show/${selectedSub.id}`, '_blank')}>
                         <ExternalLink className="h-3 w-3 mr-2" /> Ver no Asaas
