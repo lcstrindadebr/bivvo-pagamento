@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp, Receipt, Share2, Copy, Settings, Smartphone, CheckCircle2, FileText, Search } from 'lucide-react';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp, Receipt, Share2, Copy, Settings, Smartphone, CheckCircle2, FileText } from 'lucide-react';
 
 import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
@@ -65,6 +65,7 @@ interface Subscription {
   customerWhatsapp?: string;
   customerCpf?: string;
   tenantBivvo?: string;
+  bivvoStatus?: string;
   localUserId?: string | null;
   externalReference?: string;
 }
@@ -114,8 +115,6 @@ const Admin = () => {
   // Tenant Bivvo (por cliente Asaas)
   const [tenantBivvo, setTenantBivvo] = useState('');
   const [savingTenant, setSavingTenant] = useState(false);
-  const [checkingTenant, setCheckingTenant] = useState(false);
-  const [tenantCheck, setTenantCheck] = useState<{ exists: boolean; info?: any; error?: string } | null>(null);
 
   // Contato do cliente (Asaas + local)
   const [contactForm, setContactForm] = useState({
@@ -231,7 +230,6 @@ const Admin = () => {
         description: selectedSub.description || ''
       });
       setTenantBivvo(selectedSub.tenantBivvo || '');
-      setTenantCheck(null);
       setContactForm({
         name: selectedSub.customerName || '',
         email: selectedSub.customerEmail || '',
@@ -264,31 +262,9 @@ const Admin = () => {
     }
   };
 
-  const handleCheckTenant = async () => {
-    const raw = tenantBivvo.trim();
-    if (!raw) {
-      toast({ title: 'Informe o Tenant', description: 'Digite o ID do tenant Bivvo antes de verificar.', variant: 'destructive' });
-      return;
-    }
-    setCheckingTenant(true);
-    setTenantCheck(null);
-    try {
-      const res: any = await adminPost('check-bivvo-tenant', { tenantId: raw });
-      if (res?.exists) {
-        setTenantCheck({ exists: true, info: res.tenant });
-        toast({ title: 'Tenant encontrado', description: 'Este cliente já possui tenant ativo no Bivvo.' });
-      } else {
-        setTenantCheck({ exists: false, error: res?.error || 'Tenant não encontrado' });
-        toast({ title: 'Tenant não encontrado', description: res?.error || 'Nenhum tenant Bivvo com esse ID.', variant: 'destructive' });
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Falha ao verificar tenant';
-      setTenantCheck({ exists: false, error: msg });
-      toast({ title: 'Erro', description: msg, variant: 'destructive' });
-    } finally {
-      setCheckingTenant(false);
-    }
-  };
+  // Verificação de tenant é automática no backend durante list-subscriptions.
+
+
 
   const handleSaveContact = async () => {
     if (!selectedSub) return;
@@ -882,11 +858,20 @@ const Admin = () => {
                               <Badge variant="outline" className={`text-[10px] h-5 ${statusColor(sub.status)}`}>{sub.status}</Badge>
                             </TableCell>
                             <TableCell>
-                              {internalSub?.account_created ? (
-                                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">Ativa</Badge>
-                              ) : (
-                                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">Pendente</Badge>
-                              )}
+                              {(() => {
+                                const st = sub.bivvoStatus || (sub.tenantBivvo ? 'Não possui Tenant' : 'Preencher ID');
+                                const cls = st === 'active'
+                                  ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                                  : st === 'inactive'
+                                  ? 'bg-orange-500/10 text-orange-600 border-orange-500/20'
+                                  : st === 'Preencher ID'
+                                  ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
+                                  : 'bg-red-500/10 text-red-600 border-red-500/20';
+                                const label = st === 'active' ? 'Ativa' : st === 'inactive' ? 'Inativa' : st;
+                                return (
+                                  <Badge variant="outline" className={`text-[10px] h-5 ${cls}`}>{label}</Badge>
+                                );
+                              })()}
                             </TableCell>
                             <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex justify-end gap-2">
@@ -1003,29 +988,21 @@ const Admin = () => {
                       <div className="flex gap-2">
                         <Input
                           value={tenantBivvo}
-                          onChange={(e) => { setTenantBivvo(e.target.value); setTenantCheck(null); }}
+                          onChange={(e) => setTenantBivvo(e.target.value)}
                           placeholder="ex: 1"
                           className="h-8 text-sm flex-1"
                         />
-                        <Button size="sm" variant="outline" onClick={handleCheckTenant} disabled={checkingTenant || !tenantBivvo.trim()}>
-                          {checkingTenant ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
-                          <span className="ml-2">Verificar no Bivvo</span>
-                        </Button>
                         <Button size="sm" onClick={handleSaveTenant} disabled={savingTenant}>
                           {savingTenant ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                           <span className="ml-2">Salvar Tenant</span>
                         </Button>
                       </div>
-                      {tenantCheck && (
-                        <div className={`text-[11px] rounded px-2 py-1.5 border ${tenantCheck.exists ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' : 'bg-destructive/10 border-destructive/30 text-destructive'}`}>
-                          {tenantCheck.exists ? (
-                            <span className="flex items-center gap-1"><Check className="h-3 w-3" /> Tenant ativo no Bivvo{tenantCheck.info?.name ? ` — ${tenantCheck.info.name}` : ''}</span>
-                          ) : (
-                            <span>Tenant não encontrado: {tenantCheck.error}</span>
-                          )}
+                      {selectedSub?.bivvoStatus && (
+                        <div className="text-[11px] rounded px-2 py-1.5 border bg-muted/40">
+                          Status atual: <strong>{selectedSub.bivvoStatus}</strong>
                         </div>
                       )}
-                      <p className="text-[10px] text-muted-foreground">ID do tenant Bivvo associado a este cliente. Use "Verificar no Bivvo" para confirmar via API antes de salvar.</p>
+                      <p className="text-[10px] text-muted-foreground">ID do tenant Bivvo associado a este cliente. A verificação com a API Bivvo é feita automaticamente ao listar assinaturas.</p>
                     </div>
 
                     {/* CONTACT EDIT (Asaas customer update) */}
