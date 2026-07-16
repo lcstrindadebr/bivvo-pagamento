@@ -20,6 +20,8 @@ import { AdminMarketingMaterials } from '@/components/admin/AdminMarketingMateri
 import { AdminSettings } from '@/components/admin/AdminSettings';
 import { AdminTasks } from '@/components/admin/AdminTasks';
 import { AdminOfficialTemplates } from '@/components/admin/AdminOfficialTemplates';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { useSaveSetting } from '@/hooks/useSaveSetting';
 
 
 import bivvoLogo from '@/assets/bivvo-logo.png';
@@ -75,6 +77,9 @@ const Admin = () => {
   const { isAdmin, loading: authLoading, adminFetch, adminPost } = useAdmin();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { data: siteSettings } = useSiteSettings();
+  const { save: saveSetting } = useSaveSetting();
+  const couponFieldEnabled = (siteSettings?.checkout_coupon_enabled ?? 'true') !== 'false';
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -752,6 +757,25 @@ const Admin = () => {
                 </DialogContent>
               </Dialog>
             </div>
+
+            <div className="card-glass rounded-xl p-4 mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="font-medium">Campo de cupom no checkout</p>
+                <p className="text-sm text-muted-foreground">
+                  Quando desativado, o campo para digitar cupom fica oculto na tela de pagamento.
+                </p>
+              </div>
+              <Switch
+                checked={couponFieldEnabled}
+                onCheckedChange={(v) =>
+                  saveSetting(
+                    { checkout_coupon_enabled: v ? 'true' : 'false' },
+                    { label: 'Campo de cupom no checkout' },
+                  )
+                }
+              />
+            </div>
+
 
             <div className="card-glass rounded-xl overflow-hidden">
               <Table>
