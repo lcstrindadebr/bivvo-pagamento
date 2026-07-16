@@ -852,6 +852,7 @@ export type Database = {
           numero: string | null
           plano_ativo: string | null
           status: string | null
+          tenant_bivvo: string | null
           updated_at: string | null
           whatsapp: string | null
         }
@@ -874,6 +875,7 @@ export type Database = {
           numero?: string | null
           plano_ativo?: string | null
           status?: string | null
+          tenant_bivvo?: string | null
           updated_at?: string | null
           whatsapp?: string | null
         }
@@ -896,6 +898,7 @@ export type Database = {
           numero?: string | null
           plano_ativo?: string | null
           status?: string | null
+          tenant_bivvo?: string | null
           updated_at?: string | null
           whatsapp?: string | null
         }
