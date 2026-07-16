@@ -75,10 +75,38 @@ const emptyForm = {
   subtasks: [] as Subtask[],
 };
 
+function parseDate(dateStr: string | null): Date | null {
+  if (!dateStr) return null;
+
+  // ISO format YYYY-MM-DD
+  const iso = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    const result = new Date(Date.UTC(+iso[1], +iso[2] - 1, +iso[3]));
+    if (result.getUTCDate() !== +iso[3] || result.getUTCMonth() !== +iso[2] - 1) return null;
+    return result;
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dmy = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (dmy) {
+    let [, d, m, y] = dmy;
+    let yearNum = parseInt(y);
+    if (yearNum < 100) yearNum += 2000;
+    const dayNum = parseInt(d);
+    const monthNum = parseInt(m);
+    if (monthNum < 1 || monthNum > 12 || dayNum < 1 || dayNum > 31) return null;
+    const result = new Date(Date.UTC(yearNum, monthNum - 1, dayNum));
+    if (result.getUTCDate() !== dayNum || result.getUTCMonth() !== monthNum - 1) return null;
+    return result;
+  }
+
+  return null;
+}
+
 function formatDate(iso: string | null) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  const d = parseDate(iso);
+  if (!d) return null;
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'UTC' });
 }
 
 function formatDateTime(iso: string | null) {
@@ -89,7 +117,11 @@ function formatDateTime(iso: string | null) {
 
 function isOverdue(task: Task) {
   if (!task.due_date || task.status === 'done') return false;
-  return new Date(task.due_date).getTime() < Date.now() - 24 * 60 * 60 * 1000;
+  const due = parseDate(task.due_date);
+  if (!due) return false;
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  return due.getTime() < today.getTime();
 }
 
 function newSubtaskId() {
