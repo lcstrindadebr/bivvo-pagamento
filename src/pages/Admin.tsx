@@ -805,7 +805,24 @@ const Admin = () => {
                   </Button>
                 ))}
               </div>
+
+              <div className="flex items-center gap-2 border-t pt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-2"
+                  onClick={handleRefreshAllBivvo}
+                  disabled={refreshingBivvo}
+                >
+                  {refreshingBivvo ? <Loader2 className="h-3 w-3 animate-spin" /> : <Package className="h-3 w-3" />}
+                  Consultar todos na Bivvo
+                </Button>
+                <span className="text-[10px] text-muted-foreground">
+                  Atualiza a coluna "Conta Bivvo" para todos os clientes com Tenant preenchido.
+                </span>
+              </div>
             </div>
+
 
             <div className="card-glass rounded-xl overflow-hidden">
               {loadingData ? (
