@@ -35,43 +35,6 @@ serve(async (req) => {
     const payment = body.payment;
     if (!payment) return new Response('OK');
 
-    const paymentDate = (payment.paymentDate || payment.confirmedDate || payment.dateCreated || new Date().toISOString()).slice(0, 10);
-
-    const recordFinanceEvent = async (
-      eventType: string,
-      referenceId: string,
-      amount: number,
-      netAmount: number,
-      metadata: Record<string, unknown>,
-      snapshot: { gross?: number; net?: number; refund?: number; chargeback?: number },
-    ) => {
-      // Idempotência por (event_type, reference_id)
-      const { data: existing } = await supabase
-        .from('finance_events')
-        .select('id')
-        .eq('event_type', eventType)
-        .eq('reference_id', referenceId)
-        .maybeSingle();
-      if (existing) return;
-      await supabase.from('finance_events').insert({
-        event_type: eventType,
-        reference_id: referenceId,
-        amount,
-        net_amount: netAmount,
-        occurred_at: new Date().toISOString(),
-        metadata,
-      });
-      await supabase.rpc('apply_finance_event', {
-        p_date: paymentDate,
-        p_gross: snapshot.gross || 0,
-        p_net: snapshot.net || 0,
-        p_refund: snapshot.refund || 0,
-        p_chargeback: snapshot.chargeback || 0,
-        p_expense: 0,
-        p_commission: 0,
-      });
-    };
-
     // 1. Pagamento Confirmado / Recebido
     if (['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'].includes(body.event)) {
       // Buscar pagamento em nosso banco
@@ -114,49 +77,12 @@ serve(async (req) => {
 
         console.log('Pagamento aprovado via Webhook:', payment.id);
       }
-
-      // Registrar evento financeiro (idempotente)
-      const gross = Number(payment.value) || 0;
-      const net = Number(payment.netValue) || gross;
-      await recordFinanceEvent(
-        'payment_received',
-        payment.id,
-        gross,
-        net,
-        { billingType: payment.billingType, customer: payment.customer },
-        { gross, net },
-      );
     }
 
     // 2. Pagamento Atrasado / Vencido
     if (body.event === 'PAYMENT_OVERDUE') {
+       // Opcional: Notificar usuário ou marcar como atrasado
        console.log('Pagamento atrasado:', payment.id);
-    }
-
-    // 2b. Reembolso
-    if (body.event === 'PAYMENT_REFUNDED') {
-      const refundValue = Number(payment.value) || 0;
-      await recordFinanceEvent(
-        'payment_refunded',
-        payment.id,
-        refundValue,
-        refundValue,
-        { customer: payment.customer },
-        { refund: refundValue },
-      );
-    }
-
-    // 2c. Chargeback
-    if (body.event === 'PAYMENT_CHARGEBACK_REQUESTED' || body.event === 'PAYMENT_CHARGEBACK_DISPUTE') {
-      const cbValue = Number(payment.value) || 0;
-      await recordFinanceEvent(
-        'payment_chargeback',
-        payment.id,
-        cbValue,
-        cbValue,
-        { customer: payment.customer, event: body.event },
-        { chargeback: cbValue },
-      );
     }
 
     // 3. Assinatura Cancelada
@@ -168,7 +94,6 @@ serve(async (req) => {
         console.log('Assinatura cancelada via Webhook:', subscriptionId);
       }
     }
-
 
     return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {

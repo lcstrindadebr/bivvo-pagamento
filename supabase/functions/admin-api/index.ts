@@ -275,58 +275,17 @@ serve(async (req) => {
       const overdueValue = overduePayments.reduce((a: number, p: any) => a + (Number(p.value) || 0), 0);
       const overdueCount = overduePayments.length;
 
-      // Enriquecer pagamentos do período atual + inadimplentes
+      // Enriquecer somente pagamentos do período atual (economia)
       let payments = paymentsCurrent;
-      const allCustomerIds = [
-        ...new Set([
-          ...payments.map((p: any) => p.customer),
-          ...overduePayments.map((p: any) => p.customer),
-        ].filter(Boolean)),
-      ];
-      let userMap = new Map<string, any>();
-      if (allCustomerIds.length > 0) {
-        userMap = await enrichCustomers(supabase, allCustomerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
+      if (payments.length > 0) {
+        const customerIds = [...new Set(payments.map((p: any) => p.customer))];
+        const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
+        payments = payments.map((p: any) => ({
+          ...p,
+          customerName: userMap.get(p.customer)?.name || 'Desconhecido',
+          customerEmail: userMap.get(p.customer)?.email || '',
+        }));
       }
-      payments = payments.map((p: any) => ({
-        ...p,
-        customerName: userMap.get(p.customer)?.name || 'Desconhecido',
-        customerEmail: userMap.get(p.customer)?.email || '',
-      }));
-
-      // Cross-reference com users locais para whatsapp/telefone
-      const whatsappMap = new Map<string, string>();
-      if (allCustomerIds.length > 0) {
-        const { data: localUsers } = await supabase
-          .from('users')
-          .select('asaas_customer_id, whatsapp')
-          .in('asaas_customer_id', allCustomerIds);
-        (localUsers || []).forEach((u: any) => {
-          if (u.whatsapp) whatsappMap.set(u.asaas_customer_id, u.whatsapp);
-        });
-      }
-
-      const _today = new Date();
-      const overdueCustomers = overduePayments
-        .map((p: any) => {
-          const due = p.dueDate ? new Date(p.dueDate) : null;
-          const daysLate = due
-            ? Math.max(0, Math.floor((_today.getTime() - due.getTime()) / 86_400_000))
-            : 0;
-          return {
-            paymentId: p.id,
-            asaasCustomerId: p.customer,
-            name: userMap.get(p.customer)?.name || 'Desconhecido',
-            email: userMap.get(p.customer)?.email || '',
-            whatsapp: whatsappMap.get(p.customer) || '',
-            amount: Number(p.value) || 0,
-            dueDate: p.dueDate || null,
-            daysLate,
-            invoiceUrl: p.invoiceUrl || null,
-            billingType: p.billingType || null,
-          };
-        })
-        .sort((a, b) => b.daysLate - a.daysLate);
-
 
       // Ativos hoje / MRR / ARPU (snapshot atual, comum a ambos)
       const activeSubs = allSubs.filter((s: any) => !s.deleted && s.status === 'ACTIVE');
@@ -409,8 +368,6 @@ serve(async (req) => {
           churnRate,
           ltv,
           totalExpenses,
-          periodCommissions: periodCommValue,
-          netProfit: paidNetValue - totalExpenses - periodCommValue,
           freeCash,
           projection,
         };
@@ -434,12 +391,11 @@ serve(async (req) => {
         paidCount: pctDelta(current.paidCount, previous.paidCount),
         totalValue: pctDelta(current.totalValue, previous.totalValue),
         freeCash: pctDelta(current.freeCash, previous.freeCash),
-        netProfit: pctDelta(current.netProfit, previous.netProfit),
         projection: pctDelta(current.projection, previous.projection),
         churnRate: ppDelta(current.churnRate, previous.churnRate),
       } : null;
 
-      // Conversão global (mantida no backend para compat, UI substitui por Lucro Líquido)
+      // Conversão global
       const [{ count: totalClicks }, { count: totalSalesCount }] = await Promise.all([
         supabase.from('affiliate_clicks').select('*', { count: 'exact', head: true }),
         supabase.from('affiliate_sales').select('*', { count: 'exact', head: true }),
@@ -454,7 +410,6 @@ serve(async (req) => {
         monthlyExpenses,
         overdueValue,
         overdueCount,
-        overdueCustomers,
         conversionRate: totalClicks ? ((totalSalesCount || 0) / totalClicks * 100) : 0,
         totalClicks: totalClicks || 0,
         retainedCommissions: 0,
@@ -464,7 +419,6 @@ serve(async (req) => {
         deltas,
         previousRange: previousStart ? { start: previousStart, end: previousEnd } : null,
       };
-
 
       const now = new Date();
       (comms || []).forEach((c: any) => {
@@ -481,150 +435,7 @@ serve(async (req) => {
       });
     }
 
-    // Série temporal para gráficos Receita×Despesas e Fluxo de Caixa
-    if (action === 'finance-series') {
-      const dateStart = url.searchParams.get('start');
-      const dateEnd = url.searchParams.get('end');
-      const granularity = (url.searchParams.get('granularity') || 'day') as 'hour' | 'day' | 'month';
-      if (!dateStart || !dateEnd) throw new Error('Parâmetros start/end obrigatórios');
 
-      const { data: snaps, error: sErr } = await supabase
-        .from('finance_daily_snapshots')
-        .select('date, gross_revenue, net_revenue, refunds, chargebacks, expenses_total, affiliate_commissions_paid, net_profit')
-        .gte('date', dateStart)
-        .lte('date', dateEnd)
-        .order('date', { ascending: true });
-      if (sErr) throw sErr;
-
-      const bucketKey = (dStr: string) => {
-        const d = new Date(dStr + 'T00:00:00');
-        if (granularity === 'month') return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-        return dStr; // day (hour bucket not supported by daily snapshots)
-      };
-
-      const map = new Map<string, any>();
-      (snaps || []).forEach((s: any) => {
-        const key = bucketKey(s.date);
-        const cur = map.get(key) || { bucket: key, revenue: 0, expenses: 0, commissions: 0, refunds: 0, netProfit: 0 };
-        cur.revenue += Number(s.net_revenue) || 0;
-        cur.expenses += Number(s.expenses_total) || 0;
-        cur.commissions += Number(s.affiliate_commissions_paid) || 0;
-        cur.refunds += (Number(s.refunds) || 0) + (Number(s.chargebacks) || 0);
-        cur.netProfit += Number(s.net_profit) || 0;
-        map.set(key, cur);
-      });
-
-      const series = Array.from(map.values()).sort((a, b) => a.bucket.localeCompare(b.bucket));
-      // Fluxo de caixa acumulado
-      let running = 0;
-      for (const row of series) {
-        running += row.netProfit;
-        row.cashFlow = running;
-      }
-      const totals = series.reduce(
-        (acc, r) => ({
-          revenue: acc.revenue + r.revenue,
-          expenses: acc.expenses + r.expenses,
-          commissions: acc.commissions + r.commissions,
-          netProfit: acc.netProfit + r.netProfit,
-        }),
-        { revenue: 0, expenses: 0, commissions: 0, netProfit: 0 },
-      );
-
-      return new Response(JSON.stringify({ series, totals, granularity }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Reconstrói finance_daily_snapshots dos últimos N meses a partir das fontes internas.
-    if (action === 'finance-backfill') {
-      const body = req.method === 'POST' ? await req.json().catch(() => ({} as any)) : {};
-      const monthsParam = url.searchParams.get('months');
-      const months = Math.min(24, Math.max(1, Number(body.months || monthsParam) || 12));
-      const since = new Date();
-      since.setMonth(since.getMonth() - months);
-      const sinceStr = since.toISOString().slice(0, 10);
-
-
-      // Limpa período alvo
-      await supabase.from('finance_daily_snapshots').delete().gte('date', sinceStr);
-
-      // Receita: paid payments locais
-      const { data: pays } = await supabase
-        .from('payments')
-        .select('amount, paid_at, status')
-        .gte('paid_at', sinceStr)
-        .in('status', ['approved', 'paid']);
-
-      // Despesas
-      const { data: exps } = await supabase
-        .from('expenses')
-        .select('amount, category, date')
-        .gte('date', sinceStr);
-
-      // Comissões pagas
-      const { data: comms } = await supabase
-        .from('affiliate_commissions')
-        .select('commission_amount, paid_at, status')
-        .eq('status', 'paid')
-        .gte('paid_at', sinceStr);
-
-      const agg = new Map<string, any>();
-      const ensure = (dateStr: string) => {
-        if (!agg.has(dateStr)) {
-          agg.set(dateStr, {
-            date: dateStr,
-            gross_revenue: 0,
-            net_revenue: 0,
-            expenses_total: 0,
-            affiliate_commissions_paid: 0,
-          });
-        }
-        return agg.get(dateStr);
-      };
-
-      (pays || []).forEach((p: any) => {
-        if (!p.paid_at) return;
-        const d = p.paid_at.slice(0, 10);
-        const row = ensure(d);
-        const v = Number(p.amount) || 0;
-        row.gross_revenue += v;
-        row.net_revenue += v; // sem netValue local, aproxima bruto (webhook corrige em tempo real)
-      });
-
-      (exps || []).forEach((e: any) => {
-        const d = (e.date || '').slice(0, 10);
-        if (!d) return;
-        const row = ensure(d);
-        if (e.category === 'Comissões (Afiliados)' || e.category === 'Repasse Afiliado') {
-          row.affiliate_commissions_paid += Number(e.amount) || 0;
-        } else {
-          row.expenses_total += Number(e.amount) || 0;
-        }
-      });
-
-      (comms || []).forEach((c: any) => {
-        if (!c.paid_at) return;
-        const d = c.paid_at.slice(0, 10);
-        const row = ensure(d);
-        // Já contabilizado via expenses (trigger cria). Não somamos de novo.
-      });
-
-      const rows = Array.from(agg.values()).map((r) => ({
-        ...r,
-        net_profit: r.net_revenue - r.expenses_total - r.affiliate_commissions_paid,
-      }));
-
-      if (rows.length > 0) {
-        const { error: upErr } = await supabase.from('finance_daily_snapshots').upsert(rows, { onConflict: 'date' });
-        if (upErr) throw upErr;
-      }
-
-      await logAction(supabase, user, 'finance-backfill', 'finance_daily_snapshots', undefined, undefined, { months, rows: rows.length });
-      return new Response(JSON.stringify({ success: true, days: rows.length, since: sinceStr }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
 
     if (action === 'list-expenses') {
