@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { quoteBivvo, round2 } from "../_shared/bivvo-logic.ts";
 import { asaasFetch } from "../_shared/asaas.ts";
+import { runProvisionAndPersist } from "../_shared/bivvo-api.ts";
 
 
 serve(async (req) => {
@@ -50,6 +51,8 @@ serve(async (req) => {
     const { data: user, error: uErr } = await supabase.from('users').upsert({
       email: customerData.email.toLowerCase().trim(),
       name: customerData.name.trim(),
+      person_type: customerData.personType || null,
+      company_name: customerData.personType === 'JURIDICA' ? (customerData.companyName || '').trim() : null,
       whatsapp: cleanPhone,
       cpf: cleanCpf,
       billing_name: customerData.billingName.trim(),
@@ -60,6 +63,7 @@ serve(async (req) => {
       bairro: customerData.bairro.trim(),
       cidade: customerData.cidade.trim(),
       estado: customerData.estado.toUpperCase(),
+      bivvo_config: bivvoConfig || null,
     }, { onConflict: 'email' }).select('id, asaas_customer_id').single();
     if (uErr) throw uErr;
 
@@ -162,6 +166,7 @@ serve(async (req) => {
       status: isApproved ? 'approved' : 'pending',
       asaas_payment_id: firstPayment.id,
       asaas_subscription_id: sRes.id,
+      bivvo_config: bivvoConfig || null,
     }).select('id').single();
 
     if (isApproved) {
@@ -175,6 +180,13 @@ serve(async (req) => {
         data_expiracao: expDate.toISOString(),
         asaas_subscription_id: sRes.id,
       }).eq('id', user.id);
+
+      // Provisiona tenant Bivvo (não falha o pagamento se der erro)
+      try {
+        await runProvisionAndPersist(supabase, user.id);
+      } catch (e) {
+        console.error('Falha ao provisionar tenant Bivvo:', e);
+      }
     }
 
     // 8. Affiliate tracking (Simplified for portability)

@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.check-payment-status]
 verify_jwt = false
+
+[functions.provision-bivvo-tenant]
+verify_jwt = false

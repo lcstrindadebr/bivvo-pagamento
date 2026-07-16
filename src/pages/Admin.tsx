@@ -117,6 +117,8 @@ const Admin = () => {
   const [tenantBivvo, setTenantBivvo] = useState('');
   const [savingTenant, setSavingTenant] = useState(false);
   const [refreshingBivvo, setRefreshingBivvo] = useState(false);
+  const [contractedConfig, setContractedConfig] = useState<any>(null);
+  const [tenantInfo, setTenantInfo] = useState<{ bivvo_tenant_id?: string | null; tenant_provisioned_at?: string | null; tenant_provision_error?: string | null; person_type?: string | null; company_name?: string | null } | null>(null);
 
   // Contato do cliente (Asaas + local)
   const [contactForm, setContactForm] = useState({
@@ -240,8 +242,19 @@ const Admin = () => {
         postalCode: '', address: '', addressNumber: '', complement: '', province: '',
       });
       loadSubPayments(selectedSub.id);
+      // Load contracted Bivvo config from users table
+      supabase.from('users')
+        .select('bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name')
+        .eq('asaas_customer_id', selectedSub.customer)
+        .maybeSingle()
+        .then(({ data }) => {
+          setContractedConfig(data?.bivvo_config || null);
+          setTenantInfo(data || null);
+        });
     } else {
       setSelectedSubPayments([]);
+      setContractedConfig(null);
+      setTenantInfo(null);
     }
   }, [selectedSub]);
 
@@ -1060,6 +1073,65 @@ const Admin = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* CONFIGURAÇÃO CONTRATADA */}
+                    {(contractedConfig || tenantInfo) && (
+                      <div className="border rounded-lg p-4 bg-primary/5 space-y-3">
+                        <h3 className="text-sm font-bold flex items-center gap-2">
+                          <Package className="h-3 w-3" /> Configuração Contratada
+                        </h3>
+                        {contractedConfig ? (
+                          <div className="space-y-2 text-xs">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div><span className="text-muted-foreground">Plano:</span> <strong className="uppercase">{contractedConfig.plan}</strong></div>
+                              <div><span className="text-muted-foreground">Usuários:</span> <strong>{contractedConfig.users}</strong></div>
+                              <div><span className="text-muted-foreground">Tipo:</span> <strong>{tenantInfo?.person_type === 'JURIDICA' ? 'PJ' : tenantInfo?.person_type === 'FISICA' ? 'PF' : '—'}</strong></div>
+                              {tenantInfo?.company_name && <div><span className="text-muted-foreground">Empresa:</span> <strong>{tenantInfo.company_name}</strong></div>}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {contractedConfig.telefonia && <Badge variant="outline" className="text-[9px]">📞 Telefonia</Badge>}
+                              {contractedConfig.disparo && <Badge variant="outline" className="text-[9px]">🚀 Disparo em Massa</Badge>}
+                              {contractedConfig.protagonista && <Badge variant="outline" className="text-[9px]">⭐ Protagonista</Badge>}
+                            </div>
+                            <div className="pt-2">
+                              <p className="text-[10px] uppercase text-muted-foreground mb-1">Canais Contratados</p>
+                              <div className="grid grid-cols-2 gap-1">
+                                {CANAIS_DEF.map(c => {
+                                  const qty = Number((contractedConfig.channels || {})[c.id] || 0);
+                                  if (!qty) return null;
+                                  return (
+                                    <div key={c.id} className="flex justify-between px-2 py-1 rounded bg-background/60 border text-[11px]">
+                                      <span>{c.emoji} {c.label}</span>
+                                      <strong>{qty}</strong>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground">Sem configuração salva (cliente anterior à mudança).</p>
+                        )}
+                        <div className="pt-2 border-t space-y-1 text-[11px]">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Tenant provisionado:</span>
+                            <span>{tenantInfo?.tenant_provisioned_at ? new Date(tenantInfo.tenant_provisioned_at).toLocaleString('pt-BR') : '—'}</span>
+                          </div>
+                          {tenantInfo?.bivvo_tenant_id && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Tenant ID (API):</span>
+                              <strong className="font-mono">{tenantInfo.bivvo_tenant_id}</strong>
+                            </div>
+                          )}
+                          {tenantInfo?.tenant_provision_error && (
+                            <div className="rounded px-2 py-1 bg-destructive/10 text-destructive border border-destructive/20">
+                              Erro no provisionamento: {tenantInfo.tenant_provision_error}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
 
                     {/* TENANT BIVVO */}
                     <div className="border rounded-lg p-4 bg-accent/5 space-y-3">

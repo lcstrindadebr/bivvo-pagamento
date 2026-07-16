@@ -29,6 +29,7 @@ import {
   formatCurrency,
 } from '@/lib/validators';
 import { quoteBivvo, decodeBivvoConfig, loadPlansFromDB, PLANS, type BivvoConfig } from '@/lib/bivvo-calc';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 type Step = 'personal' | 'address' | 'payment' | 'processing' | 'success' | 'error' | 'awaiting_payment';
 
@@ -53,6 +54,12 @@ const Checkout = () => {
   const { toast } = useToast();
   const { fetchAddress, loading: cepLoading } = useViaCep();
   const { processPayment, loading: paymentLoading, error: paymentError, status: paymentStatus, reset } = usePayment();
+  const { data: siteSettings } = useSiteSettings();
+  const supportWhatsapp = (siteSettings?.support_whatsapp || '5511936230279').replace(/\D/g, '');
+  const goToSupport = () => {
+    const msg = encodeURIComponent(`Olá! Acabei de contratar o ${plan?.name || 'plano Bivvo'} e gostaria de iniciar a configuração.`);
+    window.location.href = `https://wa.me/${supportWhatsapp}?text=${msg}`;
+  };
 
   const [plan, setPlan] = useState<Plan | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
@@ -535,7 +542,7 @@ const Checkout = () => {
               Sua assinatura do plano <span className="font-semibold text-accent">{plan.name}</span> foi ativada
             </p>
           </div>
-          <Button onClick={() => navigate('/')} className="w-full h-12 bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-opacity">
+          <Button onClick={goToSupport} className="w-full h-12 bg-gradient-to-r from-accent to-primary hover:opacity-90 transition-opacity">
             <Sparkles className="mr-2 h-4 w-4" />
             Continuar
           </Button>

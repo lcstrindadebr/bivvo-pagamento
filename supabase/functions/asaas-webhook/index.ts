@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { runProvisionAndPersist } from "../_shared/bivvo-api.ts";
 
 
 serve(async (req) => {
@@ -60,6 +61,13 @@ serve(async (req) => {
           data_expiracao: expirationDate.toISOString(),
           asaas_subscription_id: payment.subscription || dbPayment.asaas_subscription_id
         }).eq('id', dbPayment.user_id);
+
+        // Provisiona tenant Bivvo (idempotente)
+        try {
+          await runProvisionAndPersist(supabase, dbPayment.user_id);
+        } catch (e) {
+          console.error('Falha ao provisionar tenant Bivvo (webhook):', e);
+        }
 
         // Atualizar venda do afiliado
         await supabase.from('affiliate_sales')
