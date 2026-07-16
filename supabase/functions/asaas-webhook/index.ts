@@ -62,6 +62,13 @@ serve(async (req) => {
           asaas_subscription_id: payment.subscription || dbPayment.asaas_subscription_id
         }).eq('id', dbPayment.user_id);
 
+        // Provisiona tenant Bivvo (idempotente)
+        try {
+          await runProvisionAndPersist(supabase, dbPayment.user_id);
+        } catch (e) {
+          console.error('Falha ao provisionar tenant Bivvo (webhook):', e);
+        }
+
         // Atualizar venda do afiliado
         await supabase.from('affiliate_sales')
           .update({ status: 'paid' })
