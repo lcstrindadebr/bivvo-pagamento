@@ -312,9 +312,11 @@ const Checkout = () => {
       affiliateSlug: affiliateSlug || undefined,
       trackingId: cfgParam || undefined,
       customerData: {
+        personType: formData.personType,
         name: formData.name,
+        companyName: formData.companyName,
         email: formData.email,
-        cpf: formData.cpf,
+        cpf: formData.personType === 'FISICA' ? formData.cpf : formData.cnpj,
         whatsapp: formData.whatsapp,
         billingName: formData.billingName,
         cep: formData.cep,
