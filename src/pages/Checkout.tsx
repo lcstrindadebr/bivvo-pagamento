@@ -444,6 +444,12 @@ const Checkout = () => {
       
       if (!result.success) throw new Error(result.error);
 
+      // Cupom 100%: pagamento já foi concluído no servidor
+      if (result.freeCoupon || result.status === 'approved') {
+        setCurrentStep('success');
+        return;
+      }
+
       if (paymentMethod === 'PIX') {
         setPixData({
           qrCodeImage: result.pixQrCode,
@@ -472,6 +478,11 @@ const Checkout = () => {
   };
 
   const handleSubmit = () => {
+    // Cupom 100%: fluxo grátis via create-subscription (curto-circuito no servidor)
+    if (isFreeCoupon) {
+      handleSubmitPixOrBoleto();
+      return;
+    }
     if (paymentMethod === 'CREDIT_CARD') {
       handleSubmitCreditCard();
     } else {
