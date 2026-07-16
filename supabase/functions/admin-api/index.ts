@@ -46,6 +46,87 @@ async function logAction(supabase: any, user: any, action: string, tableName?: s
   }
 }
 
+const BIVVO_STATUS_CACHE_MS = 5 * 60 * 1000; // 5 min
+
+async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
+  // Load Bivvo API token once
+  const { data: secret } = await supabase
+    .from('admin_secrets').select('value').eq('key', 'bivvo_api_token').maybeSingle();
+  const rawToken = (secret as any)?.value?.trim();
+  const auth = rawToken
+    ? (rawToken.toLowerCase().startsWith('bearer ') ? rawToken : `Bearer ${rawToken}`)
+    : null;
+
+  const now = Date.now();
+  const entries = Array.from(userMap.entries());
+
+  await Promise.all(entries.map(async ([key, u]: [string, any]) => {
+    if (!u || !u.id) return;
+
+    // No tenant assigned → status "Preencher ID"
+    if (!u.tenant_bivvo || String(u.tenant_bivvo).trim() === '') {
+      if (u.bivvo_status !== 'Preencher ID') {
+        await supabase.from('users').update({
+          bivvo_status: 'Preencher ID',
+          bivvo_status_checked_at: new Date().toISOString(),
+        }).eq('id', u.id);
+        u.bivvo_status = 'Preencher ID';
+      }
+      return;
+    }
+
+    // Cache: skip if checked recently
+    const last = u.bivvo_status_checked_at ? new Date(u.bivvo_status_checked_at).getTime() : 0;
+    if (u.bivvo_status && (now - last) < BIVVO_STATUS_CACHE_MS) return;
+
+    if (!auth) return; // token não configurado — não sobrescreve
+
+    const parsedId = Number(String(u.tenant_bivvo).trim());
+    if (!Number.isFinite(parsedId)) {
+      await supabase.from('users').update({
+        bivvo_status: 'ID inválido',
+        bivvo_status_checked_at: new Date().toISOString(),
+      }).eq('id', u.id);
+      u.bivvo_status = 'ID inválido';
+      return;
+    }
+
+    try {
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 6000);
+      const res = await fetch('https://adm.bivvo.com.br/tenantApiShowTenant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': auth },
+        body: JSON.stringify({ id: parsedId }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(to);
+
+      let newStatus = 'Não possui Tenant';
+      if (res.ok) {
+        const ct = res.headers.get('content-type') || '';
+        const data = ct.includes('application/json') ? await res.json() : null;
+        const tenant = data?.tenant ?? data?.data ?? data;
+        const st = String(tenant?.status ?? '').toLowerCase();
+        if (st === 'active') newStatus = 'active';
+        else if (st === 'inactive') newStatus = 'inactive';
+        else if (tenant && (tenant.id || tenant.name)) newStatus = st || 'inactive';
+        else newStatus = 'Não possui Tenant';
+      } else {
+        newStatus = 'Não possui Tenant';
+      }
+
+      await supabase.from('users').update({
+        bivvo_status: newStatus,
+        bivvo_status_checked_at: new Date().toISOString(),
+      }).eq('id', u.id);
+      u.bivvo_status = newStatus;
+    } catch (e) {
+      console.error('Bivvo check failed for user', u.id, e);
+    }
+  }));
+}
+
 async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_URL: string, ASAAS_API_KEY: string) {
   if (customerIds.length === 0) return new Map();
 
