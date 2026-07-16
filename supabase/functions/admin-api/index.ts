@@ -107,11 +107,13 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
 
       let newStatus = 'Não possui Tenant';
       if (res.ok && typeof raw === 'object' && raw !== null) {
-        const tenant = (raw as any).tenant ?? (raw as any).data?.tenant ?? (raw as any).data ?? raw;
-        const st = String(tenant?.status ?? (raw as any).status ?? '').toLowerCase().trim();
+        // A API Bivvo devolve { tenant: [ { id, status, name, ... } ] }
+        let tenant: any = (raw as any).tenant ?? (raw as any).data?.tenant ?? (raw as any).data ?? raw;
+        if (Array.isArray(tenant)) tenant = tenant[0];
+        const st = String(tenant?.status ?? '').toLowerCase().trim();
         if (st === 'active') newStatus = 'active';
         else if (st === 'inactive') newStatus = 'inactive';
-        else if (tenant && (tenant.id || tenant.name || tenant.tenant_id)) newStatus = st || 'inactive';
+        else if (tenant && (tenant.id || tenant.name)) newStatus = st || 'inactive';
         else newStatus = 'Não possui Tenant';
       } else if (res.status >= 500) {
         newStatus = 'Erro API';
