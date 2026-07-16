@@ -1026,6 +1026,37 @@ const Admin = () => {
                             <span className="text-muted-foreground">Status:</span>
                             <Badge variant="outline" className={`text-[9px] h-4 ${statusColor(selectedSub.status)}`}>{selectedSub.status}</Badge>
                           </div>
+                          {(() => {
+                            const overdueList = (selectedSubPayments || []).filter((p: any) => String(p.status).toUpperCase() === 'OVERDUE' && p.dueDate);
+                            if (overdueList.length === 0) {
+                              return (
+                                <div className="flex justify-between text-xs pt-1">
+                                  <span className="text-muted-foreground">Pagamento:</span>
+                                  <Badge variant="outline" className="text-[9px] h-4 bg-green-500/10 text-green-600 border-green-500/30">Adimplente</Badge>
+                                </div>
+                              );
+                            }
+                            const oldest = overdueList
+                              .map((p: any) => new Date(p.dueDate + 'T00:00:00'))
+                              .sort((a: Date, b: Date) => a.getTime() - b.getTime())[0];
+                            const days = Math.max(0, Math.floor((Date.now() - oldest.getTime()) / (1000 * 60 * 60 * 24)));
+                            return (
+                              <>
+                                <div className="flex justify-between text-xs pt-1">
+                                  <span className="text-muted-foreground">Pagamento:</span>
+                                  <Badge variant="outline" className="text-[9px] h-4 bg-red-500/10 text-red-600 border-red-500/30">Inadimplente</Badge>
+                                </div>
+                                <div className="flex justify-between text-xs pt-1">
+                                  <span className="text-muted-foreground">Dias em atraso:</span>
+                                  <span className="font-bold text-red-600">{days} {days === 1 ? 'dia' : 'dias'}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-muted-foreground">Faturas em atraso:</span>
+                                  <span className="font-medium">{overdueList.length}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
