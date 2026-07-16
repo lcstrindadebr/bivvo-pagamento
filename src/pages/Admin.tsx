@@ -68,6 +68,7 @@ interface Subscription {
   bivvoStatus?: string;
   localUserId?: string | null;
   externalReference?: string;
+  paymentStatus?: 'adimplente' | 'inadimplente';
 }
 
 const Admin = () => {
@@ -865,6 +866,37 @@ const Admin = () => {
                         const internalCustomer = customerData.find(c => c.email === sub.customerEmail);
                         const internalSub = internalCustomer?.subscriptions?.[0];
 
+                        // Padrão de badges: mesma altura, mesmo tamanho de fonte, mesmo estilo outline
+                        const badgeBase = "text-[10px] h-5 px-2 font-medium border";
+                        const styleGreen = "bg-green-500/10 text-green-600 border-green-500/20";
+                        const styleYellow = "bg-yellow-500/10 text-yellow-600 border-yellow-500/20";
+                        const styleRed = "bg-red-500/10 text-red-600 border-red-500/20";
+                        const styleOrange = "bg-orange-500/10 text-orange-600 border-orange-500/20";
+                        const styleMuted = "bg-muted/40 text-muted-foreground border-border";
+
+                        // Pagamento (adimplência)
+                        const pay = sub.paymentStatus || 'adimplente';
+                        const payCls = pay === 'adimplente' ? styleGreen : styleRed;
+                        const payLabel = pay === 'adimplente' ? 'Adimplente' : 'Inadimplente';
+
+                        // Status Asaas
+                        const asaasCls = sub.status === 'ACTIVE' ? styleGreen
+                          : sub.status === 'INACTIVE' ? styleYellow
+                          : sub.status === 'EXPIRED' ? styleRed
+                          : styleMuted;
+                        const asaasLabel = sub.status === 'ACTIVE' ? 'Ativa'
+                          : sub.status === 'INACTIVE' ? 'Inativa'
+                          : sub.status === 'EXPIRED' ? 'Expirada'
+                          : sub.status;
+
+                        // Conta Bivvo
+                        const st = sub.bivvoStatus || (sub.tenantBivvo ? 'Não possui Tenant' : 'Preencher ID');
+                        const bivvoCls = st === 'active' ? styleGreen
+                          : st === 'inactive' ? styleOrange
+                          : st === 'Preencher ID' ? styleYellow
+                          : styleRed;
+                        const bivvoLabel = st === 'active' ? 'Ativa' : st === 'inactive' ? 'Inativa' : st;
+
                         return (
                           <TableRow key={sub.id} className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => {
                             setSelectedSub(sub);
@@ -883,29 +915,16 @@ const Admin = () => {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex flex-col">
-                                <Badge variant="outline" className="text-[10px] w-fit">{sub.billingType}</Badge>
-                                <span className="text-[10px] text-muted-foreground mt-1">{sub.cycle}</span>
+                              <div className="flex flex-col gap-1">
+                                <Badge variant="outline" className={`${badgeBase} w-fit ${payCls}`}>{payLabel}</Badge>
+                                <span className="text-[10px] text-muted-foreground">{sub.billingType} · {sub.cycle}</span>
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline" className={`text-[10px] h-5 ${statusColor(sub.status)}`}>{sub.status}</Badge>
+                              <Badge variant="outline" className={`${badgeBase} w-fit ${asaasCls}`}>{asaasLabel}</Badge>
                             </TableCell>
                             <TableCell>
-                              {(() => {
-                                const st = sub.bivvoStatus || (sub.tenantBivvo ? 'Não possui Tenant' : 'Preencher ID');
-                                const cls = st === 'active'
-                                  ? 'bg-green-500/10 text-green-600 border-green-500/20'
-                                  : st === 'inactive'
-                                  ? 'bg-orange-500/10 text-orange-600 border-orange-500/20'
-                                  : st === 'Preencher ID'
-                                  ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
-                                  : 'bg-red-500/10 text-red-600 border-red-500/20';
-                                const label = st === 'active' ? 'Ativa' : st === 'inactive' ? 'Inativa' : st;
-                                return (
-                                  <Badge variant="outline" className={`text-[10px] h-5 ${cls}`}>{label}</Badge>
-                                );
-                              })()}
+                              <Badge variant="outline" className={`${badgeBase} w-fit ${bivvoCls}`}>{bivvoLabel}</Badge>
                             </TableCell>
                             <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex justify-end gap-2">
