@@ -861,11 +861,20 @@ const Admin = () => {
                               <Badge variant="outline" className={`text-[10px] h-5 ${statusColor(sub.status)}`}>{sub.status}</Badge>
                             </TableCell>
                             <TableCell>
-                              {internalSub?.account_created ? (
-                                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">Ativa</Badge>
-                              ) : (
-                                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">Pendente</Badge>
-                              )}
+                              {(() => {
+                                const st = sub.bivvoStatus || (sub.tenantBivvo ? 'Não possui Tenant' : 'Preencher ID');
+                                const cls = st === 'active'
+                                  ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                                  : st === 'inactive'
+                                  ? 'bg-orange-500/10 text-orange-600 border-orange-500/20'
+                                  : st === 'Preencher ID'
+                                  ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
+                                  : 'bg-red-500/10 text-red-600 border-red-500/20';
+                                const label = st === 'active' ? 'Ativa' : st === 'inactive' ? 'Inativa' : st;
+                                return (
+                                  <Badge variant="outline" className={`text-[10px] h-5 ${cls}`}>{label}</Badge>
+                                );
+                              })()}
                             </TableCell>
                             <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex justify-end gap-2">
