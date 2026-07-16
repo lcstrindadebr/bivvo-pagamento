@@ -115,6 +115,7 @@ const Admin = () => {
   // Tenant Bivvo (por cliente Asaas)
   const [tenantBivvo, setTenantBivvo] = useState('');
   const [savingTenant, setSavingTenant] = useState(false);
+  const [refreshingBivvo, setRefreshingBivvo] = useState(false);
 
   // Contato do cliente (Asaas + local)
   const [contactForm, setContactForm] = useState({
@@ -262,7 +263,23 @@ const Admin = () => {
     }
   };
 
-  // Verificação de tenant é automática no backend durante list-subscriptions.
+  const handleRefreshAllBivvo = async () => {
+    setRefreshingBivvo(true);
+    try {
+      const res: any = await adminPost('refresh-all-bivvo-statuses', {});
+      const s = res?.summary || {};
+      toast({
+        title: 'Consulta Bivvo concluída',
+        description: `Total: ${s.total ?? 0} · Ativos: ${s.active ?? 0} · Inativos: ${s.inactive ?? 0} · Sem tenant: ${s.none ?? 0} · Preencher ID: ${s.fill ?? 0} · Erros: ${s.error ?? 0}`,
+      });
+      await loadSubscriptions({});
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao consultar Bivvo', variant: 'destructive' });
+    } finally {
+      setRefreshingBivvo(false);
+    }
+  };
+
 
 
 
@@ -805,7 +822,24 @@ const Admin = () => {
                   </Button>
                 ))}
               </div>
+
+              <div className="flex items-center gap-2 border-t pt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-2"
+                  onClick={handleRefreshAllBivvo}
+                  disabled={refreshingBivvo}
+                >
+                  {refreshingBivvo ? <Loader2 className="h-3 w-3 animate-spin" /> : <Package className="h-3 w-3" />}
+                  Consultar todos na Bivvo
+                </Button>
+                <span className="text-[10px] text-muted-foreground">
+                  Atualiza a coluna "Conta Bivvo" para todos os clientes com Tenant preenchido.
+                </span>
+              </div>
             </div>
+
 
             <div className="card-glass rounded-xl overflow-hidden">
               {loadingData ? (

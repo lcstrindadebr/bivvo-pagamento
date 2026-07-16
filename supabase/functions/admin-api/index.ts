@@ -92,7 +92,8 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
 
     try {
       const ctrl = new AbortController();
-      const to = setTimeout(() => ctrl.abort(), 6000);
+      const to = setTimeout(() => ctrl.abort(), 8000);
+      console.log(`[Bivvo] check user=${u.id} tenant_id=${parsedId}`);
       const res = await fetch('https://adm.bivvo.com.br/tenantApiShowTenant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': auth },
@@ -100,19 +101,20 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
         signal: ctrl.signal,
       });
       clearTimeout(to);
+      const ct = res.headers.get('content-type') || '';
+      const raw = ct.includes('application/json') ? await res.json() : await res.text();
+      console.log(`[Bivvo] resp user=${u.id} tenant=${parsedId} http=${res.status} body=`, typeof raw === 'string' ? raw.slice(0,500) : JSON.stringify(raw).slice(0,500));
 
       let newStatus = 'Não possui Tenant';
-      if (res.ok) {
-        const ct = res.headers.get('content-type') || '';
-        const data = ct.includes('application/json') ? await res.json() : null;
-        const tenant = data?.tenant ?? data?.data ?? data;
-        const st = String(tenant?.status ?? '').toLowerCase();
+      if (res.ok && typeof raw === 'object' && raw !== null) {
+        const tenant = (raw as any).tenant ?? (raw as any).data?.tenant ?? (raw as any).data ?? raw;
+        const st = String(tenant?.status ?? (raw as any).status ?? '').toLowerCase().trim();
         if (st === 'active') newStatus = 'active';
         else if (st === 'inactive') newStatus = 'inactive';
-        else if (tenant && (tenant.id || tenant.name)) newStatus = st || 'inactive';
+        else if (tenant && (tenant.id || tenant.name || tenant.tenant_id)) newStatus = st || 'inactive';
         else newStatus = 'Não possui Tenant';
-      } else {
-        newStatus = 'Não possui Tenant';
+      } else if (res.status >= 500) {
+        newStatus = 'Erro API';
       }
 
       await supabase.from('users').update({
@@ -121,7 +123,12 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
       }).eq('id', u.id);
       u.bivvo_status = newStatus;
     } catch (e) {
-      console.error('Bivvo check failed for user', u.id, e);
+      console.error('[Bivvo] check failed user', u.id, 'tenant', parsedId, e);
+      await supabase.from('users').update({
+        bivvo_status: 'Erro API',
+        bivvo_status_checked_at: new Date().toISOString(),
+      }).eq('id', u.id);
+      u.bivvo_status = 'Erro API';
     }
   }));
 }
@@ -266,7 +273,7 @@ serve(async (req) => {
         const customerIds = [...new Set(result.data.map((s: any) => s.customer))].filter(Boolean) as string[];
         console.log(`Enriquecendo ${customerIds.length} clientes para assinaturas`);
         const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
-        await refreshBivvoStatuses(supabase, userMap);
+        // Bivvo status: apenas leitura do banco. Atualização é manual via action `refresh-all-bivvo-statuses`.
         
         result.data = result.data.map((s: any) => {
           const userData: any = userMap.get(s.customer);
@@ -857,15 +864,47 @@ serve(async (req) => {
       });
       const contentType = bivvoRes.headers.get('content-type') || '';
       const raw = contentType.includes('application/json') ? await bivvoRes.json() : await bivvoRes.text();
+      console.log(`[Bivvo][manual] tenant=${parsedId} http=${bivvoRes.status} body=`, typeof raw === 'string' ? raw.slice(0,800) : JSON.stringify(raw).slice(0,800));
 
       if (!bivvoRes.ok) {
         return new Response(JSON.stringify({
           ok: false, exists: false, status: bivvoRes.status,
           error: typeof raw === 'string' ? raw : (raw?.message || raw?.error || 'Tenant não encontrado no Bivvo'),
+          raw,
         }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      return new Response(JSON.stringify({ ok: true, exists: true, tenant: raw }), {
+      return new Response(JSON.stringify({ ok: true, exists: true, tenant: raw, raw }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'refresh-all-bivvo-statuses' && req.method === 'POST') {
+      const { data: usersWithTenant, error } = await supabase
+        .from('users')
+        .select('id, name, email, asaas_customer_id, tenant_bivvo, bivvo_status, bivvo_status_checked_at')
+        .not('asaas_customer_id', 'is', null);
+      if (error) throw error;
+
+      const map = new Map<string, any>();
+      for (const u of usersWithTenant ?? []) {
+        map.set(u.asaas_customer_id, u);
+      }
+      console.log(`[Bivvo][refresh-all] processando ${map.size} usuários`);
+      await refreshBivvoStatuses(supabase, map);
+
+      const summary = { total: map.size, active: 0, inactive: 0, none: 0, fill: 0, error: 0 };
+      for (const u of map.values()) {
+        if (u.bivvo_status === 'active') summary.active++;
+        else if (u.bivvo_status === 'inactive') summary.inactive++;
+        else if (u.bivvo_status === 'Não possui Tenant') summary.none++;
+        else if (u.bivvo_status === 'Preencher ID') summary.fill++;
+        else if (u.bivvo_status === 'Erro API') summary.error++;
+      }
+
+      await logAction(supabase, user, 'refresh-all-bivvo-statuses', 'users', null, null, summary);
+
+      return new Response(JSON.stringify({ ok: true, summary }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
