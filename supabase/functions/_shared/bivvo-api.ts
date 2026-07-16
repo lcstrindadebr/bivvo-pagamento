@@ -241,10 +241,12 @@ export async function runProvisionAndPersist(supabase: any, userId: string) {
     }).eq('id', userId);
     return res;
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error('[Bivvo] Erro provisionando tenant:', err);
+    await log.error('bivvo-api', `runProvisionAndPersist erro: ${msg}`, { userId });
     await supabase.from('users').update({
-      tenant_provision_error: (err instanceof Error ? err.message : String(err)).slice(0, 1000),
+      tenant_provision_error: msg.slice(0, 1000),
     }).eq('id', userId);
-    return { skipped: false, error: err instanceof Error ? err.message : String(err) };
+    return { skipped: false, error: msg };
   }
 }
