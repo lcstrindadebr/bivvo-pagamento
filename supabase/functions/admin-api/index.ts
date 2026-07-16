@@ -49,42 +49,44 @@ async function logAction(supabase: any, user: any, action: string, tableName?: s
 async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_URL: string, ASAAS_API_KEY: string) {
   if (customerIds.length === 0) return new Map();
 
-  // 1. Try local DB first
+  // 1. Try local DB first (rico: pega tenant_bivvo + contatos já salvos)
   const { data: localUsers } = await supabase
     .from('users')
-    .select('name, email, asaas_customer_id')
+    .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status')
     .in('asaas_customer_id', customerIds);
 
   const userMap = new Map(localUsers?.map((u: any) => [u.asaas_customer_id, u]) || []);
   const missingIds = customerIds.filter(id => !userMap.has(id));
 
-  // 2. Fetch missing from Asaas
+  // 2. Fetch missing from Asaas e persistir em `users` (sem duplicar)
   if (missingIds.length > 0) {
     console.log(`Buscando ${missingIds.length} clientes no Asaas:`, missingIds);
     const fetched = await Promise.all(missingIds.map(async (id) => {
       try {
         const cleanId = id.trim();
         const url = `${ASAAS_BASE_URL}/customers/${cleanId}`;
-        console.log(`Chamada Asaas: ${url}`);
-        
         const res = await fetch(url, {
           method: 'GET',
-          headers: { 
+          headers: {
             'access_token': ASAAS_API_KEY,
             'Content-Type': 'application/json',
             'User-Agent': 'BivvoAdmin/1.0'
           }
         });
-        
+
         if (res.ok) {
           const c = await res.json();
-          console.log(`Cliente encontrado: ${id} -> ${c.name}`);
-          return { asaas_customer_id: id, name: c.name, email: c.email };
+          return {
+            asaas_customer_id: id,
+            name: c.name || 'Sem nome',
+            email: c.email || '',
+            whatsapp: c.mobilePhone || c.phone || '',
+            cpf: c.cpfCnpj || '',
+          };
         } else {
           const status = res.status;
           const text = await res.text();
           console.error(`Erro Asaas (Status ${status}) para ${id}: ${text}`);
-          
           if (status === 404) {
             return { asaas_customer_id: id, name: 'Cliente não encontrado', email: '' };
           }
@@ -95,9 +97,51 @@ async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_
       return { asaas_customer_id: id, name: 'Erro na API Asaas', email: '' };
     }));
 
-    fetched.forEach((u: any) => {
-      userMap.set(u.asaas_customer_id, u);
-    });
+    // Persistir no banco (sem duplicidade). Se já existe email igual, apenas atualiza asaas_customer_id.
+    for (const u of fetched) {
+      if (!u.email || u.name === 'Cliente não encontrado' || u.name === 'Erro na API Asaas') {
+        userMap.set(u.asaas_customer_id, u);
+        continue;
+      }
+      try {
+        // 1) Tenta atualizar por asaas_customer_id
+        const { data: byAsaas } = await supabase
+          .from('users').select('id').eq('asaas_customer_id', u.asaas_customer_id).maybeSingle();
+
+        if (byAsaas) {
+          await supabase.from('users').update({
+            name: u.name, email: u.email, whatsapp: u.whatsapp, cpf: u.cpf,
+          }).eq('id', byAsaas.id);
+        } else {
+          // 2) Tenta pelo email (upgrade do registro existente)
+          const { data: byEmail } = await supabase
+            .from('users').select('id').eq('email', u.email).maybeSingle();
+
+          if (byEmail) {
+            await supabase.from('users').update({
+              asaas_customer_id: u.asaas_customer_id,
+              name: u.name, whatsapp: u.whatsapp, cpf: u.cpf,
+            }).eq('id', byEmail.id);
+          } else {
+            // 3) Cria novo (sem duplicar)
+            await supabase.from('users').insert({
+              name: u.name, email: u.email, whatsapp: u.whatsapp, cpf: u.cpf,
+              asaas_customer_id: u.asaas_customer_id, status: 'active',
+            });
+          }
+        }
+
+        // Recarrega o registro completo do banco
+        const { data: fresh } = await supabase
+          .from('users')
+          .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status')
+          .eq('asaas_customer_id', u.asaas_customer_id).maybeSingle();
+        userMap.set(u.asaas_customer_id, fresh || u);
+      } catch (e) {
+        console.error('Falha ao persistir cliente Asaas em users:', e);
+        userMap.set(u.asaas_customer_id, u);
+      }
+    }
   }
 
   return userMap;
