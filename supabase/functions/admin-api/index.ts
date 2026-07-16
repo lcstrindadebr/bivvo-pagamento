@@ -273,7 +273,7 @@ serve(async (req) => {
         const customerIds = [...new Set(result.data.map((s: any) => s.customer))].filter(Boolean) as string[];
         console.log(`Enriquecendo ${customerIds.length} clientes para assinaturas`);
         const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
-        await refreshBivvoStatuses(supabase, userMap);
+        // Bivvo status: apenas leitura do banco. Atualização é manual via action `refresh-all-bivvo-statuses`.
         
         result.data = result.data.map((s: any) => {
           const userData: any = userMap.get(s.customer);
