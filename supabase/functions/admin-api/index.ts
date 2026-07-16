@@ -49,42 +49,44 @@ async function logAction(supabase: any, user: any, action: string, tableName?: s
 async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_URL: string, ASAAS_API_KEY: string) {
   if (customerIds.length === 0) return new Map();
 
-  // 1. Try local DB first
+  // 1. Try local DB first (rico: pega tenant_bivvo + contatos já salvos)
   const { data: localUsers } = await supabase
     .from('users')
-    .select('name, email, asaas_customer_id')
+    .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status')
     .in('asaas_customer_id', customerIds);
 
   const userMap = new Map(localUsers?.map((u: any) => [u.asaas_customer_id, u]) || []);
   const missingIds = customerIds.filter(id => !userMap.has(id));
 
-  // 2. Fetch missing from Asaas
+  // 2. Fetch missing from Asaas e persistir em `users` (sem duplicar)
   if (missingIds.length > 0) {
     console.log(`Buscando ${missingIds.length} clientes no Asaas:`, missingIds);
     const fetched = await Promise.all(missingIds.map(async (id) => {
       try {
         const cleanId = id.trim();
         const url = `${ASAAS_BASE_URL}/customers/${cleanId}`;
-        console.log(`Chamada Asaas: ${url}`);
-        
         const res = await fetch(url, {
           method: 'GET',
-          headers: { 
+          headers: {
             'access_token': ASAAS_API_KEY,
             'Content-Type': 'application/json',
             'User-Agent': 'BivvoAdmin/1.0'
           }
         });
-        
+
         if (res.ok) {
           const c = await res.json();
-          console.log(`Cliente encontrado: ${id} -> ${c.name}`);
-          return { asaas_customer_id: id, name: c.name, email: c.email };
+          return {
+            asaas_customer_id: id,
+            name: c.name || 'Sem nome',
+            email: c.email || '',
+            whatsapp: c.mobilePhone || c.phone || '',
+            cpf: c.cpfCnpj || '',
+          };
         } else {
           const status = res.status;
           const text = await res.text();
           console.error(`Erro Asaas (Status ${status}) para ${id}: ${text}`);
-          
           if (status === 404) {
             return { asaas_customer_id: id, name: 'Cliente não encontrado', email: '' };
           }
@@ -95,9 +97,51 @@ async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_
       return { asaas_customer_id: id, name: 'Erro na API Asaas', email: '' };
     }));
 
-    fetched.forEach((u: any) => {
-      userMap.set(u.asaas_customer_id, u);
-    });
+    // Persistir no banco (sem duplicidade). Se já existe email igual, apenas atualiza asaas_customer_id.
+    for (const u of fetched) {
+      if (!u.email || u.name === 'Cliente não encontrado' || u.name === 'Erro na API Asaas') {
+        userMap.set(u.asaas_customer_id, u);
+        continue;
+      }
+      try {
+        // 1) Tenta atualizar por asaas_customer_id
+        const { data: byAsaas } = await supabase
+          .from('users').select('id').eq('asaas_customer_id', u.asaas_customer_id).maybeSingle();
+
+        if (byAsaas) {
+          await supabase.from('users').update({
+            name: u.name, email: u.email, whatsapp: u.whatsapp, cpf: u.cpf,
+          }).eq('id', byAsaas.id);
+        } else {
+          // 2) Tenta pelo email (upgrade do registro existente)
+          const { data: byEmail } = await supabase
+            .from('users').select('id').eq('email', u.email).maybeSingle();
+
+          if (byEmail) {
+            await supabase.from('users').update({
+              asaas_customer_id: u.asaas_customer_id,
+              name: u.name, whatsapp: u.whatsapp, cpf: u.cpf,
+            }).eq('id', byEmail.id);
+          } else {
+            // 3) Cria novo (sem duplicar)
+            await supabase.from('users').insert({
+              name: u.name, email: u.email, whatsapp: u.whatsapp, cpf: u.cpf,
+              asaas_customer_id: u.asaas_customer_id, status: 'active',
+            });
+          }
+        }
+
+        // Recarrega o registro completo do banco
+        const { data: fresh } = await supabase
+          .from('users')
+          .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status')
+          .eq('asaas_customer_id', u.asaas_customer_id).maybeSingle();
+        userMap.set(u.asaas_customer_id, fresh || u);
+      } catch (e) {
+        console.error('Falha ao persistir cliente Asaas em users:', e);
+        userMap.set(u.asaas_customer_id, u);
+      }
+    }
   }
 
   return userMap;
@@ -144,11 +188,15 @@ serve(async (req) => {
         const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
         
         result.data = result.data.map((s: any) => {
-          const userData = userMap.get(s.customer);
+          const userData: any = userMap.get(s.customer);
           return {
             ...s,
             customerName: userData?.name || 'Desconhecido',
             customerEmail: userData?.email || '',
+            customerWhatsapp: userData?.whatsapp || '',
+            customerCpf: userData?.cpf || '',
+            tenantBivvo: userData?.tenant_bivvo || '',
+            localUserId: userData?.id || null,
           };
         });
       }
@@ -603,7 +651,108 @@ serve(async (req) => {
       });
     }
 
+    // ── CUSTOMER (Asaas customer + local users) ─────────────
+    if (action === 'update-customer' && req.method === 'POST') {
+      const body = await req.json();
+      const { asaasCustomerId, name, email, phone, mobilePhone, cpfCnpj,
+              address, addressNumber, complement, province, postalCode,
+              additionalEmails, observations } = body;
+      if (!asaasCustomerId) throw new Error('asaasCustomerId é obrigatório');
+
+      // Envia apenas campos preenchidos ao Asaas (evita sobrescrever com vazio)
+      const asaasPayload: Record<string, any> = {};
+      const map: Record<string, any> = {
+        name, email, phone, mobilePhone, cpfCnpj,
+        address, addressNumber, complement, province, postalCode,
+        additionalEmails, observations,
+      };
+      for (const [k, v] of Object.entries(map)) {
+        if (v !== undefined && v !== null && String(v).trim() !== '') asaasPayload[k] = v;
+      }
+
+      const asaasResp = await fetch(`${ASAAS_BASE_URL}/customers/${asaasCustomerId}`, {
+        method: 'PUT',
+        headers: {
+          'access_token': ASAAS_API_KEY,
+          'Content-Type': 'application/json',
+          'User-Agent': 'BivvoAdmin/1.0',
+        },
+        body: JSON.stringify(asaasPayload),
+      });
+      const asaasResult = await asaasResp.json();
+      if (!asaasResp.ok) {
+        console.error('Erro Asaas update-customer:', JSON.stringify(asaasResult));
+        throw new Error(asaasResult.errors?.[0]?.description || `Asaas Error ${asaasResp.status}`);
+      }
+
+      // Sincroniza local `users` sem duplicar
+      const localUpdate: Record<string, any> = {};
+      if (name) localUpdate.name = name;
+      if (email) localUpdate.email = email;
+      if (mobilePhone || phone) localUpdate.whatsapp = mobilePhone || phone;
+      if (cpfCnpj) localUpdate.cpf = cpfCnpj;
+      if (postalCode) localUpdate.cep = postalCode;
+      if (address) localUpdate.endereco = address;
+      if (addressNumber) localUpdate.numero = addressNumber;
+      if (complement) localUpdate.complemento = complement;
+      if (province) localUpdate.bairro = province;
+
+      const { data: existing } = await supabase
+        .from('users').select('id').eq('asaas_customer_id', asaasCustomerId).maybeSingle();
+
+      if (existing) {
+        await supabase.from('users').update(localUpdate).eq('id', existing.id);
+      } else {
+        // Não existe: cria (sem duplicar por email se possível)
+        const byEmail = email
+          ? (await supabase.from('users').select('id').eq('email', email).maybeSingle()).data
+          : null;
+        if (byEmail) {
+          await supabase.from('users').update({ ...localUpdate, asaas_customer_id: asaasCustomerId }).eq('id', byEmail.id);
+        } else {
+          await supabase.from('users').insert({ ...localUpdate, asaas_customer_id: asaasCustomerId, status: 'active' });
+        }
+      }
+
+      await logAction(supabase, user, 'update-customer', 'users', asaasCustomerId, null, asaasPayload);
+
+      return new Response(JSON.stringify({ ok: true, asaas: asaasResult }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'update-user-tenant' && req.method === 'POST') {
+      const body = await req.json();
+      const { asaasCustomerId, tenantBivvo } = body;
+      if (!asaasCustomerId) throw new Error('asaasCustomerId é obrigatório');
+
+      const { data: existing } = await supabase
+        .from('users').select('id').eq('asaas_customer_id', asaasCustomerId).maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase.from('users')
+          .update({ tenant_bivvo: tenantBivvo || null }).eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('users').insert({
+          asaas_customer_id: asaasCustomerId,
+          tenant_bivvo: tenantBivvo || null,
+          name: 'Cliente Asaas',
+          email: `${asaasCustomerId}@asaas.local`,
+          status: 'active',
+        });
+        if (error) throw error;
+      }
+
+      await logAction(supabase, user, 'update-user-tenant', 'users', asaasCustomerId, null, { tenantBivvo });
+
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── AFFILIATES ──────────────────────────────────────────
+
 
     if (action === 'list-affiliates') {
       const { data, error } = await supabase

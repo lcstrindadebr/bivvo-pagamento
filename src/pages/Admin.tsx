@@ -62,6 +62,10 @@ interface Subscription {
   cycle: string;
   customerName?: string;
   customerEmail?: string;
+  customerWhatsapp?: string;
+  customerCpf?: string;
+  tenantBivvo?: string;
+  localUserId?: string | null;
   externalReference?: string;
 }
 
@@ -107,7 +111,16 @@ const Admin = () => {
     description: ''
   });
 
+  // Tenant Bivvo (por cliente Asaas)
+  const [tenantBivvo, setTenantBivvo] = useState('');
+  const [savingTenant, setSavingTenant] = useState(false);
 
+  // Contato do cliente (Asaas + local)
+  const [contactForm, setContactForm] = useState({
+    name: '', email: '', mobilePhone: '', cpfCnpj: '',
+    postalCode: '', address: '', addressNumber: '', complement: '', province: '',
+  });
+  const [savingContact, setSavingContact] = useState(false);
 
   const [subsFilter, setSubsFilter] = useState('');
 
@@ -215,11 +228,64 @@ const Admin = () => {
         nextDueDate: selectedSub.nextDueDate || '',
         description: selectedSub.description || ''
       });
+      setTenantBivvo(selectedSub.tenantBivvo || '');
+      setContactForm({
+        name: selectedSub.customerName || '',
+        email: selectedSub.customerEmail || '',
+        mobilePhone: selectedSub.customerWhatsapp || '',
+        cpfCnpj: selectedSub.customerCpf || '',
+        postalCode: '', address: '', addressNumber: '', complement: '', province: '',
+      });
       loadSubPayments(selectedSub.id);
     } else {
       setSelectedSubPayments([]);
     }
   }, [selectedSub]);
+
+  const handleSaveTenant = async () => {
+    if (!selectedSub) return;
+    setSavingTenant(true);
+    try {
+      await adminPost('update-user-tenant', {
+        asaasCustomerId: selectedSub.customer,
+        tenantBivvo: tenantBivvo.trim(),
+      });
+      toast({ title: 'Salvo', description: 'Tenant Bivvo atualizado.' });
+      // reflete no card selecionado + lista
+      setSelectedSub(prev => prev ? { ...prev, tenantBivvo: tenantBivvo.trim() } : prev);
+      setSubscriptions(prev => prev.map(s => s.customer === selectedSub.customer ? { ...s, tenantBivvo: tenantBivvo.trim() } : s));
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao salvar tenant', variant: 'destructive' });
+    } finally {
+      setSavingTenant(false);
+    }
+  };
+
+  const handleSaveContact = async () => {
+    if (!selectedSub) return;
+    setSavingContact(true);
+    try {
+      await adminPost('update-customer', {
+        asaasCustomerId: selectedSub.customer,
+        ...contactForm,
+      });
+      toast({ title: 'Sucesso', description: 'Dados de contato atualizados no Asaas e no banco.' });
+      setSelectedSub(prev => prev ? {
+        ...prev,
+        customerName: contactForm.name || prev.customerName,
+        customerEmail: contactForm.email || prev.customerEmail,
+        customerWhatsapp: contactForm.mobilePhone || prev.customerWhatsapp,
+        customerCpf: contactForm.cpfCnpj || prev.customerCpf,
+      } : prev);
+      loadSubscriptions();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao atualizar', variant: 'destructive' });
+    } finally {
+      setSavingContact(false);
+    }
+  };
+
+
 
   const loadSubPayments = async (id: string) => {
     setLoadingSubPayments(true);
@@ -900,7 +966,89 @@ const Admin = () => {
                       </div>
                     </div>
 
+                    {/* TENANT BIVVO */}
+                    <div className="border rounded-lg p-4 bg-accent/5 space-y-3">
+                      <h3 className="text-sm font-bold flex items-center gap-2">
+                        <Package className="h-3 w-3" /> Tenant Bivvo
+                      </h3>
+                      <div className="flex gap-2">
+                        <Input
+                          value={tenantBivvo}
+                          onChange={(e) => setTenantBivvo(e.target.value)}
+                          placeholder="ex: cliente-01"
+                          className="h-8 text-sm flex-1"
+                        />
+                        <Button size="sm" onClick={handleSaveTenant} disabled={savingTenant}>
+                          {savingTenant ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                          <span className="ml-2">Salvar Tenant</span>
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Identificador do inquilino Bivvo associado a este cliente.</p>
+                    </div>
+
+                    {/* CONTACT EDIT (Asaas customer update) */}
+                    <div className="border rounded-lg p-4 bg-muted/20 space-y-3">
+                      <h3 className="text-sm font-bold flex items-center gap-2">
+                        <UserCheck className="h-3 w-3" /> Atualizar Contato do Cliente (Asaas)
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase">Nome</Label>
+                          <Input className="h-8 text-sm" value={contactForm.name}
+                            onChange={e => setContactForm(p => ({ ...p, name: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase">E-mail</Label>
+                          <Input className="h-8 text-sm" value={contactForm.email}
+                            onChange={e => setContactForm(p => ({ ...p, email: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase">Celular</Label>
+                          <Input className="h-8 text-sm" value={contactForm.mobilePhone}
+                            onChange={e => setContactForm(p => ({ ...p, mobilePhone: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase">CPF/CNPJ</Label>
+                          <Input className="h-8 text-sm" value={contactForm.cpfCnpj}
+                            onChange={e => setContactForm(p => ({ ...p, cpfCnpj: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase">CEP</Label>
+                          <Input className="h-8 text-sm" value={contactForm.postalCode}
+                            onChange={e => setContactForm(p => ({ ...p, postalCode: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase">Endereço</Label>
+                          <Input className="h-8 text-sm" value={contactForm.address}
+                            onChange={e => setContactForm(p => ({ ...p, address: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase">Número</Label>
+                          <Input className="h-8 text-sm" value={contactForm.addressNumber}
+                            onChange={e => setContactForm(p => ({ ...p, addressNumber: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase">Complemento</Label>
+                          <Input className="h-8 text-sm" value={contactForm.complement}
+                            onChange={e => setContactForm(p => ({ ...p, complement: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1 col-span-2">
+                          <Label className="text-[10px] uppercase">Bairro</Label>
+                          <Input className="h-8 text-sm" value={contactForm.province}
+                            onChange={e => setContactForm(p => ({ ...p, province: e.target.value }))} />
+                        </div>
+                      </div>
+                      <Button size="sm" className="w-full" onClick={handleSaveContact} disabled={savingContact}>
+                        {savingContact ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                        Salvar contato no Asaas
+                      </Button>
+                      <p className="text-[9px] text-muted-foreground text-center">
+                        * Apenas campos preenchidos serão enviados. Dados são sincronizados no banco automaticamente.
+                      </p>
+                    </div>
+
                     {/* EDIT SECTION */}
+
                     <div className="border rounded-lg p-4 bg-muted/20 space-y-4">
                       <h3 className="text-sm font-bold flex items-center gap-2">
                         <Pencil className="h-3 w-3" /> Editar Assinatura no Asaas
