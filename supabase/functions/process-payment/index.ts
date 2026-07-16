@@ -235,6 +235,11 @@ serve(async (req) => {
       }
     }
 
+    if (appliedCoupon) {
+      await incrementCouponUse(supabase, appliedCoupon.id);
+    }
+
+
     // 8. Affiliate tracking (Simplified for portability)
     if (affiliateSlug && dbPayment) {
       const { data: aff } = await supabase.from('affiliates').select('id, commission_percent').eq('slug', affiliateSlug).eq('status', 'active').maybeSingle();
