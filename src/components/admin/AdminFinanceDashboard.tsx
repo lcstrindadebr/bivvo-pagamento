@@ -30,6 +30,7 @@ interface FinanceStats {
   bankBalance: number;
   projection: number;
   payments: any[];
+  overdueList: any[];
   previous: null | Record<string, number>;
   deltas: null | {
     paidValue: number | null;
