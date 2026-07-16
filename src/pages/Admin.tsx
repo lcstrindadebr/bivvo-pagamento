@@ -982,29 +982,21 @@ const Admin = () => {
                       <div className="flex gap-2">
                         <Input
                           value={tenantBivvo}
-                          onChange={(e) => { setTenantBivvo(e.target.value); setTenantCheck(null); }}
+                          onChange={(e) => setTenantBivvo(e.target.value)}
                           placeholder="ex: 1"
                           className="h-8 text-sm flex-1"
                         />
-                        <Button size="sm" variant="outline" onClick={handleCheckTenant} disabled={checkingTenant || !tenantBivvo.trim()}>
-                          {checkingTenant ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
-                          <span className="ml-2">Verificar no Bivvo</span>
-                        </Button>
                         <Button size="sm" onClick={handleSaveTenant} disabled={savingTenant}>
                           {savingTenant ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                           <span className="ml-2">Salvar Tenant</span>
                         </Button>
                       </div>
-                      {tenantCheck && (
-                        <div className={`text-[11px] rounded px-2 py-1.5 border ${tenantCheck.exists ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' : 'bg-destructive/10 border-destructive/30 text-destructive'}`}>
-                          {tenantCheck.exists ? (
-                            <span className="flex items-center gap-1"><Check className="h-3 w-3" /> Tenant ativo no Bivvo{tenantCheck.info?.name ? ` — ${tenantCheck.info.name}` : ''}</span>
-                          ) : (
-                            <span>Tenant não encontrado: {tenantCheck.error}</span>
-                          )}
+                      {selectedSub?.bivvoStatus && (
+                        <div className="text-[11px] rounded px-2 py-1.5 border bg-muted/40">
+                          Status atual: <strong>{selectedSub.bivvoStatus}</strong>
                         </div>
                       )}
-                      <p className="text-[10px] text-muted-foreground">ID do tenant Bivvo associado a este cliente. Use "Verificar no Bivvo" para confirmar via API antes de salvar.</p>
+                      <p className="text-[10px] text-muted-foreground">ID do tenant Bivvo associado a este cliente. A verificação com a API Bivvo é feita automaticamente ao listar assinaturas.</p>
                     </div>
 
                     {/* CONTACT EDIT (Asaas customer update) */}
