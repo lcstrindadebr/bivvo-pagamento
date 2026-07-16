@@ -116,6 +116,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
   const { toast } = useToast();
   const [stats, setStats] = useState<FinanceStats | null>(null);
   const [series, setSeries] = useState<FinanceSeriesPoint[]>([]);
+  const [granularity, setGranularity] = useState<'day' | 'month'>('day');
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'today' | '7days' | '30days' | 'month' | 'custom'>('month');
   const [customStart, setCustomStart] = useState('');
@@ -152,11 +153,12 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         1,
         Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1,
       );
-      const granularity = rangeDays > 60 ? 'month' : 'day';
+      const gran: 'day' | 'month' = rangeDays > 60 ? 'month' : 'day';
+      setGranularity(gran);
 
       const [statsData, seriesData] = await Promise.all([
         adminFetch('finance-stats', params),
-        adminFetch('finance-series', { start: startStr, end: endStr, granularity }).catch(() => ({ series: [] })),
+        adminFetch('finance-series', { start: startStr, end: endStr, granularity: gran }).catch(() => ({ series: [] })),
       ]);
       setStats(statsData);
       setSeries(seriesData?.series || []);
@@ -549,7 +551,16 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                     </pattern>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                  <XAxis dataKey="bucket" tick={{ fontSize: 10 }} tickFormatter={(v) => (v || '').slice(5)} />
+                  <XAxis
+                    dataKey="bucket"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => {
+                      if (!v) return '';
+                      const [y, m, d] = String(v).split('-');
+                      if (!d) return `${m}/${y}`;
+                      return granularity === 'month' ? `${m}/${y}` : `${d}/${m}`;
+                    }}
+                  />
                   <YAxis
                     yAxisId="left"
                     tick={{ fontSize: 10 }}
@@ -563,8 +574,18 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                   />
                   <Tooltip
                     formatter={(v: any, name: string) => [formatCurrency(Number(v)), name]}
-                    labelFormatter={(v) => `Período: ${v}`}
+                    labelFormatter={(v) => {
+                      if (!v) return '';
+                      const [y, m, d] = String(v).split('-');
+                      const label = !d
+                        ? `${m}/${y}`
+                        : granularity === 'month'
+                          ? `${m}/${y}`
+                          : `${d}/${m}/${y}`;
+                      return `Período: ${label}`;
+                    }}
                   />
+
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <ReferenceLine yAxisId="left" y={0} stroke="hsl(var(--border))" />
                   <ReferenceLine yAxisId="right" y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
