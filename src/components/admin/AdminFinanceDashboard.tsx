@@ -477,21 +477,217 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <MousePointerClick className="h-4 w-4 text-purple-500" /> Conversão Global
+              <PiggyBank className="h-4 w-4 text-emerald-500" /> Lucro Líquido
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
               <div className="flex flex-col">
-                <div className="text-2xl font-bold text-purple-500">{stats?.conversionRate.toFixed(2)}%</div>
+                <div className="flex items-center gap-2">
+                  <div className={`text-2xl font-bold ${((stats?.netProfit ?? 0) >= 0) ? 'text-emerald-500' : 'text-red-500'}`}>
+                    {formatCurrency(stats?.netProfit || 0)}
+                  </div>
+                  <DeltaBadge value={stats?.deltas?.netProfit} />
+                </div>
                 <div className="text-[10px] text-muted-foreground">
-                  {stats?.totalClicks || 0} cliques totais
+                  Recebido líq. − Despesas − Comissões do período
                 </div>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Gráficos: Receita × Despesas e Fluxo de Caixa acumulado */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="card-glass border-none shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-accent" /> Receita × Despesas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-64 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-accent" />
+              </div>
+            ) : series.length === 0 ? (
+              <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
+                Sem dados históricos ainda. Rode o backfill para popular.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={series}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis dataKey="bucket" tick={{ fontSize: 10 }} tickFormatter={(v) => (v || '').slice(5)} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `R$${Math.round(v)}`} />
+                  <Tooltip
+                    formatter={(v: any) => formatCurrency(Number(v))}
+                    labelFormatter={(v) => `Período: ${v}`}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="revenue" name="Receita" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" name="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="commissions" name="Comissões" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="card-glass border-none shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-blue-500" /> Fluxo de Caixa Acumulado
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-64 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-accent" />
+              </div>
+            ) : series.length === 0 ? (
+              <div className="h-64 flex items-center justify-center text-xs text-muted-foreground">
+                Sem dados históricos ainda.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={series}>
+                  <defs>
+                    <linearGradient id="cashFlowGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.5} />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis dataKey="bucket" tick={{ fontSize: 10 }} tickFormatter={(v) => (v || '').slice(5)} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `R$${Math.round(v)}`} />
+                  <Tooltip
+                    formatter={(v: any) => formatCurrency(Number(v))}
+                    labelFormatter={(v) => `Período: ${v}`}
+                  />
+                  <Area type="monotone" dataKey="cashFlow" name="Fluxo de Caixa" stroke="#3b82f6" strokeWidth={2} fill="url(#cashFlowGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Clientes inadimplentes */}
+      <Card className="card-glass border-none shadow-xl overflow-hidden">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+            Clientes Inadimplentes
+            {stats?.overdueCount ? (
+              <Badge variant="outline" className="text-red-600 border-red-500/30 ml-1">
+                {stats.overdueCount} · {formatCurrency(stats.overdueValue || 0)}
+              </Badge>
+            ) : null}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>WhatsApp</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Vencimento</TableHead>
+                <TableHead>Atraso</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-10">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-accent" />
+                  </TableCell>
+                </TableRow>
+              ) : stats?.overdueCustomers && stats.overdueCustomers.length > 0 ? (
+                stats.overdueCustomers.map((c) => {
+                  const waDigits = (c.whatsapp || '').replace(/\D/g, '');
+                  const msg = encodeURIComponent(
+                    `Olá ${c.name}, identificamos uma cobrança em atraso no valor de ${formatCurrency(c.amount)} (vencimento ${c.dueDate ? new Date(c.dueDate).toLocaleDateString('pt-BR') : 'recente'}). Podemos ajudar a regularizar?${c.invoiceUrl ? ` Link: ${c.invoiceUrl}` : ''}`,
+                  );
+                  const waUrl = waDigits ? `https://wa.me/${waDigits.length <= 11 ? '55' + waDigits : waDigits}?text=${msg}` : '';
+                  return (
+                    <TableRow key={c.paymentId}>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-[11px]">{c.name}</span>
+                          <span className="text-[9px] text-muted-foreground">{c.email}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">{c.whatsapp || <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell className="font-medium text-sm text-red-500">{formatCurrency(c.amount)}</TableCell>
+                      <TableCell className="text-xs">
+                        {c.dueDate ? new Date(c.dueDate).toLocaleDateString('pt-BR') : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-red-600 border-red-500/20 text-[10px]">
+                          {c.daysLate} {c.daysLate === 1 ? 'dia' : 'dias'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-1">
+                        {c.invoiceUrl && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2"
+                            onClick={() => {
+                              navigator.clipboard.writeText(c.invoiceUrl!);
+                              toast({ title: 'Copiado', description: 'Link da fatura copiado' });
+                            }}
+                            title="Copiar link da fatura"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {c.invoiceUrl && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2"
+                            asChild
+                            title="Abrir fatura"
+                          >
+                            <a href={c.invoiceUrl} target="_blank" rel="noreferrer">
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </Button>
+                        )}
+                        {waUrl && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-emerald-600"
+                            asChild
+                            title="Enviar WhatsApp"
+                          >
+                            <a href={waUrl} target="_blank" rel="noreferrer">
+                              <MessageCircle className="h-3 w-3" />
+                            </a>
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-xs">
+                    Nenhum cliente inadimplente no momento. 🎉
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
 
       <Card className="card-glass border-none shadow-xl overflow-hidden">
         <CardHeader>
