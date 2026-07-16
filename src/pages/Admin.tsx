@@ -1260,7 +1260,27 @@ const Admin = () => {
                             ) : (
                               <p className="text-[10px] text-muted-foreground">ID do tenant Bivvo associado a este cliente. A verificação com a API Bivvo é feita automaticamente ao listar assinaturas.</p>
                             )}
+                            <div className="pt-2 border-t">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full h-8 text-xs"
+                                onClick={handleProvisionTenant}
+                                disabled={provisioningTenant || !tenantInfo?.id}
+                              >
+                                {provisioningTenant ? (
+                                  <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                ) : (
+                                  <RefreshCw className="h-3 w-3 mr-2" />
+                                )}
+                                {apiLocked ? 'Atualizar Tenant via API Bivvo' : 'Provisionar Tenant via API Bivvo'}
+                              </Button>
+                              <p className="text-[10px] text-muted-foreground mt-1">
+                                Dispara manualmente a criação/atualização do tenant na API Bivvo com base na configuração contratada.
+                              </p>
+                            </div>
                           </>
+
                         );
                       })()}
                     </div>
