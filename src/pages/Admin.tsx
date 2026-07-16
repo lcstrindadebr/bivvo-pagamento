@@ -255,6 +255,10 @@ const Admin = () => {
         .then(({ data }) => {
           setContractedConfig(data?.bivvo_config || null);
           setTenantInfo(data || null);
+          // Se cliente foi provisionado via API, sincroniza o campo com o bivvo_tenant_id (fonte da verdade)
+          if (data?.bivvo_tenant_id) {
+            setTenantBivvo(String(data.bivvo_tenant_id));
+          }
         });
     } else {
       setSelectedSubPayments([]);
@@ -1196,25 +1200,43 @@ const Admin = () => {
                       <h3 className="text-sm font-bold flex items-center gap-2">
                         <Package className="h-3 w-3" /> Tenant Bivvo
                       </h3>
-                      <div className="flex gap-2">
-                        <Input
-                          value={tenantBivvo}
-                          onChange={(e) => setTenantBivvo(e.target.value)}
-                          placeholder="ex: 1"
-                          className="h-8 text-sm flex-1"
-                        />
-                        <Button size="sm" onClick={handleSaveTenant} disabled={savingTenant}>
-                          {savingTenant ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                          <span className="ml-2">Salvar Tenant</span>
-                        </Button>
-                      </div>
-                      {selectedSub?.bivvoStatus && (
-                        <div className="text-[11px] rounded px-2 py-1.5 border bg-muted/40">
-                          Status atual: <strong>{selectedSub.bivvoStatus}</strong>
-                        </div>
-                      )}
-                      <p className="text-[10px] text-muted-foreground">ID do tenant Bivvo associado a este cliente. A verificação com a API Bivvo é feita automaticamente ao listar assinaturas.</p>
+                      {(() => {
+                        const apiLocked = !!tenantInfo?.bivvo_tenant_id;
+                        return (
+                          <>
+                            <div className="flex gap-2">
+                              <Input
+                                value={tenantBivvo}
+                                onChange={(e) => setTenantBivvo(e.target.value)}
+                                placeholder="ex: 1"
+                                className="h-8 text-sm flex-1"
+                                readOnly={apiLocked}
+                                disabled={apiLocked}
+                              />
+                              {!apiLocked && (
+                                <Button size="sm" onClick={handleSaveTenant} disabled={savingTenant}>
+                                  {savingTenant ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                  <span className="ml-2">Salvar Tenant</span>
+                                </Button>
+                              )}
+                            </div>
+                            {selectedSub?.bivvoStatus && (
+                              <div className="text-[11px] rounded px-2 py-1.5 border bg-muted/40">
+                                Status atual: <strong>{selectedSub.bivvoStatus}</strong>
+                              </div>
+                            )}
+                            {apiLocked ? (
+                              <p className="text-[10px] text-muted-foreground">
+                                Tenant provisionado automaticamente via API Bivvo. Este campo está sincronizado e não pode ser editado manualmente.
+                              </p>
+                            ) : (
+                              <p className="text-[10px] text-muted-foreground">ID do tenant Bivvo associado a este cliente. A verificação com a API Bivvo é feita automaticamente ao listar assinaturas.</p>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
+
 
                     {/* CONTACT EDIT (Asaas customer update) */}
                     <div className="border rounded-lg p-4 bg-muted/20 space-y-3">
