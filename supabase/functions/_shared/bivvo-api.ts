@@ -109,6 +109,9 @@ async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string)
   };
 
   console.log('[Bivvo] storeTenant →', tenantName, `${maxUsers}u`, `${maxConnections}c`);
+  await log.info('bivvo-api', `storeTenant → ${tenantName}`, {
+    userId: user.id, email: user.email, maxUsers, maxConnections, limits, payload: storePayload,
+  });
   const res = await fetch(`${BIVVO_API_URL}/tenantApiStoreTenant`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: bearer() },
@@ -118,7 +121,11 @@ async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string)
   let json: any = null;
   try { json = JSON.parse(text); } catch { /* keep text */ }
   console.log('[Bivvo] storeTenant status:', res.status, 'body:', text.slice(0, 800));
+  await log.info('bivvo-api', `storeTenant response ${res.status}`, {
+    userId: user.id, status: res.status, ok: res.ok, body: json ?? text.slice(0, 2000),
+  });
   if (!res.ok) {
+    await log.error('bivvo-api', `storeTenant falhou ${res.status}`, { userId: user.id, body: text.slice(0, 2000) });
     throw new Error(`storeTenant ${res.status}: ${text.slice(0, 500)}`);
   }
   const tenantId = String(
