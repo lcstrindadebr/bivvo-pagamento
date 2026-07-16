@@ -768,7 +768,7 @@ serve(async (req) => {
 
       const bivvoRes = await fetch('https://adm.bivvo.com.br/tenantApiShowTenant', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        headers: { 'Content-Type': 'application/json', 'Authorization': token.toLowerCase().startsWith('bearer ') ? token : `Bearer ${token}` },
         body: JSON.stringify({ id: parsedId }),
       });
       const contentType = bivvoRes.headers.get('content-type') || '';
