@@ -537,12 +537,14 @@ serve(async (req) => {
     }
 
     // Reconstrói finance_daily_snapshots dos últimos N meses a partir das fontes internas.
-    if (action === 'finance-backfill' && req.method === 'POST') {
-      const body = await req.json().catch(() => ({} as any));
-      const months = Math.min(24, Math.max(1, Number(body.months) || 12));
+    if (action === 'finance-backfill') {
+      const body = req.method === 'POST' ? await req.json().catch(() => ({} as any)) : {};
+      const monthsParam = url.searchParams.get('months');
+      const months = Math.min(24, Math.max(1, Number(body.months || monthsParam) || 12));
       const since = new Date();
       since.setMonth(since.getMonth() - months);
       const sinceStr = since.toISOString().slice(0, 10);
+
 
       // Limpa período alvo
       await supabase.from('finance_daily_snapshots').delete().gte('date', sinceStr);
