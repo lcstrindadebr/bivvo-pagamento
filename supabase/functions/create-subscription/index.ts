@@ -111,6 +111,7 @@ serve(async (req) => {
         headers: { 'Content-Type': 'application/json', 'access_token': ASAAS_API_KEY },
         body: JSON.stringify({
           name: customerData.name.trim(),
+          company: customerData.personType === 'JURIDICA' ? (customerData.companyName || '').trim() : undefined,
           cpfCnpj: cleanCpf,
           email: customerData.email.toLowerCase().trim(),
           mobilePhone: cleanPhone,
