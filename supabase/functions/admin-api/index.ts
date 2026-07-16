@@ -409,6 +409,8 @@ serve(async (req) => {
           churnRate,
           ltv,
           totalExpenses,
+          periodCommissions: periodCommValue,
+          netProfit: paidNetValue - totalExpenses - periodCommValue,
           freeCash,
           projection,
         };
@@ -427,6 +429,16 @@ serve(async (req) => {
       const ppDelta = (curr: number, prev: number) => curr - prev; // pontos percentuais
 
       const deltas = previous ? {
+        paidValue: pctDelta(current.paidValue, previous.paidValue),
+        paidNetValue: pctDelta(current.paidNetValue, previous.paidNetValue),
+        paidCount: pctDelta(current.paidCount, previous.paidCount),
+        totalValue: pctDelta(current.totalValue, previous.totalValue),
+        freeCash: pctDelta(current.freeCash, previous.freeCash),
+        netProfit: pctDelta(current.netProfit, previous.netProfit),
+        projection: pctDelta(current.projection, previous.projection),
+        churnRate: ppDelta(current.churnRate, previous.churnRate),
+      } : null;
+
         paidValue: pctDelta(current.paidValue, previous.paidValue),
         paidNetValue: pctDelta(current.paidNetValue, previous.paidNetValue),
         paidCount: pctDelta(current.paidCount, previous.paidCount),
