@@ -59,6 +59,7 @@ serve(async (req) => {
           status: 'ativo',
           plano_ativo: dbPayment.plan,
           data_expiracao: expirationDate.toISOString(),
+          overdue_since: null,
           asaas_subscription_id: payment.subscription || dbPayment.asaas_subscription_id
         }).eq('id', dbPayment.user_id);
 
@@ -89,8 +90,26 @@ serve(async (req) => {
 
     // 2. Pagamento Atrasado / Vencido
     if (body.event === 'PAYMENT_OVERDUE') {
-       // Opcional: Notificar usuário ou marcar como atrasado
        console.log('Pagamento atrasado:', payment.id);
+       // Marca overdue_since do usuário (se ainda não estava marcado)
+       const { data: overduePayment } = await supabase
+         .from('payments')
+         .select('user_id')
+         .eq('asaas_payment_id', payment.id)
+         .maybeSingle();
+       if (overduePayment?.user_id) {
+         const { data: u } = await supabase
+           .from('users')
+           .select('overdue_since')
+           .eq('id', overduePayment.user_id)
+           .maybeSingle();
+         if (!u?.overdue_since) {
+           await supabase.from('users').update({
+             status: 'overdue',
+             overdue_since: new Date().toISOString(),
+           }).eq('id', overduePayment.user_id);
+         }
+       }
     }
 
     // 3. Assinatura Cancelada
