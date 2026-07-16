@@ -1138,7 +1138,7 @@ const Checkout = () => {
             )}
 
             {/* PIX Info */}
-            {!isFreeCoupon && paymentMethod === 'PIX' && (
+            {paymentMethod === 'PIX' && !isFreeCoupon && (
               <div className="card-glass rounded-2xl p-5 space-y-4 text-center">
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
                   <QrCode className="h-8 w-8 text-accent" />
@@ -1153,7 +1153,7 @@ const Checkout = () => {
             )}
 
             {/* Boleto Info */}
-            {!isFreeCoupon && paymentMethod === 'BOLETO' && (
+            {paymentMethod === 'BOLETO' && !isFreeCoupon && (
               <div className="card-glass rounded-2xl p-5 space-y-4 text-center">
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
                   <Barcode className="h-8 w-8 text-accent" />
@@ -1166,6 +1166,7 @@ const Checkout = () => {
                 </div>
               </div>
             )}
+
 
             <SecurityFooter />
           </div>
