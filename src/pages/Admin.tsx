@@ -122,6 +122,7 @@ const Admin = () => {
   });
   const [savingContact, setSavingContact] = useState(false);
 
+  const [subsFilter, setSubsFilter] = useState('');
 
   const [subsBillingFilter, setSubsBillingFilter] = useState('');
   const [subsCustomerSearch, setSubsCustomerSearch] = useState('');
