@@ -234,6 +234,11 @@ serve(async (req) => {
       bivvo_config: bivvoConfig || null,
     }).select('id').single();
 
+    if (appliedCoupon) {
+      await incrementCouponUse(supabase, appliedCoupon.id);
+    }
+
+
     // 8. Affiliate Tracking
     if (affiliateSlug && dbPayment) {
       const { data: aff } = await supabase.from('affiliates').select('id, commission_percent').eq('slug', affiliateSlug).eq('status', 'active').maybeSingle();
