@@ -4,9 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plug, Save, Loader2, Copy, Check, ShieldCheck } from 'lucide-react';
+import { Plug, Save, Loader2, Copy, Check, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useSaveSetting } from '@/hooks/useSaveSetting';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   settings: Record<string, string>;
@@ -20,6 +21,13 @@ export function IntegrationsTab({ settings, loading }: Props) {
   const [dirty, setDirty] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Bivvo token (guardado em admin_secrets, admin-only via RLS)
+  const [bivvoToken, setBivvoToken] = useState('');
+  const [bivvoDirty, setBivvoDirty] = useState(false);
+  const [bivvoLoading, setBivvoLoading] = useState(true);
+  const [bivvoSaving, setBivvoSaving] = useState(false);
+  const [showBivvo, setShowBivvo] = useState(false);
+
   useEffect(() => {
     if (!loading) {
       setForm({
@@ -30,6 +38,20 @@ export function IntegrationsTab({ settings, loading }: Props) {
     }
   }, [settings, loading]);
 
+  useEffect(() => {
+    (async () => {
+      setBivvoLoading(true);
+      const { data } = await supabase
+        .from('admin_secrets')
+        .select('value')
+        .eq('key', 'bivvo_api_token')
+        .maybeSingle();
+      setBivvoToken((data as any)?.value || '');
+      setBivvoDirty(false);
+      setBivvoLoading(false);
+    })();
+  }, []);
+
   const update = (patch: Partial<typeof form>) => {
     setForm((f) => ({ ...f, ...patch }));
     setDirty(true);
@@ -39,6 +61,23 @@ export function IntegrationsTab({ settings, loading }: Props) {
     const ok = await save(form, { previous: settings, label: 'Integrações' });
     if (ok) setDirty(false);
   };
+
+  const saveBivvo = async () => {
+    setBivvoSaving(true);
+    try {
+      const { error } = await supabase
+        .from('admin_secrets')
+        .upsert({ key: 'bivvo_api_token', value: bivvoToken.trim() }, { onConflict: 'key' });
+      if (error) throw error;
+      toast({ title: 'Salvo', description: 'Token da API Bivvo atualizado.' });
+      setBivvoDirty(false);
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao salvar', variant: 'destructive' });
+    } finally {
+      setBivvoSaving(false);
+    }
+  };
+
 
   const webhookUrl = `${(settings.site_url || window.location.origin).replace(/\/$/, '')}/functions/v1/asaas-webhook`;
   const copy = async () => {
@@ -80,23 +119,53 @@ export function IntegrationsTab({ settings, loading }: Props) {
       <Card className="card-glass border-none shadow-xl">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-accent" /> Bivvo
+            <ShieldCheck className="h-5 w-5 text-accent" /> Integração Bivvo
+            {bivvoDirty && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600">não salvo</span>}
           </CardTitle>
           <CardDescription>
-            Token da API Bivvo usado para provisionar contas e sincronizar tenants. Armazenado com segurança como secret (BIVVO_API_TOKEN) — não fica exposto no frontend.
+            Token da API Bivvo usado para provisionar contas e sincronizar tenants. Armazenado com acesso restrito a administradores.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
-              <Check className="h-3 w-3 mr-1" /> Gerenciado pelo Lovable Cloud
-            </Badge>
+            {bivvoLoading ? (
+              <Badge variant="outline"><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Carregando</Badge>
+            ) : bivvoToken ? (
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                <Check className="h-3 w-3 mr-1" /> Token configurado
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                Nenhum token cadastrado
+              </Badge>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Para adicionar ou trocar o token, peça no chat: "Adicionar token da API Bivvo" — abrirá um formulário seguro para colar o valor.
-          </p>
+          <div className="space-y-1.5">
+            <Label htmlFor="bivvo_token">Token da API Bivvo</Label>
+            <div className="flex gap-2">
+              <Input
+                id="bivvo_token"
+                type={showBivvo ? 'text' : 'password'}
+                value={bivvoToken}
+                onChange={(e) => { setBivvoToken(e.target.value); setBivvoDirty(true); }}
+                placeholder="Cole aqui o token da API Bivvo"
+                className="font-mono text-xs"
+                disabled={bivvoLoading}
+              />
+              <Button variant="outline" size="icon" onClick={() => setShowBivvo(v => !v)} title={showBivvo ? 'Ocultar' : 'Mostrar'}>
+                {showBivvo ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+          <div className="pt-2 flex justify-end">
+            <Button onClick={saveBivvo} disabled={bivvoSaving || !bivvoDirty} className="gap-2">
+              {bivvoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Salvar token
+            </Button>
+          </div>
         </CardContent>
       </Card>
+
 
 
 
