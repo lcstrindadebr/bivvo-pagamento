@@ -63,14 +63,14 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
   await Promise.all(entries.map(async ([key, u]: [string, any]) => {
     if (!u || !u.id) return;
 
-    // No tenant assigned → status "Preencher ID"
+    // No tenant assigned → status "Inserir ID"
     if (!u.tenant_bivvo || String(u.tenant_bivvo).trim() === '') {
-      if (u.bivvo_status !== 'Preencher ID') {
+      if (u.bivvo_status !== 'Inserir ID') {
         await supabase.from('users').update({
-          bivvo_status: 'Preencher ID',
+          bivvo_status: 'Inserir ID',
           bivvo_status_checked_at: new Date().toISOString(),
         }).eq('id', u.id);
-        u.bivvo_status = 'Preencher ID';
+        u.bivvo_status = 'Inserir ID';
       }
       return;
     }
@@ -311,7 +311,7 @@ serve(async (req) => {
             customerWhatsapp: userData?.whatsapp || '',
             customerCpf: userData?.cpf || '',
             tenantBivvo: userData?.tenant_bivvo || '',
-            bivvoStatus: userData?.bivvo_status || (userData?.tenant_bivvo ? 'Não possui Tenant' : 'Preencher ID'),
+            bivvoStatus: userData?.bivvo_status || (userData?.tenant_bivvo ? 'Não possui Tenant' : 'Inserir ID'),
             localUserId: userData?.id || null,
             paymentStatus: isOverdue ? 'inadimplente' : 'adimplente',
           };
@@ -926,7 +926,7 @@ serve(async (req) => {
         if (u.bivvo_status === 'active') summary.active++;
         else if (u.bivvo_status === 'inactive') summary.inactive++;
         else if (u.bivvo_status === 'Não possui Tenant') summary.none++;
-        else if (u.bivvo_status === 'Preencher ID') summary.fill++;
+        else if (u.bivvo_status === 'Inserir ID') summary.fill++;
         else if (u.bivvo_status === 'Erro API') summary.error++;
       }
 
