@@ -101,37 +101,10 @@ serve(async (req) => {
       phone: cleanPhone,
     }, { onConflict: 'email' });
 
-    // ===== 100% coupon short-circuit =====
-    if (isFreeCoupon) {
-      const { data: dbPayment } = await supabase.from('payments').insert({
-        user_id: user.id,
-        plan,
-        amount: 0,
-        status: 'approved',
-        paid_at: new Date().toISOString(),
-        bivvo_config: bivvoConfig || null,
-      }).select('id').single();
+    // (free-coupon path handled AFTER Asaas customer creation, so we can still
+    // create the recurring subscription that will charge from month 2 onward)
 
-      const expDate = new Date();
-      expDate.setMonth(expDate.getMonth() + 1);
-      expDate.setDate(expDate.getDate() + 3);
-      await supabase.from('users').update({
-        status: 'ativo',
-        plano_ativo: plan,
-        data_expiracao: expDate.toISOString(),
-      }).eq('id', user.id);
 
-      await incrementCouponUse(supabase, appliedCoupon!.id);
-      try { await runProvisionAndPersist(supabase, user.id); }
-      catch (e) { console.error('Falha provisionamento (cupom 100%):', e); }
-
-      return new Response(JSON.stringify({
-        success: true,
-        paymentId: dbPayment?.id,
-        status: 'approved',
-        freeCoupon: true,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
 
 
     // 4. Asaas Integration - validate existing customer, recreate if removed
