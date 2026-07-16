@@ -294,16 +294,18 @@ const Admin = () => {
     }
     setProvisioningTenant(true);
     try {
+      // Se a conta Bivvo já foi criada, dispara apenas o update (não refaz o store)
+      const isProvisioned = !!tenantInfo?.bivvo_tenant_id && !!tenantInfo?.tenant_provisioned_at;
       const { data, error } = await supabase.functions.invoke('provision-bivvo-tenant', {
-        body: { userId: tenantInfo.id },
+        body: { userId: tenantInfo.id, mode: isProvisioned ? 'update' : undefined },
       });
       if (error) throw error;
       if (data?.result?.error) throw new Error(data.result.error);
       toast({
-        title: 'Tenant atualizado',
+        title: isProvisioned ? 'Tenant atualizado' : 'Tenant provisionado',
         description: data?.result?.skipped
           ? 'Tenant já estava provisionado.'
-          : `Provisionamento executado com sucesso${data?.result?.tenantId ? ` (ID: ${data.result.tenantId})` : ''}.`,
+          : `Operação executada com sucesso${data?.result?.tenantId ? ` (ID: ${data.result.tenantId})` : ''}.`,
       });
       // Recarrega tenantInfo
       const { data: refreshed } = await supabase.from('users')
