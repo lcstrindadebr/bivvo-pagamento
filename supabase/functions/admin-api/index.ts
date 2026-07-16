@@ -481,7 +481,148 @@ serve(async (req) => {
       });
     }
 
+    // Série temporal para gráficos Receita×Despesas e Fluxo de Caixa
+    if (action === 'finance-series') {
+      const dateStart = url.searchParams.get('start');
+      const dateEnd = url.searchParams.get('end');
+      const granularity = (url.searchParams.get('granularity') || 'day') as 'hour' | 'day' | 'month';
+      if (!dateStart || !dateEnd) throw new Error('Parâmetros start/end obrigatórios');
 
+      const { data: snaps, error: sErr } = await supabase
+        .from('finance_daily_snapshots')
+        .select('date, gross_revenue, net_revenue, refunds, chargebacks, expenses_total, affiliate_commissions_paid, net_profit')
+        .gte('date', dateStart)
+        .lte('date', dateEnd)
+        .order('date', { ascending: true });
+      if (sErr) throw sErr;
+
+      const bucketKey = (dStr: string) => {
+        const d = new Date(dStr + 'T00:00:00');
+        if (granularity === 'month') return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+        return dStr; // day (hour bucket not supported by daily snapshots)
+      };
+
+      const map = new Map<string, any>();
+      (snaps || []).forEach((s: any) => {
+        const key = bucketKey(s.date);
+        const cur = map.get(key) || { bucket: key, revenue: 0, expenses: 0, commissions: 0, refunds: 0, netProfit: 0 };
+        cur.revenue += Number(s.net_revenue) || 0;
+        cur.expenses += Number(s.expenses_total) || 0;
+        cur.commissions += Number(s.affiliate_commissions_paid) || 0;
+        cur.refunds += (Number(s.refunds) || 0) + (Number(s.chargebacks) || 0);
+        cur.netProfit += Number(s.net_profit) || 0;
+        map.set(key, cur);
+      });
+
+      const series = Array.from(map.values()).sort((a, b) => a.bucket.localeCompare(b.bucket));
+      // Fluxo de caixa acumulado
+      let running = 0;
+      for (const row of series) {
+        running += row.netProfit;
+        row.cashFlow = running;
+      }
+      const totals = series.reduce(
+        (acc, r) => ({
+          revenue: acc.revenue + r.revenue,
+          expenses: acc.expenses + r.expenses,
+          commissions: acc.commissions + r.commissions,
+          netProfit: acc.netProfit + r.netProfit,
+        }),
+        { revenue: 0, expenses: 0, commissions: 0, netProfit: 0 },
+      );
+
+      return new Response(JSON.stringify({ series, totals, granularity }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Reconstrói finance_daily_snapshots dos últimos N meses a partir das fontes internas.
+    if (action === 'finance-backfill' && req.method === 'POST') {
+      const body = await req.json().catch(() => ({} as any));
+      const months = Math.min(24, Math.max(1, Number(body.months) || 12));
+      const since = new Date();
+      since.setMonth(since.getMonth() - months);
+      const sinceStr = since.toISOString().slice(0, 10);
+
+      // Limpa período alvo
+      await supabase.from('finance_daily_snapshots').delete().gte('date', sinceStr);
+
+      // Receita: paid payments locais
+      const { data: pays } = await supabase
+        .from('payments')
+        .select('amount, paid_at, status')
+        .gte('paid_at', sinceStr)
+        .in('status', ['approved', 'paid']);
+
+      // Despesas
+      const { data: exps } = await supabase
+        .from('expenses')
+        .select('amount, category, date')
+        .gte('date', sinceStr);
+
+      // Comissões pagas
+      const { data: comms } = await supabase
+        .from('affiliate_commissions')
+        .select('commission_amount, paid_at, status')
+        .eq('status', 'paid')
+        .gte('paid_at', sinceStr);
+
+      const agg = new Map<string, any>();
+      const ensure = (dateStr: string) => {
+        if (!agg.has(dateStr)) {
+          agg.set(dateStr, {
+            date: dateStr,
+            gross_revenue: 0,
+            net_revenue: 0,
+            expenses_total: 0,
+            affiliate_commissions_paid: 0,
+          });
+        }
+        return agg.get(dateStr);
+      };
+
+      (pays || []).forEach((p: any) => {
+        if (!p.paid_at) return;
+        const d = p.paid_at.slice(0, 10);
+        const row = ensure(d);
+        const v = Number(p.amount) || 0;
+        row.gross_revenue += v;
+        row.net_revenue += v; // sem netValue local, aproxima bruto (webhook corrige em tempo real)
+      });
+
+      (exps || []).forEach((e: any) => {
+        const d = (e.date || '').slice(0, 10);
+        if (!d) return;
+        const row = ensure(d);
+        if (e.category === 'Comissões (Afiliados)' || e.category === 'Repasse Afiliado') {
+          row.affiliate_commissions_paid += Number(e.amount) || 0;
+        } else {
+          row.expenses_total += Number(e.amount) || 0;
+        }
+      });
+
+      (comms || []).forEach((c: any) => {
+        if (!c.paid_at) return;
+        const d = c.paid_at.slice(0, 10);
+        const row = ensure(d);
+        // Já contabilizado via expenses (trigger cria). Não somamos de novo.
+      });
+
+      const rows = Array.from(agg.values()).map((r) => ({
+        ...r,
+        net_profit: r.net_revenue - r.expenses_total - r.affiliate_commissions_paid,
+      }));
+
+      if (rows.length > 0) {
+        const { error: upErr } = await supabase.from('finance_daily_snapshots').upsert(rows, { onConflict: 'date' });
+        if (upErr) throw upErr;
+      }
+
+      await logAction(supabase, user, 'finance-backfill', 'finance_daily_snapshots', undefined, undefined, { months, rows: rows.length });
+      return new Response(JSON.stringify({ success: true, days: rows.length, since: sinceStr }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
 
     if (action === 'list-expenses') {
