@@ -499,39 +499,141 @@ serve(async (req) => {
       const bucketKey = (dStr: string) => {
         const d = new Date(dStr + 'T00:00:00');
         if (granularity === 'month') return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-        return dStr; // day (hour bucket not supported by daily snapshots)
+        return dStr;
       };
 
+      // Enumerate all buckets in range so future days show up even with zero snapshot data
+      const enumerateBuckets = (): string[] => {
+        const out: string[] = [];
+        const s = new Date(dateStart + 'T00:00:00');
+        const e = new Date(dateEnd + 'T00:00:00');
+        if (granularity === 'month') {
+          const cur = new Date(s.getFullYear(), s.getMonth(), 1);
+          while (cur <= e) {
+            out.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-01`);
+            cur.setMonth(cur.getMonth() + 1);
+          }
+        } else {
+          const cur = new Date(s);
+          while (cur <= e) {
+            out.push(cur.toISOString().slice(0, 10));
+            cur.setDate(cur.getDate() + 1);
+          }
+        }
+        return out;
+      };
+
+      const todayStr = new Date().toISOString().slice(0, 10);
       const map = new Map<string, any>();
+      for (const b of enumerateBuckets()) {
+        map.set(b, {
+          bucket: b,
+          revenue: 0,
+          receivedRevenue: 0,
+          forecastRevenue: 0,
+          expenses: 0,
+          commissions: 0,
+          refunds: 0,
+          netProfit: 0,
+          netFlow: 0,
+          runningBalance: 0,
+          isFuture: b > todayStr,
+        });
+      }
+
       (snaps || []).forEach((s: any) => {
         const key = bucketKey(s.date);
-        const cur = map.get(key) || { bucket: key, revenue: 0, expenses: 0, commissions: 0, refunds: 0, netProfit: 0 };
-        cur.revenue += Number(s.net_revenue) || 0;
+        const cur = map.get(key);
+        if (!cur) return;
+        const rev = Number(s.net_revenue) || 0;
+        cur.revenue += rev;
+        cur.receivedRevenue += rev;
         cur.expenses += Number(s.expenses_total) || 0;
         cur.commissions += Number(s.affiliate_commissions_paid) || 0;
         cur.refunds += (Number(s.refunds) || 0) + (Number(s.chargebacks) || 0);
         cur.netProfit += Number(s.net_profit) || 0;
-        map.set(key, cur);
       });
 
+      // Fetch forecast (previsto) from Asaas by dueDate range, and current bank balance
+      const asaasHeaders = { 'access_token': ASAAS_API_KEY };
+      const FORECAST_EXCLUDED = ['DELETED', 'REMOVED_BY_USER', 'REFUNDED', 'REFUND_REQUESTED', 'CHARGEBACK_REQUESTED', 'CHARGEBACK_DISPUTE'];
+      const paginateForecast = async (): Promise<any[]> => {
+        const out: any[] = [];
+        let offset = 0;
+        const limit = 100;
+        while (true) {
+          const u = `${ASAAS_BASE_URL}/payments?dueDate[ge]=${dateStart}&dueDate[le]=${dateEnd}&limit=${limit}&offset=${offset}`;
+          const r = await fetch(u, { headers: asaasHeaders });
+          const j = await r.json();
+          for (const p of (j.data || [])) {
+            if (!p.deleted && !FORECAST_EXCLUDED.includes(p.status)) out.push(p);
+          }
+          if (!j.hasMore || (j.data || []).length < limit) break;
+          offset += limit;
+          if (offset > 5000) break;
+        }
+        return out;
+      };
+      const [forecastPayments, bankBalance] = await Promise.all([
+        paginateForecast().catch(() => [] as any[]),
+        (async () => {
+          try {
+            const r = await fetch(`${ASAAS_BASE_URL}/finance/balance`, { headers: asaasHeaders });
+            const j = await r.json();
+            return Number(j?.balance) || 0;
+          } catch { return 0; }
+        })(),
+      ]);
+
+      for (const p of forecastPayments) {
+        if (!p.dueDate) continue;
+        const key = bucketKey(p.dueDate);
+        const cur = map.get(key);
+        if (!cur) continue;
+        cur.forecastRevenue += Number(p.value) || 0;
+      }
+
       const series = Array.from(map.values()).sort((a, b) => a.bucket.localeCompare(b.bucket));
-      // Fluxo de caixa acumulado
+
+      // netFlow per bucket (para gráfico): forecast em buckets futuros, realizado em buckets passados
+      for (const row of series) {
+        row.netFlow = row.isFuture
+          ? row.forecastRevenue - row.expenses - row.commissions
+          : row.netProfit;
+      }
+
+      // runningBalance ancorado no saldo bancário atual:
+      // cumulativo do netFlow e shift para que o último bucket <= hoje bata com o bankBalance
+      let cumulative = 0;
+      let anchorCumulative = 0;
+      for (const row of series) {
+        cumulative += row.netFlow;
+        row.runningBalance = cumulative;
+        if (!row.isFuture) anchorCumulative = cumulative;
+      }
+      const shift = bankBalance - anchorCumulative;
+      for (const row of series) row.runningBalance += shift;
+
+      // Fluxo de caixa acumulado (mantido p/ compat)
       let running = 0;
       for (const row of series) {
         running += row.netProfit;
         row.cashFlow = running;
       }
+
       const totals = series.reduce(
         (acc, r) => ({
           revenue: acc.revenue + r.revenue,
+          forecast: acc.forecast + r.forecastRevenue,
+          received: acc.received + r.receivedRevenue,
           expenses: acc.expenses + r.expenses,
           commissions: acc.commissions + r.commissions,
           netProfit: acc.netProfit + r.netProfit,
         }),
-        { revenue: 0, expenses: 0, commissions: 0, netProfit: 0 },
+        { revenue: 0, forecast: 0, received: 0, expenses: 0, commissions: 0, netProfit: 0 },
       );
 
-      return new Response(JSON.stringify({ series, totals, granularity }), {
+      return new Response(JSON.stringify({ series, totals, granularity, bankBalance }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
