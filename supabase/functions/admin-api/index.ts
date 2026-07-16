@@ -275,10 +275,35 @@ serve(async (req) => {
         const customerIds = [...new Set(result.data.map((s: any) => s.customer))].filter(Boolean) as string[];
         console.log(`Enriquecendo ${customerIds.length} clientes para assinaturas`);
         const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
-        // Bivvo status: apenas leitura do banco. Atualização é manual via action `refresh-all-bivvo-statuses`.
-        
+
+        // Buscar pagamentos OVERDUE para determinar adimplência por assinatura/cliente
+        const overdueSubs = new Set<string>();
+        const overdueCustomers = new Set<string>();
+        try {
+          let od_offset = 0;
+          const od_limit = 100;
+          while (true) {
+            const odRes = await fetch(`${ASAAS_BASE_URL}/payments?status=OVERDUE&limit=${od_limit}&offset=${od_offset}`, {
+              headers: { 'access_token': ASAAS_API_KEY },
+            });
+            const odJson = await odRes.json();
+            const items: any[] = odJson.data || [];
+            for (const p of items) {
+              if (p.deleted) continue;
+              if (p.subscription) overdueSubs.add(p.subscription);
+              if (p.customer) overdueCustomers.add(p.customer);
+            }
+            if (!odJson.hasMore || items.length < od_limit) break;
+            od_offset += od_limit;
+            if (od_offset > 1000) break;
+          }
+        } catch (e) {
+          console.error('[list-subscriptions] Falha ao consultar OVERDUE:', e);
+        }
+
         result.data = result.data.map((s: any) => {
           const userData: any = userMap.get(s.customer);
+          const isOverdue = overdueSubs.has(s.id) || overdueCustomers.has(s.customer);
           return {
             ...s,
             customerName: userData?.name || 'Desconhecido',
@@ -288,6 +313,7 @@ serve(async (req) => {
             tenantBivvo: userData?.tenant_bivvo || '',
             bivvoStatus: userData?.bivvo_status || (userData?.tenant_bivvo ? 'Não possui Tenant' : 'Preencher ID'),
             localUserId: userData?.id || null,
+            paymentStatus: isOverdue ? 'inadimplente' : 'adimplente',
           };
         });
       }
