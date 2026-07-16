@@ -218,8 +218,9 @@ export async function provisionBivvoTenant(user: UserRow, cfg: BivvoCfg, supabas
     console.log('[Bivvo] Tenant já existia (retomando update):', tenantId);
   }
 
-  // ── Fase 2: Update ──
-  const updateResponse = await callUpdateTenant(user, cfg, { maxUsers, maxConnections, limits });
+  // ── Fase 2: Update (sempre referenciando pelo tenant id) ──
+  const userForUpdate: UserRow = { ...user, bivvo_tenant_id: tenantId };
+  const updateResponse = await callUpdateTenant(userForUpdate, cfg, { maxUsers, maxConnections, limits });
 
   return { skipped: false, tenantId, storeResponse, updateResponse };
 }
