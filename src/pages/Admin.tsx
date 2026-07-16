@@ -743,6 +743,9 @@ const Admin = () => {
                     <div className="space-y-2">
                       <Label>Desconto (%)</Label>
                       <Input type="number" min="1" max="100" value={couponForm.discount_percent} onChange={e => setCouponForm(p => ({ ...p, discount_percent: e.target.value }))} />
+                      <p className="text-xs text-muted-foreground">
+                        O desconto é aplicado apenas na <strong>primeira mensalidade</strong>. Cupons de 100% deixam o 1º mês grátis; a partir do 2º mês o valor cheio é cobrado automaticamente.
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label>Máximo de usos (vazio = ilimitado)</Label>
