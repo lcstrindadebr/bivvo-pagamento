@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.provision-bivvo-tenant]
 verify_jwt = false
+
+[functions.validate-coupon]
+verify_jwt = false

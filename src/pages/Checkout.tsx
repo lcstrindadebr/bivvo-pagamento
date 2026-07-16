@@ -146,6 +146,50 @@ const Checkout = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Coupon state
+  const couponEnabled = (siteSettings?.checkout_coupon_enabled ?? 'true') !== 'false';
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_percent: number } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const isFreeCoupon = !!appliedCoupon && appliedCoupon.discount_percent >= 100;
+  const discountedPrice = appliedCoupon
+    ? Math.max(0, Math.round(((plan?.price || 0) * (1 - appliedCoupon.discount_percent / 100)) * 100) / 100)
+    : (plan?.price || 0);
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-coupon`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ code }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Cupom inválido');
+      setAppliedCoupon(json.coupon);
+      toast({ title: 'Cupom aplicado', description: `${json.coupon.discount_percent}% de desconto no primeiro mês.` });
+    } catch (err) {
+      setCouponError(err instanceof Error ? err.message : 'Erro ao validar cupom');
+      setAppliedCoupon(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError(null);
+  };
+
+
   useEffect(() => {
     if (paymentStatus === 'approved') {
       setCurrentStep('success');
@@ -263,7 +307,7 @@ const Checkout = () => {
       if (!formData.estado.trim()) newErrors.estado = 'Estado obrigatório';
     }
 
-    if (step === 'payment' && paymentMethod === 'CREDIT_CARD') {
+    if (step === 'payment' && paymentMethod === 'CREDIT_CARD' && !isFreeCoupon) {
       if (!formData.cardName.trim()) newErrors.cardName = 'Nome obrigatório';
       if (!validateCardNumber(formData.cardNumber)) newErrors.cardNumber = 'Cartão inválido';
       if (!validateExpiry(formData.cardExpiry)) {
@@ -314,10 +358,11 @@ const Checkout = () => {
 
     const result = await processPayment({
       plan: plan.slug,
-      amount: plan.price,
+      amount: discountedPrice,
       bivvoConfig,
       affiliateSlug: affiliateSlug || undefined,
       trackingId: cfgParam || undefined,
+      couponCode: appliedCoupon?.code,
       customerData: {
         personType: formData.personType,
         name: formData.name,
@@ -365,10 +410,11 @@ const Checkout = () => {
         },
         body: JSON.stringify({
           plan: plan.slug,
-          billingType: paymentMethod,
+          billingType: paymentMethod === 'CREDIT_CARD' ? 'PIX' : paymentMethod,
           bivvoConfig,
           affiliateSlug: affiliateSlug || undefined,
           trackingId: cfgParam || undefined,
+          couponCode: appliedCoupon?.code,
           customerData: {
             personType: formData.personType,
             name: formData.name,
@@ -398,6 +444,12 @@ const Checkout = () => {
       
       if (!result.success) throw new Error(result.error);
 
+      // Cupom 100%: pagamento já foi concluído no servidor
+      if (result.freeCoupon || result.status === 'approved') {
+        setCurrentStep('success');
+        return;
+      }
+
       if (paymentMethod === 'PIX') {
         setPixData({
           qrCodeImage: result.pixQrCode,
@@ -426,6 +478,11 @@ const Checkout = () => {
   };
 
   const handleSubmit = () => {
+    // Cupom 100%: fluxo grátis via create-subscription (curto-circuito no servidor)
+    if (isFreeCoupon) {
+      handleSubmitPixOrBoleto();
+      return;
+    }
     if (paymentMethod === 'CREDIT_CARD') {
       handleSubmitCreditCard();
     } else {
@@ -945,15 +1002,86 @@ const Checkout = () => {
                     </p>
                   </div>
                 </div>
-                <span className="text-2xl font-bold text-accent">{formatCurrency(plan.price)}</span>
+                <div className="text-right">
+                  {appliedCoupon && (
+                    <span className="block text-xs text-muted-foreground line-through">
+                      {formatCurrency(plan.price)}
+                    </span>
+                  )}
+                  <span className="text-2xl font-bold text-accent">
+                    {isFreeCoupon ? 'GRÁTIS' : formatCurrency(discountedPrice)}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Payment Method Selector */}
-            <PaymentMethodSelector selected={paymentMethod} onChange={setPaymentMethod} />
+            {/* Cupom */}
+            {couponEnabled && (
+              <div className="card-glass rounded-2xl p-4 space-y-3">
+                <Label className="text-sm font-medium">Cupom de desconto</Label>
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between gap-3 rounded-xl bg-success/10 border border-success/30 p-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-success" />
+                      <div>
+                        <p className="font-mono font-semibold text-sm">{appliedCoupon.code}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {appliedCoupon.discount_percent}% de desconto no primeiro mês
+                        </p>
+                      </div>
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" onClick={removeCoupon}>
+                      Remover
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <Input
+                        value={couponInput}
+                        onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(null); }}
+                        placeholder="DIGITE SEU CUPOM"
+                        className="h-12 input-glass rounded-xl uppercase"
+                        disabled={couponLoading}
+                      />
+                      <Button
+                        type="button"
+                        onClick={applyCoupon}
+                        disabled={couponLoading || !couponInput.trim()}
+                        variant="outline"
+                        className="h-12 px-4 rounded-xl"
+                      >
+                        {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
+                      </Button>
+                    </div>
+                    {couponError && <p className="text-xs text-destructive">{couponError}</p>}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Payment Method Selector - oculto para cupom 100% */}
+            {!isFreeCoupon && (
+              <PaymentMethodSelector selected={paymentMethod} onChange={setPaymentMethod} />
+            )}
+
+            {/* Free Coupon Info */}
+            {isFreeCoupon && (
+              <div className="card-glass rounded-2xl p-5 space-y-3 text-center border-success/30">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-success/10 flex items-center justify-center">
+                  <CheckCircle2 className="h-8 w-8 text-success" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold">Assinatura 100% gratuita</p>
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum pagamento é necessário. Clique em finalizar para ativar sua conta.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Credit Card Form */}
-            {paymentMethod === 'CREDIT_CARD' && (
+            {!isFreeCoupon && paymentMethod === 'CREDIT_CARD' && (
               <>
                 <CardBrands />
                 <div className="card-glass rounded-2xl p-5 space-y-4">
@@ -1013,7 +1141,7 @@ const Checkout = () => {
             )}
 
             {/* PIX Info */}
-            {paymentMethod === 'PIX' && (
+            {!isFreeCoupon && paymentMethod === 'PIX' && (
               <div className="card-glass rounded-2xl p-5 space-y-4 text-center">
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
                   <QrCode className="h-8 w-8 text-accent" />
@@ -1028,7 +1156,7 @@ const Checkout = () => {
             )}
 
             {/* Boleto Info */}
-            {paymentMethod === 'BOLETO' && (
+            {!isFreeCoupon && paymentMethod === 'BOLETO' && (
               <div className="card-glass rounded-2xl p-5 space-y-4 text-center">
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 flex items-center justify-center">
                   <Barcode className="h-8 w-8 text-accent" />
@@ -1067,17 +1195,23 @@ const Checkout = () => {
               {paymentLoading || generatingPayment ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  {paymentMethod === 'CREDIT_CARD' ? 'Processando...' : 'Gerando...'}
+                  {isFreeCoupon ? 'Ativando...' : paymentMethod === 'CREDIT_CARD' ? 'Processando...' : 'Gerando...'}
                 </>
               ) : (
                 <>
-                  <Lock className="mr-2 h-4 w-4" />
-                  {paymentMethod === 'CREDIT_CARD' 
-                    ? `Pagar ${formatCurrency(plan.price)}`
-                    : paymentMethod === 'PIX'
-                    ? 'Gerar PIX'
-                    : 'Gerar Boleto'
-                  }
+                  {isFreeCoupon ? (
+                    <><Sparkles className="mr-2 h-4 w-4" /> Ativar assinatura grátis</>
+                  ) : (
+                    <>
+                      <Lock className="mr-2 h-4 w-4" />
+                      {paymentMethod === 'CREDIT_CARD' 
+                        ? `Pagar ${formatCurrency(discountedPrice)}`
+                        : paymentMethod === 'PIX'
+                        ? 'Gerar PIX'
+                        : 'Gerar Boleto'
+                      }
+                    </>
+                  )}
                 </>
               )}
             </Button>

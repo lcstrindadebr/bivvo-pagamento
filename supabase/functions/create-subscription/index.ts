@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { quoteBivvo, round2 } from "../_shared/bivvo-logic.ts";
 import { asaasFetch } from "../_shared/asaas.ts";
+import { runProvisionAndPersist } from "../_shared/bivvo-api.ts";
+import { validateAndLoadCoupon, incrementCouponUse } from "../_shared/coupon.ts";
 
 // --- Validation Utils ---
 const VALID_STATES = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -37,7 +39,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { plan, billingType, customerData, bivvoConfig, affiliateSlug, trackingId } = body;
+    const { plan, billingType, customerData, bivvoConfig, affiliateSlug, trackingId, couponCode } = body;
     
     // Get remote IP from headers (Supabase adds this)
     const remoteIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
@@ -58,6 +60,14 @@ serve(async (req) => {
       amount = recurringAmount = Number(pData.price);
       planLabel = `Plano ${pData.name}`;
     }
+
+    // 2.1 Validate coupon (if provided) and apply discount to first month
+    const appliedCoupon = await validateAndLoadCoupon(supabase, couponCode);
+    if (appliedCoupon) {
+      amount = round2(amount * (1 - appliedCoupon.discount_percent / 100));
+      if (amount < 0) amount = 0;
+    }
+    const isFreeCoupon = !!appliedCoupon && appliedCoupon.discount_percent >= 100;
 
     // 3. User & Customer Management
     const cleanCpf = customerData.cpf.replace(/\D/g, '');
@@ -90,6 +100,39 @@ serve(async (req) => {
       name: customerData.name.trim(),
       phone: cleanPhone,
     }, { onConflict: 'email' });
+
+    // ===== 100% coupon short-circuit =====
+    if (isFreeCoupon) {
+      const { data: dbPayment } = await supabase.from('payments').insert({
+        user_id: user.id,
+        plan,
+        amount: 0,
+        status: 'approved',
+        paid_at: new Date().toISOString(),
+        bivvo_config: bivvoConfig || null,
+      }).select('id').single();
+
+      const expDate = new Date();
+      expDate.setMonth(expDate.getMonth() + 1);
+      expDate.setDate(expDate.getDate() + 3);
+      await supabase.from('users').update({
+        status: 'ativo',
+        plano_ativo: plan,
+        data_expiracao: expDate.toISOString(),
+      }).eq('id', user.id);
+
+      await incrementCouponUse(supabase, appliedCoupon!.id);
+      try { await runProvisionAndPersist(supabase, user.id); }
+      catch (e) { console.error('Falha provisionamento (cupom 100%):', e); }
+
+      return new Response(JSON.stringify({
+        success: true,
+        paymentId: dbPayment?.id,
+        status: 'approved',
+        freeCoupon: true,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
 
     // 4. Asaas Integration - validate existing customer, recreate if removed
     let asaasCustomerId = user.asaas_customer_id;
@@ -190,6 +233,11 @@ serve(async (req) => {
       asaas_subscription_id: sRes.id,
       bivvo_config: bivvoConfig || null,
     }).select('id').single();
+
+    if (appliedCoupon) {
+      await incrementCouponUse(supabase, appliedCoupon.id);
+    }
+
 
     // 8. Affiliate Tracking
     if (affiliateSlug && dbPayment) {
