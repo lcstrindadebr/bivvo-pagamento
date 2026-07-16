@@ -1,83 +1,80 @@
-## Plano — Melhorias em Configurações
 
-Hoje `AdminSettings.tsx` gerencia apenas **um campo** (`site_url`), e a tabela `settings` é um simples key/value. Proponho evoluir a tela em três frentes: mais campos úteis, organização por abas, e conexão com integrações que hoje ficam em variáveis de ambiente ou hard-coded.
+## Minha opinião sobre as sugestões
 
----
+As 4 mudanças fazem muito sentido e se complementam:
 
-### 1. Estrutura em abas
-Uma única tela com todos os grupos vira bagunça. Dividir em abas (`Tabs` do shadcn):
+1. **Clientes inadimplentes** — hoje o dashboard mostra apenas o **valor total** em atraso (card "Cobranças em Atraso"), mas não *quem* está devendo. Ter a lista nominal é essencial para acionar cobrança manual (WhatsApp/e-mail). ✅
+2. **Snapshot financeiro inteligente** — hoje o dashboard busca tudo em tempo real na API do Asaas a cada carregamento. Isso é lento, custa rate-limit e **impede análise histórica** (não dá pra ver "lucro de março"). Criar uma tabela `finance_snapshots` (ou similar) alimentada pelo webhook + um job diário resolve isso e é pré-requisito real para os gráficos do item 4. ✅ Forte concordância.
+3. **Remover Conversão Global e trocar por Lucro Líquido** — concordo. Conversão global (cliques totais ÷ vendas) é métrica de afiliado, não de finanças. Lucro Líquido = Receita líquida − Despesas − Comissões pagas é o KPI principal que hoje falta. ✅
+4. **Gráficos Receita × Despesas e Fluxo de Caixa** — essenciais. Recomendo usar Recharts (já é o padrão do shadcn) e respeitar o **período selecionado no topo do dashboard** (Hoje / 7d / 30d / Mês / Personalizado), com granularidade automática: ≤2 dias = por hora, ≤60 dias = por dia, >60 dias = por mês.
 
-- **Geral** — identidade, domínio, contatos.
-- **Marca / Aparência** — logo, favicon, cores.
-- **Notificações** — e-mail/webhooks.
-- **Integrações** — Asaas, analytics.
-
-### 2. Aba Geral
-- Nome do site / razão social.
-- E-mail de suporte (exibido no checkout e rodapé).
-- WhatsApp de suporte (link `wa.me`).
-- CNPJ / endereço (usado em recibos e rodapé LGPD).
-- `site_url` (já existe) — manter aqui.
-- Fuso horário padrão para relatórios.
-
-### 3. Aba Marca / Aparência
-- Upload de **logo claro** e **logo escuro** (bucket `marketing`).
-- Upload de **favicon**.
-- Cor primária / accent (color picker) — grava CSS vars no `:root` via hook.
-- Alternar tema padrão (claro/escuro/sistema).
-- Preview ao vivo do resultado.
-
-### 4. Aba Notificações
-- E-mail do remetente (from).
-- E-mails que recebem cópia de novas vendas / cancelamentos.
-- URL de webhook para eventos internos (opcional).
-- Toggle "enviar e-mail ao criar tarefa delegada".
-
-### 5. Aba Integrações
-- **Asaas**: mostrar status da chave (mascarada), ambiente (sandbox/prod), URL do webhook para copiar. **Não** editar a chave pela UI — apenas indicar se está configurada, com botão "atualizar" que abre modal explicando que a chave é um secret.
-- Google Analytics / Meta Pixel — IDs (públicos, seguros no client).
-- Reset/limpeza do cache de 60s da edge function `finance-stats`.
-
-### 6. UX & robustez
-- Validação com `zod` + `react-hook-form` para cada aba.
-- Salvar por aba (não tudo de uma vez) — botão fica no fim de cada painel.
-- Badge "não salvo" no título da aba quando há mudanças pendentes.
-- Toast + refetch por aba (não invalida tudo).
-- Loading skeleton por aba.
-- Confirmar antes de sair da aba se houver alterações não salvas (`useBeforeUnload`).
-
-### 7. Auditoria
-Toda alteração em `settings` grava linha em `audit_logs` (`action='settings.update'`, `old_data`, `new_data`). Já existe a tabela, falta o hook.
+**Um ponto que quero validar antes de codar:** o "Saldo Bancário" e "Valor Recebido" hoje já vêm do Asaas em tempo real. Faz sentido continuarmos consultando Asaas *live* para os cards de topo e usar a nova tabela **só** para série histórica (gráficos + Lucro Líquido acumulado)? É o caminho mais barato e mantém o dashboard "vivo".
 
 ---
 
-### Estrutura técnica
+## Plano
 
-```text
-src/components/admin/settings/
-  ├─ AdminSettings.tsx           ← shell com Tabs
-  ├─ tabs/GeneralTab.tsx
-  ├─ tabs/BrandingTab.tsx
-  ├─ tabs/NotificationsTab.tsx
-  └─ tabs/IntegrationsTab.tsx
+### Etapa 1 — Backend: armazenamento inteligente de finanças
 
-src/hooks/
-  ├─ useSiteSettings.ts          (já existe, ampliar tipagem)
-  └─ useSaveSetting.ts           ← wrapper único (upsert + audit_log + toast)
+Criar duas estruturas novas no banco:
+
+- **`finance_daily_snapshots`** (uma linha por dia)
+  - `date` (unique), `gross_revenue`, `net_revenue`, `expenses_total`, `affiliate_commissions_paid`, `net_profit`, `refunds`, `chargebacks`, `active_subscriptions`, `overdue_value`, `created_at`, `updated_at`.
+- **`finance_events`** (log append-only para auditar de onde vem cada valor)
+  - `event_type` (`payment_received`, `payment_refunded`, `commission_paid`, `expense_recorded`, `chargeback`), `reference_id`, `amount`, `occurred_at`, `metadata jsonb`.
+
+Preenchimento em 3 fontes, todas idempotentes:
+
+1. **Webhook `asaas-webhook`** — a cada evento (`PAYMENT_RECEIVED`, `PAYMENT_REFUNDED`, `PAYMENT_CHARGEBACK_REQUESTED`, `PAYMENT_OVERDUE`), insere em `finance_events` e faz upsert incremental no snapshot do dia.
+2. **Triggers já existentes de `affiliate_commissions` e `expenses`** — passam a inserir também em `finance_events` (só adicionar 2 linhas nas functions atuais).
+3. **Backfill inicial** — edge function `finance-backfill` que varre pagamentos, comissões e despesas dos últimos 12 meses e reconstrói os snapshots. Roda uma vez após o deploy.
+
+RLS: só admin lê/escreve; edge functions usam `service_role`.
+
+### Etapa 2 — Endpoint agregador
+
+Nova ação no `admin-api`: `finance-series` que recebe `start`, `end`, `granularity` (`hour`|`day`|`month`) e retorna:
+
+```json
+{
+  "series": [{ "bucket": "2026-07-01", "revenue": 3200, "expenses": 800, "commissions": 400, "netProfit": 2000, "cashFlow": 2000 }, ...],
+  "totals": { "revenue": ..., "expenses": ..., "netProfit": ... }
+}
 ```
 
-Modelo de dados: **manter `settings` key/value** — sem migration nova. Cada campo vira uma chave (`support_email`, `brand_logo_url`, etc). Valor sempre `text` (JSON serializado quando estruturado).
+Também estender `finance-stats` existente para:
+- Devolver `netProfit` (Receita líquida − Despesas − Comissões pagas) no período.
+- Devolver `overdueCustomers`: lista `[{ name, email, whatsapp, amount, dueDate, asaas_payment_id }]` — puxada do Asaas (`status=OVERDUE`) e cruzada com `users` pelo `asaas_customer_id`.
 
-Política RLS atual já permite:
-- leitura pública apenas de `site_url` (para o checkout público continuar funcionando);
-- leitura/escrita completa para admins (via `has_role`).
+### Etapa 3 — UI: novo Dashboard
 
-Precisa adicionar mais uma chave pública se algum campo (ex.: `brand_logo_url`, `support_whatsapp`) tiver que aparecer para visitantes anônimos no checkout. Faço isso ampliando a policy `Public can read site_url` para uma whitelist de chaves.
+No `AdminFinanceDashboard.tsx`:
 
-### Ordem sugerida
-1. Reestruturar em abas + aba **Geral** (impacto imediato).
-2. Aba **Marca** com upload de logo/favicon.
-3. Aba **Notificações**.
-4. Aba **Integrações** + auditoria.
+- **Remover** o card "Conversão Global".
+- **Adicionar** card **Lucro Líquido** (verde/vermelho conforme sinal, com `DeltaBadge` vs. período anterior).
+- **Adicionar seção "Clientes Inadimplentes"** logo abaixo dos cards, antes de "Últimas Cobranças":
+  - Tabela com Nome, WhatsApp, Valor, Vencimento, Dias em atraso.
+  - Botões: "Copiar link de cobrança" e "Abrir WhatsApp" (mensagem pré-preenchida).
+- **Adicionar 2 gráficos** (Recharts), lado a lado em desktop:
+  1. **Receita × Despesas** (BarChart agrupado — barras verdes e vermelhas por bucket).
+  2. **Fluxo de Caixa acumulado** (AreaChart — soma corrente de `netProfit`).
+  - Granularidade automática pelo range do filtro já existente (Hoje/7d/30d/Mês/Custom).
 
-Quer que eu execute tudo ou prefere priorizar 1–2 primeiro?
+### Etapa 4 — Testes e migração
+
+- Backfill dispara manualmente pela tela de Admin (botão discreto em Settings).
+- Verificar RLS e GRANTs em `finance_daily_snapshots` e `finance_events`.
+- Atualizar `new_deploy/database_schema.sql` e adicionar `new_deploy/migrations/007_finance_snapshots.sql` para deploys externos.
+
+---
+
+## Detalhes técnicos
+
+- Recharts já está no `package.json` (via shadcn `chart`), então zero dependências novas.
+- `net_revenue` = `gross_revenue − asaas_fees` (o webhook do Asaas já entrega `netValue` por pagamento).
+- Idempotência do webhook: usar `event_id` (já unique em `asaas_webhooks`) como chave de deduplicação antes de escrever em `finance_events`.
+- Cálculo do delta comparativo dos cards continua igual — só passa a incluir `netProfit`.
+
+## Pergunta antes de começar
+
+Confirma o approach híbrido? (Asaas *live* para saldo/recebido do topo, tabela nova só para série histórica e Lucro Líquido acumulado.) Se preferir tudo servido da tabela local, também dá — só fica levemente defasado entre webhooks.
