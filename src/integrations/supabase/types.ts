@@ -626,6 +626,7 @@ export type Database = {
           amount: number
           asaas_payment_id: string | null
           asaas_subscription_id: string | null
+          bivvo_config: Json | null
           created_at: string | null
           id: string
           paid_at: string | null
@@ -637,6 +638,7 @@ export type Database = {
           amount: number
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
+          bivvo_config?: Json | null
           created_at?: string | null
           id?: string
           paid_at?: string | null
@@ -648,6 +650,7 @@ export type Database = {
           amount?: number
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
+          bivvo_config?: Json | null
           created_at?: string | null
           id?: string
           paid_at?: string | null
@@ -859,10 +862,13 @@ export type Database = {
           asaas_subscription_id: string | null
           bairro: string | null
           billing_name: string | null
+          bivvo_config: Json | null
           bivvo_status: string | null
           bivvo_status_checked_at: string | null
+          bivvo_tenant_id: string | null
           cep: string | null
           cidade: string | null
+          company_name: string | null
           complemento: string | null
           cpf: string | null
           created_at: string | null
@@ -873,9 +879,12 @@ export type Database = {
           id: string
           name: string
           numero: string | null
+          person_type: string | null
           plano_ativo: string | null
           status: string | null
           tenant_bivvo: string | null
+          tenant_provision_error: string | null
+          tenant_provisioned_at: string | null
           updated_at: string | null
           whatsapp: string | null
         }
@@ -884,10 +893,13 @@ export type Database = {
           asaas_subscription_id?: string | null
           bairro?: string | null
           billing_name?: string | null
+          bivvo_config?: Json | null
           bivvo_status?: string | null
           bivvo_status_checked_at?: string | null
+          bivvo_tenant_id?: string | null
           cep?: string | null
           cidade?: string | null
+          company_name?: string | null
           complemento?: string | null
           cpf?: string | null
           created_at?: string | null
@@ -898,9 +910,12 @@ export type Database = {
           id?: string
           name: string
           numero?: string | null
+          person_type?: string | null
           plano_ativo?: string | null
           status?: string | null
           tenant_bivvo?: string | null
+          tenant_provision_error?: string | null
+          tenant_provisioned_at?: string | null
           updated_at?: string | null
           whatsapp?: string | null
         }
@@ -909,10 +924,13 @@ export type Database = {
           asaas_subscription_id?: string | null
           bairro?: string | null
           billing_name?: string | null
+          bivvo_config?: Json | null
           bivvo_status?: string | null
           bivvo_status_checked_at?: string | null
+          bivvo_tenant_id?: string | null
           cep?: string | null
           cidade?: string | null
+          company_name?: string | null
           complemento?: string | null
           cpf?: string | null
           created_at?: string | null
@@ -923,9 +941,12 @@ export type Database = {
           id?: string
           name?: string
           numero?: string | null
+          person_type?: string | null
           plano_ativo?: string | null
           status?: string | null
           tenant_bivvo?: string | null
+          tenant_provision_error?: string | null
+          tenant_provisioned_at?: string | null
           updated_at?: string | null
           whatsapp?: string | null
         }
