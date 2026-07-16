@@ -255,7 +255,7 @@ export function AdminTasks() {
       priority: form.priority,
       status: form.status,
       assigned_to: form.assigned_to === 'unassigned' ? null : form.assigned_to,
-      due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+      due_date: form.due_date ? new Date(Date.UTC(parseInt(form.due_date.slice(0, 4)), parseInt(form.due_date.slice(5, 7)) - 1, parseInt(form.due_date.slice(8, 10)))).toISOString() : null,
       waiting_third_party: form.waiting_third_party,
       subtasks: form.subtasks,
     };
