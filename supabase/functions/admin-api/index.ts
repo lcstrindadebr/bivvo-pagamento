@@ -481,291 +481,59 @@ serve(async (req) => {
       });
     }
 
-    // Séries temporais para os 3 gráficos do dashboard:
-    //  - revenueSeries: Previsto (dueDate) × Recebido bruto/líquido (extrato Asaas)
-    //  - profitSeries: Recebido líquido − Despesas − Comissões  (lucro diário)
-    //  - balanceSeries: Saldo bancário — fechamento real do extrato até hoje, projetado para o futuro
-    //  - meta.warnings[]: alertas quando alguma rota Asaas falha (dados parciais)
+    // Série temporal para gráficos Receita×Despesas e Fluxo de Caixa
     if (action === 'finance-series') {
       const dateStart = url.searchParams.get('start');
       const dateEnd = url.searchParams.get('end');
       const granularity = (url.searchParams.get('granularity') || 'day') as 'hour' | 'day' | 'month';
       if (!dateStart || !dateEnd) throw new Error('Parâmetros start/end obrigatórios');
 
-      const warnings: string[] = [];
-
-      // Helper: fetch com log estruturado + 1 retry em 429/5xx
-      const asaasCall = async (path: string, label: string): Promise<any | null> => {
-        const doFetch = async () => fetch(`${ASAAS_BASE_URL}${path}`, {
-          method: 'GET',
-          headers: { 'access_token': ASAAS_API_KEY, 'User-Agent': 'BivvoAdmin/1.0' },
-        });
-        let r: Response | null = null;
-        try {
-          r = await doFetch();
-          console.log(`[finance-series] ${label} status=${r.status}`);
-          if (r.status === 429 || (r.status >= 500 && r.status < 600)) {
-            await new Promise((res) => setTimeout(res, 400));
-            r = await doFetch();
-            console.log(`[finance-series] ${label} retry status=${r.status}`);
-          }
-          if (!r.ok) {
-            warnings.push(`Asaas ${label} retornou ${r.status}`);
-            return null;
-          }
-          return await r.json();
-        } catch (e: any) {
-          console.error(`[finance-series] ${label} exception`, e?.message || e);
-          warnings.push(`Asaas ${label} falhou: ${e?.message || 'erro'}`);
-          return null;
-        }
-      };
+      const { data: snaps, error: sErr } = await supabase
+        .from('finance_daily_snapshots')
+        .select('date, gross_revenue, net_revenue, refunds, chargebacks, expenses_total, affiliate_commissions_paid, net_profit')
+        .gte('date', dateStart)
+        .lte('date', dateEnd)
+        .order('date', { ascending: true });
+      if (sErr) throw sErr;
 
       const bucketKey = (dStr: string) => {
         const d = new Date(dStr + 'T00:00:00');
         if (granularity === 'month') return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-        return dStr;
+        return dStr; // day (hour bucket not supported by daily snapshots)
       };
 
-      const enumerateBuckets = (): string[] => {
-        const out: string[] = [];
-        const s = new Date(dateStart + 'T00:00:00');
-        const e = new Date(dateEnd + 'T00:00:00');
-        if (granularity === 'month') {
-          const cur = new Date(s.getFullYear(), s.getMonth(), 1);
-          while (cur <= e) {
-            out.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-01`);
-            cur.setMonth(cur.getMonth() + 1);
-          }
-        } else {
-          const cur = new Date(s);
-          while (cur <= e) {
-            out.push(cur.toISOString().slice(0, 10));
-            cur.setDate(cur.getDate() + 1);
-          }
-        }
-        return out;
-      };
-
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const buckets = enumerateBuckets();
-
-      // Estrutura base por bucket
       const map = new Map<string, any>();
-      for (const b of buckets) {
-        map.set(b, {
-          bucket: b,
-          forecastRevenue: 0,
-          receivedGross: 0,
-          asaasFees: 0,
-          receivedNet: 0,
-          expenses: 0,
-          commissions: 0,
-          refunds: 0,
-          netProfit: 0,
-          netFlow: 0,
-          closingBalance: null as number | null,
-          projectedBalance: null as number | null,
-          isFuture: b > todayStr,
-        });
-      }
-
-      // Despesas / comissões / refunds / fallback net_revenue vêm dos snapshots locais
-      const { data: snaps } = await supabase
-        .from('finance_daily_snapshots')
-        .select('date, net_revenue, refunds, chargebacks, expenses_total, affiliate_commissions_paid')
-        .gte('date', dateStart)
-        .lte('date', dateEnd)
-        .order('date', { ascending: true });
-
-      const snapshotNetByBucket = new Map<string, number>();
       (snaps || []).forEach((s: any) => {
         const key = bucketKey(s.date);
-        const cur = map.get(key);
-        if (!cur) return;
+        const cur = map.get(key) || { bucket: key, revenue: 0, expenses: 0, commissions: 0, refunds: 0, netProfit: 0 };
+        cur.revenue += Number(s.net_revenue) || 0;
         cur.expenses += Number(s.expenses_total) || 0;
         cur.commissions += Number(s.affiliate_commissions_paid) || 0;
         cur.refunds += (Number(s.refunds) || 0) + (Number(s.chargebacks) || 0);
-        snapshotNetByBucket.set(key, (snapshotNetByBucket.get(key) || 0) + (Number(s.net_revenue) || 0));
+        cur.netProfit += Number(s.net_profit) || 0;
+        map.set(key, cur);
       });
 
-      // ---- Asaas /payments (previsto) ----
-      const forecastPayments: any[] = [];
-      let offset = 0;
-      const limit = 100;
-      while (true) {
-        const j = await asaasCall(
-          `/payments?dueDate[ge]=${dateStart}&dueDate[le]=${dateEnd}&limit=${limit}&offset=${offset}`,
-          `payments offset=${offset}`,
-        );
-        if (!j) break;
-        const FORECAST_EXCLUDED = ['DELETED', 'REMOVED_BY_USER', 'REFUNDED', 'REFUND_REQUESTED'];
-        for (const p of (j.data || [])) {
-          if (!p.deleted && !FORECAST_EXCLUDED.includes(p.status)) forecastPayments.push(p);
-        }
-        if (!j.hasMore || (j.data || []).length < limit) break;
-        offset += limit;
-        if (offset > 5000) break;
-      }
-      for (const p of forecastPayments) {
-        if (!p.dueDate) continue;
-        const cur = map.get(bucketKey(p.dueDate));
-        if (cur) cur.forecastRevenue += Number(p.value) || 0;
-      }
-
-      // ---- Asaas /v3/financialTransactions (extrato) ----
-      const extrato: any[] = [];
-      offset = 0;
-      let extratoFailed = false;
-      while (true) {
-        const j = await asaasCall(
-          `/v3/financialTransactions?startDate=${dateStart}&finishDate=${dateEnd}&limit=${limit}&offset=${offset}&order=asc`,
-          `extrato offset=${offset}`,
-        );
-        if (!j) { extratoFailed = offset === 0; break; }
-        for (const t of (j.data || [])) extrato.push(t);
-        if (!j.hasMore || (j.data || []).length < limit) break;
-        offset += limit;
-        if (offset > 10000) break;
-      }
-      console.log(`[finance-series] extrato registros=${extrato.length} failed=${extratoFailed}`);
-
-      const dailyClosingBalance = new Map<string, number>();
-      for (const t of extrato) {
-        const dateOnly = String(t.date || '').slice(0, 10);
-        if (!dateOnly) continue;
-        const cur = map.get(bucketKey(dateOnly));
-        const val = Number(t.value) || 0;
-        if (cur) {
-          if (t.type === 'PAYMENT_RECEIVED' || t.type === 'PIX_TRANSACTION_CREDIT' || t.type === 'PARTIAL_PAYMENT') {
-            if (val > 0) cur.receivedGross += val;
-          }
-          if (t.type === 'PAYMENT_FEE' || t.type === 'PIX_TRANSACTION_CREDIT_FEE') {
-            cur.asaasFees += Math.abs(val);
-          }
-        }
-        if (t.balance !== undefined && t.balance !== null) {
-          dailyClosingBalance.set(dateOnly, Number(t.balance));
-        }
-      }
-
-      // receivedNet do bucket. Se extrato falhou completamente OU o bucket não tem PAYMENT_RECEIVED
-      // mas o snapshot local tem net_revenue, usa o snapshot como fallback.
-      for (const row of map.values()) {
-        row.receivedNet = row.receivedGross - row.asaasFees;
-        if (row.receivedNet === 0 && !row.isFuture) {
-          const snapNet = snapshotNetByBucket.get(row.bucket) || 0;
-          if (snapNet > 0) {
-            row.receivedNet = snapNet;
-            row.receivedGross = snapNet; // aproximação
-          }
-        }
-        row.netProfit = row.receivedNet - row.expenses - row.commissions;
-        row.netFlow = row.isFuture
-          ? row.forecastRevenue - row.expenses - row.commissions
-          : row.netProfit;
-      }
-      if (extratoFailed) warnings.push('Extrato Asaas indisponível — usando snapshots locais como fallback');
-
-      // ---- /finance/balance (saldo atual) ----
-      const balanceRes = await asaasCall(`/finance/balance`, 'balance');
-      const bankBalance = Number(balanceRes?.balance) || 0;
-      if (balanceRes === null) warnings.push('Saldo Asaas indisponível — projeção pode estar imprecisa');
-
-      // ---- Saldo bancário por bucket ----
-      // Passado: usa o último closing balance do extrato ≤ fim do bucket. Carrega o último conhecido em buckets vazios.
-      // Futuro/hoje: parte do bankBalance atual e projeta com netFlow.
       const series = Array.from(map.values()).sort((a, b) => a.bucket.localeCompare(b.bucket));
-
-      let lastKnown: number | null = null;
+      // Fluxo de caixa acumulado
+      let running = 0;
       for (const row of series) {
-        if (row.isFuture) continue;
-        const bucketEnd = granularity === 'month'
-          ? (() => {
-              const [y, m] = row.bucket.split('-').map(Number);
-              const end = new Date(y, m, 0);
-              return end.toISOString().slice(0, 10);
-            })()
-          : row.bucket;
-        let bestDate = '';
-        let bestBal: number | null = null;
-        for (const [d, bal] of dailyClosingBalance) {
-          if (d <= bucketEnd && d >= bestDate) {
-            bestDate = d;
-            bestBal = bal;
-          }
-        }
-        if (bestBal !== null) {
-          lastKnown = bestBal;
-          row.closingBalance = bestBal;
-        } else if (lastKnown !== null) {
-          row.closingBalance = lastKnown;
-        }
+        running += row.netProfit;
+        row.cashFlow = running;
       }
-
-      // Ancora último passado no bankBalance atual (mais preciso que a última transação do extrato)
-      const lastPast = [...series].reverse().find((r) => !r.isFuture);
-      if (lastPast && bankBalance > 0) lastPast.closingBalance = bankBalance;
-
-      // Projeta futuro a partir do bankBalance
-      let projected = bankBalance;
-      for (const row of series) {
-        if (!row.isFuture) continue;
-        projected += row.netFlow;
-        row.projectedBalance = projected;
-      }
-
-      // Séries dedicadas (mesmos buckets, campos filtrados)
-      const revenueSeries = series.map((r) => ({
-        bucket: r.bucket,
-        forecastRevenue: r.forecastRevenue,
-        receivedGross: r.receivedGross,
-        receivedNet: r.receivedNet,
-        asaasFees: r.asaasFees,
-        isFuture: r.isFuture,
-      }));
-      const profitSeries = series.map((r) => ({
-        bucket: r.bucket,
-        receivedNet: r.receivedNet,
-        expenses: r.expenses,
-        commissions: r.commissions,
-        netProfit: r.netProfit,
-        isFuture: r.isFuture,
-      }));
-      const balanceSeries = series.map((r) => ({
-        bucket: r.bucket,
-        closingBalance: r.closingBalance,
-        projectedBalance: r.projectedBalance,
-        isFuture: r.isFuture,
-      }));
-
       const totals = series.reduce(
         (acc, r) => ({
-          forecast: acc.forecast + r.forecastRevenue,
-          received: acc.received + r.receivedGross,
-          receivedNet: acc.receivedNet + r.receivedNet,
-          asaasFees: acc.asaasFees + r.asaasFees,
+          revenue: acc.revenue + r.revenue,
           expenses: acc.expenses + r.expenses,
           commissions: acc.commissions + r.commissions,
           netProfit: acc.netProfit + r.netProfit,
         }),
-        { forecast: 0, received: 0, receivedNet: 0, asaasFees: 0, expenses: 0, commissions: 0, netProfit: 0 },
+        { revenue: 0, expenses: 0, commissions: 0, netProfit: 0 },
       );
 
-      console.log(`[finance-series] done buckets=${series.length} warnings=${warnings.length}`);
-
-      return new Response(
-        JSON.stringify({
-          revenueSeries,
-          profitSeries,
-          balanceSeries,
-          totals,
-          meta: { bankBalance, granularity, warnings },
-          // Back-compat: mantém `series` p/ consumers antigos
-          series,
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      return new Response(JSON.stringify({ series, totals, granularity }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Reconstrói finance_daily_snapshots dos últimos N meses a partir das fontes internas.
