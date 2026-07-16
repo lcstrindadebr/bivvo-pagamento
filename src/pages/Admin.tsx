@@ -264,6 +264,32 @@ const Admin = () => {
     }
   };
 
+  const handleCheckTenant = async () => {
+    const raw = tenantBivvo.trim();
+    if (!raw) {
+      toast({ title: 'Informe o Tenant', description: 'Digite o ID do tenant Bivvo antes de verificar.', variant: 'destructive' });
+      return;
+    }
+    setCheckingTenant(true);
+    setTenantCheck(null);
+    try {
+      const res: any = await adminPost('check-bivvo-tenant', { tenantId: raw });
+      if (res?.exists) {
+        setTenantCheck({ exists: true, info: res.tenant });
+        toast({ title: 'Tenant encontrado', description: 'Este cliente já possui tenant ativo no Bivvo.' });
+      } else {
+        setTenantCheck({ exists: false, error: res?.error || 'Tenant não encontrado' });
+        toast({ title: 'Tenant não encontrado', description: res?.error || 'Nenhum tenant Bivvo com esse ID.', variant: 'destructive' });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Falha ao verificar tenant';
+      setTenantCheck({ exists: false, error: msg });
+      toast({ title: 'Erro', description: msg, variant: 'destructive' });
+    } finally {
+      setCheckingTenant(false);
+    }
+  };
+
   const handleSaveContact = async () => {
     if (!selectedSub) return;
     setSavingContact(true);
