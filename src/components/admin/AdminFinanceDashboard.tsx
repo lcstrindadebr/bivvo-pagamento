@@ -1,11 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, TrendingDown, DollarSign, Users, Calendar, Receipt, XCircle, MousePointerClick, Copy, AlertTriangle } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, DollarSign, Users, Calendar, Receipt, XCircle, MousePointerClick, Copy, AlertTriangle, PiggyBank, MessageCircle, ExternalLink } from 'lucide-react';
 import { formatCurrency } from '@/lib/validators';
 import { useToast } from '@/hooks/use-toast';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+} from 'recharts';
+
 
 interface FinanceStats {
   totalPayments: number;
