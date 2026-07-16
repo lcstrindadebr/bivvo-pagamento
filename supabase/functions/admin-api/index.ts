@@ -275,17 +275,58 @@ serve(async (req) => {
       const overdueValue = overduePayments.reduce((a: number, p: any) => a + (Number(p.value) || 0), 0);
       const overdueCount = overduePayments.length;
 
-      // Enriquecer somente pagamentos do período atual (economia)
+      // Enriquecer pagamentos do período atual + inadimplentes
       let payments = paymentsCurrent;
-      if (payments.length > 0) {
-        const customerIds = [...new Set(payments.map((p: any) => p.customer))];
-        const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
-        payments = payments.map((p: any) => ({
-          ...p,
-          customerName: userMap.get(p.customer)?.name || 'Desconhecido',
-          customerEmail: userMap.get(p.customer)?.email || '',
-        }));
+      const allCustomerIds = [
+        ...new Set([
+          ...payments.map((p: any) => p.customer),
+          ...overduePayments.map((p: any) => p.customer),
+        ].filter(Boolean)),
+      ];
+      let userMap = new Map<string, any>();
+      if (allCustomerIds.length > 0) {
+        userMap = await enrichCustomers(supabase, allCustomerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
       }
+      payments = payments.map((p: any) => ({
+        ...p,
+        customerName: userMap.get(p.customer)?.name || 'Desconhecido',
+        customerEmail: userMap.get(p.customer)?.email || '',
+      }));
+
+      // Cross-reference com users locais para whatsapp/telefone
+      const whatsappMap = new Map<string, string>();
+      if (allCustomerIds.length > 0) {
+        const { data: localUsers } = await supabase
+          .from('users')
+          .select('asaas_customer_id, whatsapp')
+          .in('asaas_customer_id', allCustomerIds);
+        (localUsers || []).forEach((u: any) => {
+          if (u.whatsapp) whatsappMap.set(u.asaas_customer_id, u.whatsapp);
+        });
+      }
+
+      const _today = new Date();
+      const overdueCustomers = overduePayments
+        .map((p: any) => {
+          const due = p.dueDate ? new Date(p.dueDate) : null;
+          const daysLate = due
+            ? Math.max(0, Math.floor((_today.getTime() - due.getTime()) / 86_400_000))
+            : 0;
+          return {
+            paymentId: p.id,
+            asaasCustomerId: p.customer,
+            name: userMap.get(p.customer)?.name || 'Desconhecido',
+            email: userMap.get(p.customer)?.email || '',
+            whatsapp: whatsappMap.get(p.customer) || '',
+            amount: Number(p.value) || 0,
+            dueDate: p.dueDate || null,
+            daysLate,
+            invoiceUrl: p.invoiceUrl || null,
+            billingType: p.billingType || null,
+          };
+        })
+        .sort((a, b) => b.daysLate - a.daysLate);
+
 
       // Ativos hoje / MRR / ARPU (snapshot atual, comum a ambos)
       const activeSubs = allSubs.filter((s: any) => !s.deleted && s.status === 'ACTIVE');
