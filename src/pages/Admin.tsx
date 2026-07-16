@@ -242,8 +242,19 @@ const Admin = () => {
         postalCode: '', address: '', addressNumber: '', complement: '', province: '',
       });
       loadSubPayments(selectedSub.id);
+      // Load contracted Bivvo config from users table
+      supabase.from('users')
+        .select('bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name')
+        .eq('asaas_customer_id', selectedSub.customer)
+        .maybeSingle()
+        .then(({ data }) => {
+          setContractedConfig(data?.bivvo_config || null);
+          setTenantInfo(data || null);
+        });
     } else {
       setSelectedSubPayments([]);
+      setContractedConfig(null);
+      setTenantInfo(null);
     }
   }, [selectedSub]);
 
