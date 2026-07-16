@@ -447,6 +447,61 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
           </Table>
         </CardContent>
       </Card>
+
+      <Card className="card-glass border-none shadow-xl overflow-hidden">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-500" /> Clientes Inadimplentes
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Vencimento</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Forma</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-10">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-accent" />
+                  </TableCell>
+                </TableRow>
+              ) : stats?.overdueList && stats.overdueList.length > 0 ? (
+                stats.overdueList.map((p: any) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="text-xs">
+                      {p.dueDate ? new Date(p.dueDate).toLocaleDateString('pt-BR') : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-[11px]">{p.customerName}</span>
+                        <span className="text-[9px] text-muted-foreground">{p.customerEmail}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium text-sm text-red-500">
+                      {formatCurrency(p.value)}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {p.billingType === 'PIX' ? 'PIX' : p.billingType === 'BOLETO' ? 'Boleto' : 'Cartão'}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
+                    Nenhum cliente inadimplente. 🎉
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
