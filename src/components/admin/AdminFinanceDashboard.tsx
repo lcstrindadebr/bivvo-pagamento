@@ -153,11 +153,12 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         1,
         Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1,
       );
-      const granularity = rangeDays > 60 ? 'month' : 'day';
+      const gran: 'day' | 'month' = rangeDays > 60 ? 'month' : 'day';
+      setGranularity(gran);
 
       const [statsData, seriesData] = await Promise.all([
         adminFetch('finance-stats', params),
-        adminFetch('finance-series', { start: startStr, end: endStr, granularity }).catch(() => ({ series: [] })),
+        adminFetch('finance-series', { start: startStr, end: endStr, granularity: gran }).catch(() => ({ series: [] })),
       ]);
       setStats(statsData);
       setSeries(seriesData?.series || []);
