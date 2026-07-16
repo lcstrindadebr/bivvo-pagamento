@@ -294,16 +294,18 @@ const Admin = () => {
     }
     setProvisioningTenant(true);
     try {
+      // Se a conta Bivvo já foi criada, dispara apenas o update (não refaz o store)
+      const isProvisioned = !!tenantInfo?.bivvo_tenant_id && !!tenantInfo?.tenant_provisioned_at;
       const { data, error } = await supabase.functions.invoke('provision-bivvo-tenant', {
-        body: { userId: tenantInfo.id },
+        body: { userId: tenantInfo.id, mode: isProvisioned ? 'update' : undefined },
       });
       if (error) throw error;
       if (data?.result?.error) throw new Error(data.result.error);
       toast({
-        title: 'Tenant atualizado',
+        title: isProvisioned ? 'Tenant atualizado' : 'Tenant provisionado',
         description: data?.result?.skipped
           ? 'Tenant já estava provisionado.'
-          : `Provisionamento executado com sucesso${data?.result?.tenantId ? ` (ID: ${data.result.tenantId})` : ''}.`,
+          : `Operação executada com sucesso${data?.result?.tenantId ? ` (ID: ${data.result.tenantId})` : ''}.`,
       });
       // Recarrega tenantInfo
       const { data: refreshed } = await supabase.from('users')
@@ -1230,6 +1232,7 @@ const Admin = () => {
                       </h3>
                       {(() => {
                         const apiLocked = !!tenantInfo?.bivvo_tenant_id;
+                        const isProvisioned = !!tenantInfo?.bivvo_tenant_id && !!tenantInfo?.tenant_provisioned_at;
                         return (
                           <>
                             <div className="flex gap-2">
@@ -1273,10 +1276,12 @@ const Admin = () => {
                                 ) : (
                                   <RefreshCw className="h-3 w-3 mr-2" />
                                 )}
-                                {apiLocked ? 'Atualizar Tenant via API Bivvo' : 'Provisionar Tenant via API Bivvo'}
+                                {isProvisioned ? 'Atualizar Tenant via API Bivvo' : 'Provisionar Tenant via API Bivvo'}
                               </Button>
                               <p className="text-[10px] text-muted-foreground mt-1">
-                                Dispara manualmente a criação/atualização do tenant na API Bivvo com base na configuração contratada.
+                                {isProvisioned
+                                  ? 'Atualiza o tenant já criado na API Bivvo com base na configuração contratada atual.'
+                                  : 'Dispara manualmente a criação/atualização do tenant na API Bivvo com base na configuração contratada.'}
                               </p>
                             </div>
                           </>
