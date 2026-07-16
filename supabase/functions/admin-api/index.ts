@@ -814,8 +814,10 @@ serve(async (req) => {
 
       if (existing) {
         const { error } = await supabase.from('users')
-          .update({ tenant_bivvo: tenantBivvo || null }).eq('id', existing.id);
+          .update({ tenant_bivvo: tenantBivvo || null, bivvo_status: null, bivvo_status_checked_at: null })
+          .eq('id', existing.id);
         if (error) throw error;
+      
       } else {
         const { error } = await supabase.from('users').insert({
           asaas_customer_id: asaasCustomerId,
