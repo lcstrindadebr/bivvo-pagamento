@@ -247,6 +247,24 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
             >
               Personalizado
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-[10px] text-muted-foreground"
+              onClick={async () => {
+                try {
+                  toast({ title: 'Sincronizando…', description: 'Reconstruindo histórico financeiro.' });
+                  const res = await adminFetch('finance-backfill' as any, { months: '12' } as any);
+                  toast({ title: 'Histórico sincronizado', description: `${res?.days || 0} dias reconstruídos.` });
+                  loadStats(period, customStart, customEnd);
+                } catch (e: any) {
+                  toast({ title: 'Erro no backfill', description: e?.message || 'Falha', variant: 'destructive' });
+                }
+              }}
+            >
+              Sincronizar histórico
+            </Button>
+
           </div>
         </div>
 
