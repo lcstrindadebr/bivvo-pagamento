@@ -542,11 +542,11 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                 Sem dados no período. Rode o backfill para popular o histórico.
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={320}>
-                <ComposedChart data={series}>
+              <ResponsiveContainer width="100%" height={340}>
+                <ComposedChart data={series} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
                   <defs>
                     <pattern id="forecastPattern" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
-                      <rect width="6" height="6" fill="#3b82f6" fillOpacity="0.25" />
+                      <rect width="6" height="6" fill="#3b82f6" fillOpacity="0.15" />
                       <line x1="0" y1="0" x2="0" y2="6" stroke="#3b82f6" strokeWidth="2" strokeOpacity="0.6" />
                     </pattern>
                   </defs>
@@ -564,13 +564,23 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                   <YAxis
                     yAxisId="left"
                     tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => `R$${Math.round(v)}`}
+                    width={70}
+                    tickFormatter={(v) => {
+                      const n = Number(v);
+                      if (Math.abs(n) >= 1000) return `R$${(n / 1000).toFixed(1)}k`;
+                      return `R$${Math.round(n)}`;
+                    }}
                   />
                   <YAxis
                     yAxisId="right"
                     orientation="right"
                     tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => `R$${Math.round(v)}`}
+                    width={70}
+                    tickFormatter={(v) => {
+                      const n = Number(v);
+                      if (Math.abs(n) >= 1000) return `R$${(n / 1000).toFixed(1)}k`;
+                      return `R$${Math.round(n)}`;
+                    }}
                   />
                   <Tooltip
                     formatter={(v: any, name: string) => [formatCurrency(Number(v)), name]}
@@ -588,7 +598,6 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
 
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <ReferenceLine yAxisId="left" y={0} stroke="hsl(var(--border))" />
-                  <ReferenceLine yAxisId="right" y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
                   {/* Previsto: barra listrada azul clara */}
                   <Bar
                     yAxisId="left"
@@ -597,11 +606,11 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                     fill="url(#forecastPattern)"
                     radius={[4, 4, 0, 0]}
                   />
-                  {/* Recebido: barra verde sólida (sobreposta) */}
+                  {/* Recebido líquido (do extrato Asaas): verde sólido */}
                   <Bar
                     yAxisId="left"
-                    dataKey="receivedRevenue"
-                    name="Recebido"
+                    dataKey="receivedNet"
+                    name="Recebido (líq.)"
                     radius={[4, 4, 0, 0]}
                   >
                     {series.map((entry: any, index: number) => (
@@ -611,7 +620,16 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                       />
                     ))}
                   </Bar>
-                  {/* Saldo bancário projetado (eixo direito) */}
+                  {/* Despesas + comissões: barra vermelha para baixo (negativa) */}
+                  <Bar
+                    yAxisId="left"
+                    dataKey="expenses"
+                    name="Despesas"
+                    fill="#ef4444"
+                    fillOpacity={0.85}
+                    radius={[4, 4, 0, 0]}
+                  />
+                  {/* Saldo bancário real/projetado (eixo direito) */}
                   <Line
                     yAxisId="right"
                     type="monotone"
@@ -626,9 +644,10 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
               </ResponsiveContainer>
             )}
             <div className="mt-2 text-[10px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-              <span>▓ Previsto: cobranças com vencimento no período (qualquer status)</span>
-              <span>▓ Recebido: valor líquido efetivamente entrou no caixa</span>
-              <span>— Saldo: projeção ancorada no saldo Asaas atual</span>
+              <span>▓ Previsto: cobranças com vencimento no período (Asaas /payments)</span>
+              <span>▓ Recebido (líq.): PAYMENT_RECEIVED − tarifas (extrato Asaas)</span>
+              <span>▓ Despesas: despesas + comissões pagas no período</span>
+              <span>— Saldo: fechamento diário do extrato Asaas (projetado após hoje)</span>
             </div>
           </CardContent>
         </Card>
