@@ -139,12 +139,14 @@ async function callUpdateTenant(
   cfg: BivvoCfg,
   ctx: { maxUsers: number; maxConnections: number; limits: ReturnType<typeof computeChannelLimits>; status?: string },
 ) {
-  const tenantId = user.bivvo_tenant_id ? String(user.bivvo_tenant_id) : '';
-  if (!tenantId) {
+  const tenantIdRaw = user.bivvo_tenant_id ? String(user.bivvo_tenant_id).trim() : '';
+  if (!tenantIdRaw) {
     throw new Error('Tenant Bivvo não encontrado (bivvo_tenant_id ausente). Provisione a conta antes de atualizar.');
   }
+  const tenantIdNum = Number(tenantIdRaw);
+  const tenantIdField: number | string = Number.isFinite(tenantIdNum) && String(tenantIdNum) === tenantIdRaw ? tenantIdNum : tenantIdRaw;
   const updatePayload = {
-    id: tenantId,
+    id: tenantIdField,
     status: ctx.status || 'active',
     maxUsers: ctx.maxUsers,
     maxConnections: ctx.maxConnections,
