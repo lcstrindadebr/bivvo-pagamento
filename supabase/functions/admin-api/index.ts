@@ -837,6 +837,58 @@ serve(async (req) => {
       });
     }
 
+    // ── DELETE / RESTORE ASAAS CUSTOMER ─────────────────────
+    if (action === 'delete-customer' && req.method === 'POST') {
+      const { asaasCustomerId } = await req.json();
+      if (!asaasCustomerId) throw new Error('asaasCustomerId é obrigatório');
+
+      const resp = await fetch(`${ASAAS_BASE_URL}/customers/${asaasCustomerId}`, {
+        method: 'DELETE',
+        headers: { 'access_token': ASAAS_API_KEY, 'User-Agent': 'BivvoAdmin/1.0' },
+      });
+      const result = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        console.error('Erro Asaas delete-customer:', JSON.stringify(result));
+        throw new Error(result.errors?.[0]?.description || `Asaas Error ${resp.status}`);
+      }
+
+      // Sync local: mark user inactive
+      await supabase.from('users')
+        .update({ status: 'inactive' })
+        .eq('asaas_customer_id', asaasCustomerId);
+
+      await logAction(supabase, user, 'delete-customer', 'users', asaasCustomerId, null, result);
+
+      return new Response(JSON.stringify({ ok: true, asaas: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'restore-customer' && req.method === 'POST') {
+      const { asaasCustomerId } = await req.json();
+      if (!asaasCustomerId) throw new Error('asaasCustomerId é obrigatório');
+
+      const resp = await fetch(`${ASAAS_BASE_URL}/customers/${asaasCustomerId}/restore`, {
+        method: 'POST',
+        headers: { 'access_token': ASAAS_API_KEY, 'accept': 'application/json', 'User-Agent': 'BivvoAdmin/1.0' },
+      });
+      const result = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        console.error('Erro Asaas restore-customer:', JSON.stringify(result));
+        throw new Error(result.errors?.[0]?.description || `Asaas Error ${resp.status}`);
+      }
+
+      await supabase.from('users')
+        .update({ status: 'active' })
+        .eq('asaas_customer_id', asaasCustomerId);
+
+      await logAction(supabase, user, 'restore-customer', 'users', asaasCustomerId, null, result);
+
+      return new Response(JSON.stringify({ ok: true, asaas: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (action === 'update-user-tenant' && req.method === 'POST') {
       const body = await req.json();
       const { asaasCustomerId, tenantBivvo } = body;
