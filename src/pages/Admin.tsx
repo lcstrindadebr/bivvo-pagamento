@@ -326,6 +326,36 @@ const Admin = () => {
     }
   };
 
+  const [customerActionLoading, setCustomerActionLoading] = useState(false);
+  const handleDeleteCustomer = async () => {
+    if (!selectedSub) return;
+    if (!confirm(`Remover o cliente ${selectedSub.customerName} do Asaas?\n\nIsso cancelará futuras cobranças. O cliente poderá ser restaurado depois.`)) return;
+    setCustomerActionLoading(true);
+    try {
+      await adminPost('delete-customer', { asaasCustomerId: selectedSub.customer });
+      toast({ title: 'Cliente removido', description: 'Cliente marcado como removido no Asaas.' });
+      loadSubscriptions();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao remover cliente', variant: 'destructive' });
+    } finally {
+      setCustomerActionLoading(false);
+    }
+  };
+  const handleRestoreCustomer = async () => {
+    if (!selectedSub) return;
+    if (!confirm(`Restaurar o cliente ${selectedSub.customerName} no Asaas?`)) return;
+    setCustomerActionLoading(true);
+    try {
+      await adminPost('restore-customer', { asaasCustomerId: selectedSub.customer });
+      toast({ title: 'Cliente restaurado', description: 'Cliente reativado no Asaas.' });
+      loadSubscriptions();
+    } catch (err) {
+      toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao restaurar cliente', variant: 'destructive' });
+    } finally {
+      setCustomerActionLoading(false);
+    }
+  };
+
 
 
   const loadSubPayments = async (id: string) => {
@@ -1459,8 +1489,13 @@ const Admin = () => {
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-2">
-
+                    <div className="flex justify-end gap-2 pt-2 flex-wrap">
+                      <Button variant="destructive" size="sm" onClick={handleDeleteCustomer} disabled={customerActionLoading}>
+                        <Trash2 className="h-3 w-3 mr-2" /> Excluir Cliente
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleRestoreCustomer} disabled={customerActionLoading}>
+                        <CheckCircle2 className="h-3 w-3 mr-2" /> Restaurar Cliente
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => setSubDetailsDialog(false)}>Fechar</Button>
                       <Button size="sm" variant="secondary" onClick={() => window.open(`https://app.asaas.com/subscription/show/${selectedSub.id}`, '_blank')}>
                         <ExternalLink className="h-3 w-3 mr-2" /> Ver no Asaas
