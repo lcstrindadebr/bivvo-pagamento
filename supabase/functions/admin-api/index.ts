@@ -431,6 +431,7 @@ serve(async (req) => {
         retainedCommissions: 0,
         pendingAffiliatePayout: 0,
         payments,
+        overdueList,
         previous,
         deltas,
         previousRange: previousStart ? { start: previousStart, end: previousEnd } : null,
