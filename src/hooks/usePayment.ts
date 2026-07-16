@@ -8,6 +8,7 @@ interface PaymentData {
   bivvoConfig?: any;
   affiliateSlug?: string;
   trackingId?: string;
+  couponCode?: string;
   customerData: {
     personType?: 'FISICA' | 'JURIDICA';
     name: string;
@@ -24,7 +25,7 @@ interface PaymentData {
     cidade: string;
     estado: string;
   };
-  cardData: {
+  cardData?: {
     holderName: string;
     number: string;
     expiryMonth: string;
@@ -145,8 +146,8 @@ export function usePayment() {
       
       if (!result.success) throw new Error(result.error || 'Erro desconhecido no processamento');
 
-      // Se aprovado imediatamente
-      if (result.status === 'approved') {
+      // Se aprovado imediatamente (incluindo cupom 100%)
+      if (result.status === 'approved' || result.freeCoupon) {
         setStatus('approved');
         return result;
       }
