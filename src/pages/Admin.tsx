@@ -758,6 +758,25 @@ const Admin = () => {
               </Dialog>
             </div>
 
+            <div className="card-glass rounded-xl p-4 mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="font-medium">Campo de cupom no checkout</p>
+                <p className="text-sm text-muted-foreground">
+                  Quando desativado, o campo para digitar cupom fica oculto na tela de pagamento.
+                </p>
+              </div>
+              <Switch
+                checked={couponFieldEnabled}
+                onCheckedChange={(v) =>
+                  saveSetting(
+                    { checkout_coupon_enabled: v ? 'true' : 'false' },
+                    { label: 'Campo de cupom no checkout' },
+                  )
+                }
+              />
+            </div>
+
+
             <div className="card-glass rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
