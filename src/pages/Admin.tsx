@@ -68,6 +68,7 @@ interface Subscription {
   bivvoStatus?: string;
   localUserId?: string | null;
   externalReference?: string;
+  paymentStatus?: 'adimplente' | 'inadimplente';
 }
 
 const Admin = () => {
