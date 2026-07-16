@@ -849,7 +849,7 @@ const Admin = () => {
                 </div>
               ) : (
                 <>
-                  <Table>
+                  <Table className="table-fixed">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Cliente</TableHead>
