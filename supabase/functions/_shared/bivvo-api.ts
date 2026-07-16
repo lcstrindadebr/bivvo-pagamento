@@ -1,6 +1,8 @@
 // Helper para provisionar tenant + usuário na API adm.bivvo.com.br
 // Utilizado por process-payment, create-subscription e asaas-webhook.
 
+import { log } from './logger.ts';
+
 const BIVVO_API_URL = Deno.env.get('BIVVO_API_URL') || 'https://adm.bivvo.com.br';
 
 // Menu base SEM MassDispatch — MassDispatch só é adicionado se cliente contratar disparo em massa.
