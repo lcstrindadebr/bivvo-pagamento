@@ -51,6 +51,8 @@ serve(async (req) => {
     const { data: user, error: uErr } = await supabase.from('users').upsert({
       email: customerData.email.toLowerCase().trim(),
       name: customerData.name.trim(),
+      person_type: customerData.personType || null,
+      company_name: customerData.personType === 'JURIDICA' ? (customerData.companyName || '').trim() : null,
       whatsapp: cleanPhone,
       cpf: cleanCpf,
       billing_name: customerData.billingName.trim(),
@@ -61,6 +63,7 @@ serve(async (req) => {
       bairro: customerData.bairro.trim(),
       cidade: customerData.cidade.trim(),
       estado: customerData.estado.toUpperCase(),
+      bivvo_config: bivvoConfig || null,
     }, { onConflict: 'email' }).select('id, asaas_customer_id').single();
     if (uErr) throw uErr;
 
