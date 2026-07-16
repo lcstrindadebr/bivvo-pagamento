@@ -116,6 +116,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
   const { toast } = useToast();
   const [stats, setStats] = useState<FinanceStats | null>(null);
   const [series, setSeries] = useState<FinanceSeriesPoint[]>([]);
+  const [granularity, setGranularity] = useState<'day' | 'month'>('day');
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'today' | '7days' | '30days' | 'month' | 'custom'>('month');
   const [customStart, setCustomStart] = useState('');
