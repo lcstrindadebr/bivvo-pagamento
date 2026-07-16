@@ -116,10 +116,13 @@ const Checkout = () => {
   const [generatingPayment, setGeneratingPayment] = useState(false);
 
   const [formData, setFormData] = useState({
+    personType: 'FISICA' as 'FISICA' | 'JURIDICA',
     name: '',
+    companyName: '',
     email: '',
     whatsapp: '',
     cpf: '',
+    cnpj: '',
     billingName: '',
     cep: '',
     endereco: '',
