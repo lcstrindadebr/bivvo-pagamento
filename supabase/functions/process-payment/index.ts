@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { quoteBivvo, round2 } from "../_shared/bivvo-logic.ts";
 import { asaasFetch } from "../_shared/asaas.ts";
+import { runProvisionAndPersist } from "../_shared/bivvo-api.ts";
 
 
 serve(async (req) => {
