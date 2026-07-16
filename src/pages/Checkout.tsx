@@ -146,6 +146,50 @@ const Checkout = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Coupon state
+  const couponEnabled = (siteSettings?.checkout_coupon_enabled ?? 'true') !== 'false';
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_percent: number } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const isFreeCoupon = !!appliedCoupon && appliedCoupon.discount_percent >= 100;
+  const discountedPrice = appliedCoupon
+    ? Math.max(0, Math.round(((plan?.price || 0) * (1 - appliedCoupon.discount_percent / 100)) * 100) / 100)
+    : (plan?.price || 0);
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-coupon`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ code }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Cupom inválido');
+      setAppliedCoupon(json.coupon);
+      toast({ title: 'Cupom aplicado', description: `${json.coupon.discount_percent}% de desconto no primeiro mês.` });
+    } catch (err) {
+      setCouponError(err instanceof Error ? err.message : 'Erro ao validar cupom');
+      setAppliedCoupon(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError(null);
+  };
+
+
   useEffect(() => {
     if (paymentStatus === 'approved') {
       setCurrentStep('success');
