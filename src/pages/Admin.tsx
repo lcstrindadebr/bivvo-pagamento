@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp, Receipt, Share2, Copy, Settings, Smartphone, CheckCircle2, FileText } from 'lucide-react';
+import { Loader2, Plus, LogOut, Package, Ticket, Users, Pencil, Trash2, Handshake, LayoutDashboard, UserCheck, ExternalLink, Info, Check, TrendingUp, Receipt, Share2, Copy, Settings, Smartphone, CheckCircle2, FileText, RefreshCw } from 'lucide-react';
 
 import AdminAffiliates from '@/components/admin/AdminAffiliates';
 import { AdminFinanceDashboard } from '@/components/admin/AdminFinanceDashboard';
@@ -123,7 +123,8 @@ const Admin = () => {
   const [savingTenant, setSavingTenant] = useState(false);
   const [refreshingBivvo, setRefreshingBivvo] = useState(false);
   const [contractedConfig, setContractedConfig] = useState<any>(null);
-  const [tenantInfo, setTenantInfo] = useState<{ bivvo_tenant_id?: string | null; tenant_provisioned_at?: string | null; tenant_provision_error?: string | null; person_type?: string | null; company_name?: string | null } | null>(null);
+  const [tenantInfo, setTenantInfo] = useState<{ id?: string | null; bivvo_tenant_id?: string | null; tenant_provisioned_at?: string | null; tenant_provision_error?: string | null; person_type?: string | null; company_name?: string | null } | null>(null);
+  const [provisioningTenant, setProvisioningTenant] = useState(false);
 
   // Contato do cliente (Asaas + local)
   const [contactForm, setContactForm] = useState({
@@ -249,7 +250,7 @@ const Admin = () => {
       loadSubPayments(selectedSub.id);
       // Load contracted Bivvo config from users table
       supabase.from('users')
-        .select('bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name')
+        .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name')
         .eq('asaas_customer_id', selectedSub.customer)
         .maybeSingle()
         .then(({ data }) => {
@@ -285,6 +286,41 @@ const Admin = () => {
       setSavingTenant(false);
     }
   };
+
+  const handleProvisionTenant = async () => {
+    if (!tenantInfo?.id) {
+      toast({ title: 'Erro', description: 'Cliente não encontrado no banco.', variant: 'destructive' });
+      return;
+    }
+    setProvisioningTenant(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('provision-bivvo-tenant', {
+        body: { userId: tenantInfo.id },
+      });
+      if (error) throw error;
+      if (data?.result?.error) throw new Error(data.result.error);
+      toast({
+        title: 'Tenant atualizado',
+        description: data?.result?.skipped
+          ? 'Tenant já estava provisionado.'
+          : `Provisionamento executado com sucesso${data?.result?.tenantId ? ` (ID: ${data.result.tenantId})` : ''}.`,
+      });
+      // Recarrega tenantInfo
+      const { data: refreshed } = await supabase.from('users')
+        .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name')
+        .eq('id', tenantInfo.id)
+        .maybeSingle();
+      if (refreshed) {
+        setTenantInfo(refreshed);
+        if (refreshed.bivvo_tenant_id) setTenantBivvo(String(refreshed.bivvo_tenant_id));
+      }
+    } catch (err) {
+      toast({ title: 'Erro no provisionamento', description: err instanceof Error ? err.message : 'Falha ao provisionar tenant', variant: 'destructive' });
+    } finally {
+      setProvisioningTenant(false);
+    }
+  };
+
 
   const handleRefreshAllBivvo = async () => {
     setRefreshingBivvo(true);
@@ -1000,16 +1036,8 @@ const Admin = () => {
                             </TableCell>
                             <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex justify-end gap-2">
-                                {!internalSub?.account_created && internalCustomer && (
-                                  <Button 
-                                    size="sm" 
-                                    className="h-8 bg-accent hover:bg-accent/90 text-[10px] px-2"
-                                    onClick={() => handleCreateAccount(internalCustomer)}
-                                    disabled={creatingAccount === internalCustomer.id}
-                                  >
-                                    {creatingAccount === internalCustomer.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Ativar Conta'}
-                                  </Button>
-                                )}
+                                
+
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
                                   setSelectedSub(sub);
                                   setSubDetailsDialog(true);
@@ -1232,7 +1260,27 @@ const Admin = () => {
                             ) : (
                               <p className="text-[10px] text-muted-foreground">ID do tenant Bivvo associado a este cliente. A verificação com a API Bivvo é feita automaticamente ao listar assinaturas.</p>
                             )}
+                            <div className="pt-2 border-t">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full h-8 text-xs"
+                                onClick={handleProvisionTenant}
+                                disabled={provisioningTenant || !tenantInfo?.id}
+                              >
+                                {provisioningTenant ? (
+                                  <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                ) : (
+                                  <RefreshCw className="h-3 w-3 mr-2" />
+                                )}
+                                {apiLocked ? 'Atualizar Tenant via API Bivvo' : 'Provisionar Tenant via API Bivvo'}
+                              </Button>
+                              <p className="text-[10px] text-muted-foreground mt-1">
+                                Dispara manualmente a criação/atualização do tenant na API Bivvo com base na configuração contratada.
+                              </p>
+                            </div>
                           </>
+
                         );
                       })()}
                     </div>
