@@ -43,11 +43,20 @@ serve(async (req) => {
       planLabel = `Plano ${pData.name}`;
     }
 
+    // 2.1 Validate coupon (if provided) and apply discount to first month
+    const appliedCoupon = await validateAndLoadCoupon(supabase, couponCode);
+    const originalAmount = amount;
+    if (appliedCoupon) {
+      amount = round2(amount * (1 - appliedCoupon.discount_percent / 100));
+      if (amount < 0) amount = 0;
+    }
+    const isFreeCoupon = !!appliedCoupon && appliedCoupon.discount_percent >= 100;
+
     // 3. User Management
     const cleanCpf = customerData.cpf.replace(/\D/g, '');
     const cleanPhone = customerData.whatsapp.replace(/\D/g, '');
     const cleanCep = customerData.cep.replace(/\D/g, '');
-    const cleanCard = cardData.number.replace(/\s/g, '');
+    const cleanCard = isFreeCoupon ? '' : (cardData?.number || '').replace(/\s/g, '');
 
     const { data: user, error: uErr } = await supabase.from('users').upsert({
       email: customerData.email.toLowerCase().trim(),
