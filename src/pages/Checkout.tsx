@@ -1002,15 +1002,86 @@ const Checkout = () => {
                     </p>
                   </div>
                 </div>
-                <span className="text-2xl font-bold text-accent">{formatCurrency(plan.price)}</span>
+                <div className="text-right">
+                  {appliedCoupon && (
+                    <span className="block text-xs text-muted-foreground line-through">
+                      {formatCurrency(plan.price)}
+                    </span>
+                  )}
+                  <span className="text-2xl font-bold text-accent">
+                    {isFreeCoupon ? 'GRÁTIS' : formatCurrency(discountedPrice)}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Payment Method Selector */}
-            <PaymentMethodSelector selected={paymentMethod} onChange={setPaymentMethod} />
+            {/* Cupom */}
+            {couponEnabled && (
+              <div className="card-glass rounded-2xl p-4 space-y-3">
+                <Label className="text-sm font-medium">Cupom de desconto</Label>
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between gap-3 rounded-xl bg-success/10 border border-success/30 p-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-success" />
+                      <div>
+                        <p className="font-mono font-semibold text-sm">{appliedCoupon.code}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {appliedCoupon.discount_percent}% de desconto no primeiro mês
+                        </p>
+                      </div>
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" onClick={removeCoupon}>
+                      Remover
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <Input
+                        value={couponInput}
+                        onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(null); }}
+                        placeholder="DIGITE SEU CUPOM"
+                        className="h-12 input-glass rounded-xl uppercase"
+                        disabled={couponLoading}
+                      />
+                      <Button
+                        type="button"
+                        onClick={applyCoupon}
+                        disabled={couponLoading || !couponInput.trim()}
+                        variant="outline"
+                        className="h-12 px-4 rounded-xl"
+                      >
+                        {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
+                      </Button>
+                    </div>
+                    {couponError && <p className="text-xs text-destructive">{couponError}</p>}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Payment Method Selector - oculto para cupom 100% */}
+            {!isFreeCoupon && (
+              <PaymentMethodSelector selected={paymentMethod} onChange={setPaymentMethod} />
+            )}
+
+            {/* Free Coupon Info */}
+            {isFreeCoupon && (
+              <div className="card-glass rounded-2xl p-5 space-y-3 text-center border-success/30">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-success/10 flex items-center justify-center">
+                  <CheckCircle2 className="h-8 w-8 text-success" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold">Assinatura 100% gratuita</p>
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum pagamento é necessário. Clique em finalizar para ativar sua conta.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Credit Card Form */}
-            {paymentMethod === 'CREDIT_CARD' && (
+            {!isFreeCoupon && paymentMethod === 'CREDIT_CARD' && (
               <>
                 <CardBrands />
                 <div className="card-glass rounded-2xl p-5 space-y-4">
