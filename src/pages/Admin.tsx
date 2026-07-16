@@ -323,6 +323,33 @@ const Admin = () => {
     }
   };
 
+  const handleInactivateTenant = async () => {
+    if (!tenantInfo?.id) {
+      toast({ title: 'Erro', description: 'Cliente não encontrado no banco.', variant: 'destructive' });
+      return;
+    }
+    if (!confirm('Tem certeza que deseja INATIVAR a conta Bivvo deste cliente? O acesso do cliente será bloqueado.')) return;
+    setProvisioningTenant(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('provision-bivvo-tenant', {
+        body: { userId: tenantInfo.id, mode: 'inactivate' },
+      });
+      if (error) throw error;
+      if (data?.result?.error) throw new Error(data.result.error);
+      toast({ title: 'Conta inativada', description: 'A conta Bivvo foi marcada como inativa via API.' });
+      const { data: refreshed } = await supabase.from('users')
+        .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name')
+        .eq('id', tenantInfo.id)
+        .maybeSingle();
+      if (refreshed) setTenantInfo(refreshed);
+    } catch (err) {
+      toast({ title: 'Erro ao inativar', description: err instanceof Error ? err.message : 'Falha ao inativar conta', variant: 'destructive' });
+    } finally {
+      setProvisioningTenant(false);
+    }
+  };
+
+
 
   const handleRefreshAllBivvo = async () => {
     setRefreshingBivvo(true);
