@@ -549,7 +549,16 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                     </pattern>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                  <XAxis dataKey="bucket" tick={{ fontSize: 10 }} tickFormatter={(v) => (v || '').slice(5)} />
+                  <XAxis
+                    dataKey="bucket"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(v) => {
+                      if (!v) return '';
+                      const [y, m, d] = String(v).split('-');
+                      if (!d) return `${m}/${y}`;
+                      return granularity === 'month' ? `${m}/${y}` : `${d}/${m}`;
+                    }}
+                  />
                   <YAxis
                     yAxisId="left"
                     tick={{ fontSize: 10 }}
@@ -563,8 +572,18 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                   />
                   <Tooltip
                     formatter={(v: any, name: string) => [formatCurrency(Number(v)), name]}
-                    labelFormatter={(v) => `Período: ${v}`}
+                    labelFormatter={(v) => {
+                      if (!v) return '';
+                      const [y, m, d] = String(v).split('-');
+                      const label = !d
+                        ? `${m}/${y}`
+                        : granularity === 'month'
+                          ? `${m}/${y}`
+                          : `${d}/${m}/${y}`;
+                      return `Período: ${label}`;
+                    }}
                   />
+
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <ReferenceLine yAxisId="left" y={0} stroke="hsl(var(--border))" />
                   <ReferenceLine yAxisId="right" y={0} stroke="hsl(var(--border))" strokeDasharray="3 3" />
