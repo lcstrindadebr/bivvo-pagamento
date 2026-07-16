@@ -61,6 +61,14 @@ serve(async (req) => {
       planLabel = `Plano ${pData.name}`;
     }
 
+    // 2.1 Validate coupon (if provided) and apply discount to first month
+    const appliedCoupon = await validateAndLoadCoupon(supabase, couponCode);
+    if (appliedCoupon) {
+      amount = round2(amount * (1 - appliedCoupon.discount_percent / 100));
+      if (amount < 0) amount = 0;
+    }
+    const isFreeCoupon = !!appliedCoupon && appliedCoupon.discount_percent >= 100;
+
     // 3. User & Customer Management
     const cleanCpf = customerData.cpf.replace(/\D/g, '');
     const cleanPhone = customerData.whatsapp.replace(/\D/g, '');
