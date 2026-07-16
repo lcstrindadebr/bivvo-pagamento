@@ -255,6 +255,10 @@ const Admin = () => {
         .then(({ data }) => {
           setContractedConfig(data?.bivvo_config || null);
           setTenantInfo(data || null);
+          // Se cliente foi provisionado via API, sincroniza o campo com o bivvo_tenant_id (fonte da verdade)
+          if (data?.bivvo_tenant_id) {
+            setTenantBivvo(String(data.bivvo_tenant_id));
+          }
         });
     } else {
       setSelectedSubPayments([]);
