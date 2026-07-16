@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, TrendingDown, DollarSign, Users, Calendar, Receipt, XCircle, MousePointerClick, Copy, AlertTriangle } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, DollarSign, Users, Calendar, Receipt, XCircle, MousePointerClick, Copy, AlertTriangle, ExternalLink } from 'lucide-react';
 import { formatCurrency } from '@/lib/validators';
 import { useToast } from '@/hooks/use-toast';
 
@@ -379,77 +379,6 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
 
       <Card className="card-glass border-none shadow-xl overflow-hidden">
         <CardHeader>
-          <CardTitle>Últimas Cobranças de Assinaturas</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Forma</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-10">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-accent" />
-                  </TableCell>
-                </TableRow>
-              ) : stats?.payments && stats.payments.length > 0 ? (
-                stats.payments.map((p: any) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="text-xs">
-                      <div className="flex items-center gap-1 group">
-                        {new Date(p.dateCreated).toLocaleDateString('pt-BR')}
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity" 
-                          onClick={() => {
-                            navigator.clipboard.writeText(p.id);
-                            toast({ title: "Copiado", description: "ID da cobrança copiado!" });
-                          }}
-                          title={`Copiar ID: ${p.id}`}
-                        >
-                          <Copy className="h-2 w-2" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-[11px]">{p.customerName}</span>
-                        <span className="text-[9px] text-muted-foreground">{p.customerEmail}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium text-sm">
-                      {formatCurrency(p.value)}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {p.billingType === 'PIX' ? 'PIX' : p.billingType === 'BOLETO' ? 'Boleto' : 'Cartão'}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(p.status)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
-                    Nenhuma cobrança no período selecionado.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card className="card-glass border-none shadow-xl overflow-hidden">
-        <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-red-500" /> Clientes Inadimplentes
           </CardTitle>
@@ -462,38 +391,71 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                 <TableHead>Cliente</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Forma</TableHead>
+                <TableHead className="text-right">Link</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-10">
+                  <TableCell colSpan={5} className="text-center py-10">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-accent" />
                   </TableCell>
                 </TableRow>
               ) : stats?.overdueList && stats.overdueList.length > 0 ? (
-                stats.overdueList.map((p: any) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="text-xs">
-                      {p.dueDate ? new Date(p.dueDate).toLocaleDateString('pt-BR') : '—'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium text-[11px]">{p.customerName}</span>
-                        <span className="text-[9px] text-muted-foreground">{p.customerEmail}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium text-sm text-red-500">
-                      {formatCurrency(p.value)}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {p.billingType === 'PIX' ? 'PIX' : p.billingType === 'BOLETO' ? 'Boleto' : 'Cartão'}
-                    </TableCell>
-                  </TableRow>
-                ))
+                stats.overdueList.map((p: any) => {
+                  const link = p.invoiceUrl || p.bankSlipUrl || '';
+                  return (
+                    <TableRow key={p.id}>
+                      <TableCell className="text-xs">
+                        {p.dueDate ? new Date(p.dueDate).toLocaleDateString('pt-BR') : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-[11px]">{p.customerName}</span>
+                          <span className="text-[9px] text-muted-foreground">{p.customerEmail}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium text-sm text-red-500">
+                        {formatCurrency(p.value)}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {p.billingType === 'PIX' ? 'PIX' : p.billingType === 'BOLETO' ? 'Boleto' : 'Cartão'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="inline-flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            disabled={!link}
+                            title={link ? 'Copiar link da cobrança' : 'Sem link disponível'}
+                            onClick={() => {
+                              if (!link) return;
+                              navigator.clipboard.writeText(link);
+                              toast({ title: 'Copiado', description: 'Link da cobrança copiado!' });
+                            }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          {link && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              title="Abrir cobrança"
+                              onClick={() => window.open(link, '_blank')}
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
                     Nenhum cliente inadimplente. 🎉
                   </TableCell>
                 </TableRow>
@@ -502,6 +464,111 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
           </Table>
         </CardContent>
       </Card>
+
+      <Card className="card-glass border-none shadow-xl overflow-hidden">
+        <CardHeader>
+          <CardTitle>Últimas Cobranças de Assinaturas</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Forma</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Link</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-10">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-accent" />
+                  </TableCell>
+                </TableRow>
+              ) : stats?.payments && stats.payments.length > 0 ? (
+                stats.payments.map((p: any) => {
+                  const link = p.invoiceUrl || p.bankSlipUrl || '';
+                  return (
+                    <TableRow key={p.id}>
+                      <TableCell className="text-xs">
+                        <div className="flex items-center gap-1 group">
+                          {new Date(p.dateCreated).toLocaleDateString('pt-BR')}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => {
+                              navigator.clipboard.writeText(p.id);
+                              toast({ title: 'Copiado', description: 'ID da cobrança copiado!' });
+                            }}
+                            title={`Copiar ID: ${p.id}`}
+                          >
+                            <Copy className="h-2 w-2" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-[11px]">{p.customerName}</span>
+                          <span className="text-[9px] text-muted-foreground">{p.customerEmail}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium text-sm">
+                        {formatCurrency(p.value)}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {p.billingType === 'PIX' ? 'PIX' : p.billingType === 'BOLETO' ? 'Boleto' : 'Cartão'}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(p.status)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="inline-flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            disabled={!link}
+                            title={link ? 'Copiar link da cobrança' : 'Sem link disponível'}
+                            onClick={() => {
+                              if (!link) return;
+                              navigator.clipboard.writeText(link);
+                              toast({ title: 'Copiado', description: 'Link da cobrança copiado!' });
+                            }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          {link && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              title="Abrir cobrança"
+                              onClick={() => window.open(link, '_blank')}
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                    Nenhuma cobrança no período selecionado.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
