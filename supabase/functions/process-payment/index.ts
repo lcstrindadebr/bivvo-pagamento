@@ -166,6 +166,7 @@ serve(async (req) => {
       status: isApproved ? 'approved' : 'pending',
       asaas_payment_id: firstPayment.id,
       asaas_subscription_id: sRes.id,
+      bivvo_config: bivvoConfig || null,
     }).select('id').single();
 
     if (isApproved) {
@@ -179,6 +180,13 @@ serve(async (req) => {
         data_expiracao: expDate.toISOString(),
         asaas_subscription_id: sRes.id,
       }).eq('id', user.id);
+
+      // Provisiona tenant Bivvo (não falha o pagamento se der erro)
+      try {
+        await runProvisionAndPersist(supabase, user.id);
+      } catch (e) {
+        console.error('Falha ao provisionar tenant Bivvo:', e);
+      }
     }
 
     // 8. Affiliate tracking (Simplified for portability)
