@@ -275,6 +275,22 @@ serve(async (req) => {
       const overdueValue = overduePayments.reduce((a: number, p: any) => a + (Number(p.value) || 0), 0);
       const overdueCount = overduePayments.length;
 
+      // Enriquecer inadimplentes com nome/email do cliente
+      let overdueList: any[] = [];
+      if (overduePayments.length > 0) {
+        const ids = [...new Set(overduePayments.map((p: any) => p.customer))];
+        const uMap = await enrichCustomers(supabase, ids, ASAAS_BASE_URL, ASAAS_API_KEY);
+        overdueList = overduePayments.map((p: any) => ({
+          id: p.id,
+          value: p.value,
+          dueDate: p.dueDate,
+          billingType: p.billingType,
+          customer: p.customer,
+          customerName: uMap.get(p.customer)?.name || 'Desconhecido',
+          customerEmail: uMap.get(p.customer)?.email || '',
+        }));
+      }
+
       // Enriquecer somente pagamentos do período atual (economia)
       let payments = paymentsCurrent;
       if (payments.length > 0) {
@@ -415,6 +431,7 @@ serve(async (req) => {
         retainedCommissions: 0,
         pendingAffiliatePayout: 0,
         payments,
+        overdueList,
         previous,
         deltas,
         previousRange: previousStart ? { start: previousStart, end: previousEnd } : null,
