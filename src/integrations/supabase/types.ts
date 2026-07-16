@@ -453,6 +453,87 @@ export type Database = {
           },
         ]
       }
+      finance_daily_snapshots: {
+        Row: {
+          active_subscriptions: number
+          affiliate_commissions_paid: number
+          chargebacks: number
+          created_at: string
+          date: string
+          expenses_total: number
+          gross_revenue: number
+          id: string
+          net_profit: number
+          net_revenue: number
+          overdue_value: number
+          refunds: number
+          updated_at: string
+        }
+        Insert: {
+          active_subscriptions?: number
+          affiliate_commissions_paid?: number
+          chargebacks?: number
+          created_at?: string
+          date: string
+          expenses_total?: number
+          gross_revenue?: number
+          id?: string
+          net_profit?: number
+          net_revenue?: number
+          overdue_value?: number
+          refunds?: number
+          updated_at?: string
+        }
+        Update: {
+          active_subscriptions?: number
+          affiliate_commissions_paid?: number
+          chargebacks?: number
+          created_at?: string
+          date?: string
+          expenses_total?: number
+          gross_revenue?: number
+          id?: string
+          net_profit?: number
+          net_revenue?: number
+          overdue_value?: number
+          refunds?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      finance_events: {
+        Row: {
+          amount: number
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          net_amount: number | null
+          occurred_at: string
+          reference_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          net_amount?: number | null
+          occurred_at?: string
+          reference_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          net_amount?: number | null
+          occurred_at?: string
+          reference_id?: string | null
+        }
+        Relationships: []
+      }
       marketing_materials: {
         Row: {
           created_at: string
@@ -825,6 +906,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_finance_event: {
+        Args: {
+          p_chargeback: number
+          p_commission: number
+          p_date: string
+          p_expense: number
+          p_gross: number
+          p_net: number
+          p_refund: number
+        }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
