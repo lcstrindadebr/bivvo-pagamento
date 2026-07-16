@@ -236,7 +236,12 @@ const Checkout = () => {
       if (!formData.whatsapp.trim() || formData.whatsapp.replace(/\D/g, '').length < 10) {
         newErrors.whatsapp = 'WhatsApp inválido';
       }
-      if (!validateCPF(formData.cpf)) newErrors.cpf = 'CPF inválido';
+      if (formData.personType === 'FISICA') {
+        if (!validateCPF(formData.cpf)) newErrors.cpf = 'CPF inválido';
+      } else {
+        if (!formData.companyName.trim()) newErrors.companyName = 'Razão social obrigatória';
+        if (!validateCNPJ(formData.cnpj)) newErrors.cnpj = 'CNPJ inválido';
+      }
     }
 
     if (step === 'address') {
