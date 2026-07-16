@@ -1,83 +1,141 @@
-## Plano — Melhorias em Configurações
+# Plano: Provisionamento Automático de Tenant Bivvo
 
-Hoje `AdminSettings.tsx` gerencia apenas **um campo** (`site_url`), e a tabela `settings` é um simples key/value. Proponho evoluir a tela em três frentes: mais campos úteis, organização por abas, e conexão com integrações que hoje ficam em variáveis de ambiente ou hard-coded.
+## Visão Geral
 
----
+Após o pagamento ser confirmado (cartão aprovado ou webhook PIX/Boleto), o sistema irá:
 
-### 1. Estrutura em abas
-Uma única tela com todos os grupos vira bagunça. Dividir em abas (`Tabs` do shadcn):
-
-- **Geral** — identidade, domínio, contatos.
-- **Marca / Aparência** — logo, favicon, cores.
-- **Notificações** — e-mail/webhooks.
-- **Integrações** — Asaas, analytics.
-
-### 2. Aba Geral
-- Nome do site / razão social.
-- E-mail de suporte (exibido no checkout e rodapé).
-- WhatsApp de suporte (link `wa.me`).
-- CNPJ / endereço (usado em recibos e rodapé LGPD).
-- `site_url` (já existe) — manter aqui.
-- Fuso horário padrão para relatórios.
-
-### 3. Aba Marca / Aparência
-- Upload de **logo claro** e **logo escuro** (bucket `marketing`).
-- Upload de **favicon**.
-- Cor primária / accent (color picker) — grava CSS vars no `:root` via hook.
-- Alternar tema padrão (claro/escuro/sistema).
-- Preview ao vivo do resultado.
-
-### 4. Aba Notificações
-- E-mail do remetente (from).
-- E-mails que recebem cópia de novas vendas / cancelamentos.
-- URL de webhook para eventos internos (opcional).
-- Toggle "enviar e-mail ao criar tarefa delegada".
-
-### 5. Aba Integrações
-- **Asaas**: mostrar status da chave (mascarada), ambiente (sandbox/prod), URL do webhook para copiar. **Não** editar a chave pela UI — apenas indicar se está configurada, com botão "atualizar" que abre modal explicando que a chave é um secret.
-- Google Analytics / Meta Pixel — IDs (públicos, seguros no client).
-- Reset/limpeza do cache de 60s da edge function `finance-stats`.
-
-### 6. UX & robustez
-- Validação com `zod` + `react-hook-form` para cada aba.
-- Salvar por aba (não tudo de uma vez) — botão fica no fim de cada painel.
-- Badge "não salvo" no título da aba quando há mudanças pendentes.
-- Toast + refetch por aba (não invalida tudo).
-- Loading skeleton por aba.
-- Confirmar antes de sair da aba se houver alterações não salvas (`useBeforeUnload`).
-
-### 7. Auditoria
-Toda alteração em `settings` grava linha em `audit_logs` (`action='settings.update'`, `old_data`, `new_data`). Já existe a tabela, falta o hook.
+1. Armazenar toda a configuração contratada (usuários, canais, módulos extras) no banco.
+2. Chamar a API Bivvo `tenantApiStoreTenant` para criar tenant + usuário admin.
+3. Chamar `tenantApiUpdateTenant` para finalizar configuração (identity, menus, canais, limites).
+4. Redirecionar o cliente para o WhatsApp da Bivvo (número configurável no admin).
+5. Expor toda a configuração contratada nos detalhes do assinante.
 
 ---
 
-### Estrutura técnica
+## 1. Banco de Dados
 
-```text
-src/components/admin/settings/
-  ├─ AdminSettings.tsx           ← shell com Tabs
-  ├─ tabs/GeneralTab.tsx
-  ├─ tabs/BrandingTab.tsx
-  ├─ tabs/NotificationsTab.tsx
-  └─ tabs/IntegrationsTab.tsx
+### Nova coluna em `payments` (e `users`)
 
-src/hooks/
-  ├─ useSiteSettings.ts          (já existe, ampliar tipagem)
-  └─ useSaveSetting.ts           ← wrapper único (upsert + audit_log + toast)
+- `payments.bivvo_config` (jsonb) — snapshot da config contratada no momento da compra (plano, users, extras, canais com quantidades, módulos, telefonia, protagonista).
+- `users.bivvo_config` (jsonb) — última config ativa (atualizada quando pagamento confirmar).
+- `users.tenant_provisioned_at` (timestamptz) — marca quando tenant foi criado com sucesso na Bivvo.
+- `users.tenant_provision_error` (text) — última mensagem de erro do provisionamento, se houver.
+- DEVE ARMAZENAR o nuemro do tenant criado atravez da api do bivvo
+
+### Novas configurações em `settings` (chave/valor)
+
+- `bivvo_api_url` (default `https://adm.bivvo.com.br`)
+- `bivvo_api_token` (armazenado como secret, não em settings) — usar secret `BIVVO_API_TOKEN`
+- `bivvo_asaas_token` (secret `BIVVO_ASAAS_TOKEN`) — token usado no campo `asaasToken` do payload
+- `support_whatsapp` (default `5511936230279`) — número usado no botão "Continuar"
+
+---
+
+## 2. Frontend — Checkout
+
+- Enviar `bivvoConfig` completo no fluxo de checkout (já ocorre em parte) e persistir em `payments.bivvo_config`.
+- Botão "Continuar" na tela de sucesso (cartão) e na tela de PIX/Boleto (após confirmação) passa a abrir:
+`https://wa.me/<support_whatsapp>?text=<mensagem>`
+- Ler `support_whatsapp` via `useSiteSettings` com fallback ao default.
+
+---
+
+## 3. Admin — Configurações
+
+Adicionar na aba **Notificações/Geral** (settings) um campo:
+
+- **WhatsApp de Suporte** — usado no redirecionamento pós-compra.
+
+---
+
+## 4. Admin — Detalhes do Assinante
+
+Na aba "Gestão de Assinaturas", ao expandir/abrir o cliente, mostrar seção "Configuração Contratada":
+
+- Plano base + usuários totais (base + extras)
+- Canais contratados (lista com emoji, label, quantidade)
+- Módulos extras (Telefonia, Disparo em Massa/Protagonista)
+- Valor primeiro mês e recorrente
+- Status do provisionamento Bivvo (provisionado em / erro)
+
+Fonte de dados: `users.bivvo_config` (mais recente) ou `payments.bivvo_config` (histórico).
+
+---
+
+## 5. Provisionamento Bivvo (Edge Function)
+
+### Nova edge function: `provision-bivvo-tenant`
+
+Invocada a partir de:
+
+- `process-payment` (cartão aprovado imediatamente)
+- `asaas-webhook` (PIX/Boleto confirmado — `PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`)
+
+Idempotente: se `users.tenant_provisioned_at` já preenchido, retorna sucesso sem chamar API.
+
+### Payload construído a partir de `bivvo_config` + `users`
+
+**Passo A — POST `/tenantApiStoreTenant**`
+
+```json
+{
+  "status": "active",
+  "name": "<company_name se PJ, senão name>",
+  "maxUsers": <users totais contratados>,
+  "maxConnections": <soma de todos canais contratados>,
+  "acceptTerms": true,
+  "email": "<users.email>",
+  "password": "@Bivvo123456",
+  "userName": "<users.name>",
+  "profile": "admin",
+  "paymentGateway": "asaas",
+  "asaasCustomerId": "<users.asaas_customer_id>",
+  "asaasToken": "<secret BIVVO_ASAAS_TOKEN>",
+  "asaas": "enabled"
+}
 ```
 
-Modelo de dados: **manter `settings` key/value** — sem migration nova. Cada campo vira uma chave (`support_email`, `brand_logo_url`, etc). Valor sempre `text` (JSON serializado quando estruturado).
+**Passo B — POST `/tenantApiUpdateTenant**`
 
-Política RLS atual já permite:
-- leitura pública apenas de `site_url` (para o checkout público continuar funcionando);
-- leitura/escrita completa para admins (via `has_role`).
+```json
+{
+  "identity": "<cpf ou cnpj limpo>",
+  "status": "active",
+  "menuVisibility": [...base sem "MassDispatch" se não contratou],
+  "allowedChannels": ["waba","baileys","whatsapp","telegram","webchat","webmail","wabaoauth","instagramoauth","facebookoauth"],
+  "channelConnectionLimits": {
+    "waba": <qty waof>, "wabaoauth": <qty waof>,
+    "baileys": <qty wano>,
+    "whatsapp": 0, "meow": 0, "evo": 0, "zapi": 0, "uazapi": 0,
+    "telegram": 0, "hub": 0, "webchat": 0, "webmail": 0,
+    "instagramoauth": <qty ig>, "facebookoauth": <qty fb>
+  }
+}
+```
 
-Precisa adicionar mais uma chave pública se algum campo (ex.: `brand_logo_url`, `support_whatsapp`) tiver que aparecer para visitantes anônimos no checkout. Faço isso ampliando a policy `Public can read site_url` para uma whitelist de chaves.
+Regras aplicadas:
 
-### Ordem sugerida
-1. Reestruturar em abas + aba **Geral** (impacto imediato).
-2. Aba **Marca** com upload de logo/favicon.
-3. Aba **Notificações**.
-4. Aba **Integrações** + auditoria.
+- `MassDispatch` incluído apenas se `bivvoConfig.massDispatch === true` (ou marcador equivalente — validar qual flag representa "disparo em massa"; hoje há `protagonista` e `telefonia`, precisamos confirmar se disparo em massa é um módulo separado).
+- `waba` e `wabaoauth` = quantidade de "WhatsApp API Oficial" (waof).
+- `baileys` = quantidade de "WhatsApp API não oficial" (wano).
+- `instagramoauth` = qty Instagram; `facebookoauth` = qty Facebook.
+- Ao sucesso: atualizar `users.tenant_provisioned_at = now()`.
+- Ao erro: gravar `users.tenant_provision_error`, logar, retornar 200 para não travar webhook.
 
-Quer que eu execute tudo ou prefere priorizar 1–2 primeiro?
+---
+
+## 6. Secrets necessários
+
+- `BIVVO_API_TOKEN` — Bearer para chamadas Bivvo
+- `BIVVO_ASAAS_TOKEN` — valor a enviar no campo `asaasToken`
+- `BIVVO_API_URL` (opcional; default hardcoded `https://adm.bivvo.com.br`)
+
+---
+
+## Perguntas antes de implementar
+
+1. **Disparo em Massa** é um módulo separado que o cliente contrata (que ainda não existe no checkout), ou está atrelado ao "Protagonista"/algum plano específico? Preciso saber qual flag do `bivvoConfig` controla o `MassDispatch`.
+2. Confirmar que os dois tokens (`BIVVO_API_TOKEN` e `BIVVO_ASAAS_TOKEN`) são valores distintos, ou é o mesmo token nos dois lugares?
+3. Mensagem padrão no link do WhatsApp — quer texto pré-preenchido tipo "Olá, acabei de contratar o plano X…" ou link puro?
+
+Depois que responder essas três, implemento tudo (migração + edge function nova + hooks nos existentes + UI admin + redirect checkout).
