@@ -158,8 +158,8 @@ async function callUpdateTenant(
     oauthEnabled: false,
   };
 
-  console.log('[Bivvo] updateTenant → id:', tenantId, 'menu:', updatePayload.menuVisibility, 'limits:', ctx.limits);
-  await log.info('bivvo-api', `updateTenant → id:${tenantId}`, {
+  console.log('[Bivvo] updateTenant → id:', tenantIdField, 'menu:', updatePayload.menuVisibility, 'limits:', ctx.limits);
+  await log.info('bivvo-api', `updateTenant → id:${tenantIdField}`, {
     userId: user.id, payload: updatePayload,
   });
   const res = await fetch(`${BIVVO_API_URL}/tenantApiUpdateTenant`, {
