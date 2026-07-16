@@ -271,7 +271,7 @@ const Admin = () => {
       const s = res?.summary || {};
       toast({
         title: 'Consulta Bivvo concluída',
-        description: `Total: ${s.total ?? 0} · Ativos: ${s.active ?? 0} · Inativos: ${s.inactive ?? 0} · Sem tenant: ${s.none ?? 0} · Preencher ID: ${s.fill ?? 0} · Erros: ${s.error ?? 0}`,
+        description: `Total: ${s.total ?? 0} · Ativos: ${s.active ?? 0} · Inativos: ${s.inactive ?? 0} · Sem tenant: ${s.none ?? 0} · Inserir ID: ${s.fill ?? 0} · Erros: ${s.error ?? 0}`,
       });
       await loadSubscriptions({});
     } catch (err) {
@@ -890,10 +890,10 @@ const Admin = () => {
                           : sub.status;
 
                         // Conta Bivvo
-                        const st = sub.bivvoStatus || (sub.tenantBivvo ? 'Não possui Tenant' : 'Preencher ID');
+                        const st = sub.bivvoStatus || (sub.tenantBivvo ? 'Não possui Tenant' : 'Inserir ID');
                         const bivvoCls = st === 'active' ? styleGreen
                           : st === 'inactive' ? styleOrange
-                          : st === 'Preencher ID' ? styleYellow
+                          : st === 'Inserir ID' ? styleYellow
                           : styleRed;
                         const bivvoLabel = st === 'active' ? 'Ativa' : st === 'inactive' ? 'Inativa' : st;
 
