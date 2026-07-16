@@ -528,7 +528,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         <Card className="card-glass border-none shadow-xl">
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-accent" /> Receita × Despesas
+              <TrendingUp className="h-4 w-4 text-accent" /> Fluxo de Caixa (por período)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -550,10 +550,12 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
                     formatter={(v: any) => formatCurrency(Number(v))}
                     labelFormatter={(v) => `Período: ${v}`}
                   />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="revenue" name="Receita" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expenses" name="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="commissions" name="Comissões" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <ReferenceLine y={0} stroke="hsl(var(--border))" />
+                  <Bar dataKey="netProfit" name="Fluxo Líquido" radius={[4, 4, 4, 4]}>
+                    {series.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={Number(entry.netProfit) >= 0 ? '#10b981' : '#ef4444'} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
