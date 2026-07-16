@@ -77,6 +77,9 @@ const Admin = () => {
   const { isAdmin, loading: authLoading, adminFetch, adminPost } = useAdmin();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { data: siteSettings } = useSiteSettings();
+  const { save: saveSetting } = useSaveSetting();
+  const couponFieldEnabled = (siteSettings?.checkout_coupon_enabled ?? 'true') !== 'false';
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
