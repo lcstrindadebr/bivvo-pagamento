@@ -859,6 +859,8 @@ export type Database = {
           asaas_subscription_id: string | null
           bairro: string | null
           billing_name: string | null
+          bivvo_status: string | null
+          bivvo_status_checked_at: string | null
           cep: string | null
           cidade: string | null
           complemento: string | null
@@ -882,6 +884,8 @@ export type Database = {
           asaas_subscription_id?: string | null
           bairro?: string | null
           billing_name?: string | null
+          bivvo_status?: string | null
+          bivvo_status_checked_at?: string | null
           cep?: string | null
           cidade?: string | null
           complemento?: string | null
@@ -905,6 +909,8 @@ export type Database = {
           asaas_subscription_id?: string | null
           bairro?: string | null
           billing_name?: string | null
+          bivvo_status?: string | null
+          bivvo_status_checked_at?: string | null
           cep?: string | null
           cidade?: string | null
           complemento?: string | null
