@@ -194,7 +194,7 @@ update_supabase_auto() {
 
     local DEFAULT_SUPA_REF="bcijktxnuzsatvhammpl"
     local SUPA_REF="${SUPABASE_PROJECT_REF:-$DEFAULT_SUPA_REF}"
-    local SUPA_TOKEN="${SUPABASE_ACCESS_TOKEN:-}"
+    local SUPA_TOKEN=""
     local DB_URL="${SUPABASE_DB_URL:-}"
 
     if [ ! -d "$APP_DIR" ]; then
@@ -210,15 +210,15 @@ update_supabase_auto() {
     echo -e "${YELLOW}Isso evita conflito com sessão/cache antigo do Supabase CLI.${NC}"
     echo ""
 
-    if [ -z "$SUPA_TOKEN" ]; then
-        read -r -s -p "🔑 Cole o Supabase Access Token: " SUPA_TOKEN
+    # Sempre pede o token na atualização (mesmo que exista no ambiente)
+    echo -e "${YELLOW}Gere/obtenha o token em: https://supabase.com/dashboard/account/tokens${NC}"
+    while [ -z "$SUPA_TOKEN" ]; do
+        read -r -s -p "🔑 Cole o Supabase Access Token (sbp_...): " SUPA_TOKEN
         echo ""
-    fi
-
-    if [ -z "$SUPA_TOKEN" ]; then
-        echo -e "${RED}❌ Access Token é obrigatório para publicar as Edge Functions.${NC}"
-        return 1
-    fi
+        if [ -z "$SUPA_TOKEN" ]; then
+            echo -e "${RED}❌ Access Token é obrigatório para publicar as Edge Functions.${NC}"
+        fi
+    done
 
     read -r -p "🆔 Project Ref [$SUPA_REF]: " INPUT_SUPA_REF
     SUPA_REF="${INPUT_SUPA_REF:-$SUPA_REF}"
