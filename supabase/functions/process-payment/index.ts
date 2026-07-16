@@ -77,40 +77,10 @@ serve(async (req) => {
     }, { onConflict: 'email' }).select('id, asaas_customer_id').single();
     if (uErr) throw uErr;
 
-    // ===== 100% coupon short-circuit: no Asaas, mark as paid =====
-    if (isFreeCoupon) {
-      const { data: dbPayment } = await supabase.from('payments').insert({
-        user_id: user.id,
-        plan,
-        amount: 0,
-        status: 'approved',
-        paid_at: new Date().toISOString(),
-        bivvo_config: bivvoConfig || null,
-      }).select('id').single();
+    // (free-coupon path handled AFTER Asaas customer + subscription creation
+    // so the recurring subscription is set up and starts charging from month 2)
 
-      const expDate = new Date();
-      expDate.setMonth(expDate.getMonth() + 1);
-      expDate.setDate(expDate.getDate() + 3);
 
-      await supabase.from('users').update({
-        status: 'ativo',
-        plano_ativo: plan,
-        data_expiracao: expDate.toISOString(),
-      }).eq('id', user.id);
-
-      await incrementCouponUse(supabase, appliedCoupon!.id);
-
-      try { await runProvisionAndPersist(supabase, user.id); }
-      catch (e) { console.error('Falha provisionamento (cupom 100%):', e); }
-
-      return new Response(JSON.stringify({
-        success: true,
-        paymentId: dbPayment?.id,
-        status: 'approved',
-        userId: user.id,
-        freeCoupon: true,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
 
 
     // 4. Asaas Customer - validate existing, recreate if removed
@@ -151,8 +121,78 @@ serve(async (req) => {
       await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', user.id);
     }
 
+    // ===== 100% coupon: primeiro mês grátis; assinatura recorrente cria mesmo assim =====
+    if (isFreeCoupon) {
+      const nextDueFree = new Date();
+      nextDueFree.setDate(nextDueFree.getDate() + 30);
+      console.log('[Cupom 100%] Criando assinatura CC com 1º mês grátis');
+      const sRes = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'access_token': ASAAS_API_KEY },
+        body: JSON.stringify({
+          customer: asaasCustomerId,
+          billingType: 'CREDIT_CARD',
+          value: recurringAmount,
+          nextDueDate: nextDueFree.toISOString().split('T')[0],
+          cycle: 'MONTHLY',
+          description: `Assinatura ${planLabel} (1º mês grátis - cupom ${appliedCoupon!.code})`,
+          externalReference: `${user.id}_${plan}`,
+          creditCard: {
+            holderName: cardData.holderName.trim(),
+            number: cleanCard,
+            expiryMonth: cardData.expiryMonth,
+            expiryYear: cardData.expiryYear.length === 2 ? `20${cardData.expiryYear}` : cardData.expiryYear,
+            ccv: cardData.ccv,
+          },
+          creditCardHolderInfo: {
+            name: customerData.billingName.trim(),
+            email: customerData.email.toLowerCase().trim(),
+            cpfCnpj: cleanCpf,
+            postalCode: cleanCep,
+            addressNumber: customerData.numero.trim(),
+            address: customerData.endereco.trim(),
+            phone: cleanPhone,
+          },
+          remoteIp,
+        }),
+      });
+
+      const { data: dbPayment } = await supabase.from('payments').insert({
+        user_id: user.id,
+        plan,
+        amount: 0,
+        status: 'approved',
+        paid_at: new Date().toISOString(),
+        asaas_subscription_id: sRes.id,
+        bivvo_config: bivvoConfig || null,
+      }).select('id').single();
+
+      const expDate = new Date();
+      expDate.setMonth(expDate.getMonth() + 1);
+      expDate.setDate(expDate.getDate() + 3);
+      await supabase.from('users').update({
+        status: 'ativo',
+        plano_ativo: plan,
+        data_expiracao: expDate.toISOString(),
+        asaas_subscription_id: sRes.id,
+      }).eq('id', user.id);
+
+      await incrementCouponUse(supabase, appliedCoupon!.id);
+      try { await runProvisionAndPersist(supabase, user.id); }
+      catch (e) { console.error('Falha provisionamento (cupom 100%):', e); }
+
+      return new Response(JSON.stringify({
+        success: true,
+        paymentId: dbPayment?.id,
+        subscriptionId: sRes.id,
+        status: 'approved',
+        userId: user.id,
+        freeCoupon: true,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     // 5. Create Credit Card Subscription
+
     const nextDueDate = new Date();
     nextDueDate.setDate(nextDueDate.getDate() + 1);
 
