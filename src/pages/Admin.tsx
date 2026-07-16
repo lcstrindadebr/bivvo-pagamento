@@ -914,13 +914,13 @@ const Admin = () => {
                                 <span className="text-sm font-bold text-accent">{formatCurrency(sub.value)}</span>
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="w-[110px] text-center">
                               <Badge variant="outline" className={`${badgeBase} w-fit ${payCls}`}>{payLabel}</Badge>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="w-[100px] text-center">
                               <Badge variant="outline" className={`${badgeBase} w-fit ${asaasCls}`}>{asaasLabel}</Badge>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="w-[130px] text-center">
                               <Badge variant="outline" className={`${badgeBase} w-fit ${bivvoCls}`}>{bivvoLabel}</Badge>
                             </TableCell>
                             <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
