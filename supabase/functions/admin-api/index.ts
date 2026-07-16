@@ -852,10 +852,14 @@ serve(async (req) => {
         throw new Error(result.errors?.[0]?.description || `Asaas Error ${resp.status}`);
       }
 
-      // Sync local: mark user inactive
-      await supabase.from('users')
-        .update({ status: 'inactive' })
-        .eq('asaas_customer_id', asaasCustomerId);
+      // Delete locally: payments, subscriptions, then user
+      const { data: localUser } = await supabase.from('users')
+        .select('id').eq('asaas_customer_id', asaasCustomerId).maybeSingle();
+      if (localUser) {
+        await supabase.from('payments').delete().eq('user_id', localUser.id);
+        await supabase.from('subscriptions').delete().eq('user_id', localUser.id);
+        await supabase.from('users').delete().eq('id', localUser.id);
+      }
 
       await logAction(supabase, user, 'delete-customer', 'users', asaasCustomerId, null, result);
 
