@@ -137,12 +137,12 @@ async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string)
 async function callUpdateTenant(
   user: UserRow,
   cfg: BivvoCfg,
-  ctx: { maxUsers: number; maxConnections: number; limits: ReturnType<typeof computeChannelLimits> },
+  ctx: { maxUsers: number; maxConnections: number; limits: ReturnType<typeof computeChannelLimits>; status?: string },
 ) {
   const identity = (user.cpf || '').replace(/\D/g, '');
   const updatePayload = {
     identity,
-    status: 'active',
+    status: ctx.status || 'active',
     maxUsers: ctx.maxUsers,
     maxConnections: ctx.maxConnections,
     paymentGateway: 'asaas',
