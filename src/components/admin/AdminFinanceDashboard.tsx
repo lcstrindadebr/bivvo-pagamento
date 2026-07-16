@@ -9,6 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import {
   ResponsiveContainer,
   ComposedChart,
+  BarChart,
+  AreaChart,
+  Area,
   Bar,
   Line,
   XAxis,
@@ -34,21 +37,32 @@ interface OverdueCustomer {
   billingType: string | null;
 }
 
-interface FinanceSeriesPoint {
+interface RevenuePoint {
   bucket: string;
-  revenue: number;
-  receivedRevenue: number;
+  forecastRevenue: number;
+  receivedGross: number;
   receivedNet: number;
   asaasFees: number;
-  forecastRevenue: number;
+  isFuture: boolean;
+}
+interface ProfitPoint {
+  bucket: string;
+  receivedNet: number;
   expenses: number;
   commissions: number;
-  refunds: number;
   netProfit: number;
-  netFlow: number;
-  runningBalance: number;
-  cashFlow: number;
   isFuture: boolean;
+}
+interface BalancePoint {
+  bucket: string;
+  closingBalance: number | null;
+  projectedBalance: number | null;
+  isFuture: boolean;
+}
+interface SeriesMeta {
+  bankBalance: number;
+  granularity: 'day' | 'month' | 'hour';
+  warnings: string[];
 }
 
 interface FinanceStats {
