@@ -751,6 +751,41 @@ serve(async (req) => {
       });
     }
 
+    if (action === 'check-bivvo-tenant' && req.method === 'POST') {
+      const body = await req.json();
+      const tenantId = body?.tenantId;
+      if (tenantId === undefined || tenantId === null || tenantId === '') {
+        throw new Error('tenantId é obrigatório');
+      }
+      const parsedId = typeof tenantId === 'number' ? tenantId : Number(String(tenantId).trim());
+      if (!Number.isFinite(parsedId)) throw new Error('tenantId inválido');
+
+      const { data: secret, error: secretErr } = await supabase
+        .from('admin_secrets').select('value').eq('key', 'bivvo_api_token').maybeSingle();
+      if (secretErr) throw secretErr;
+      const token = (secret as any)?.value?.trim();
+      if (!token) throw new Error('Token da API Bivvo não configurado em Configurações → Integrações');
+
+      const bivvoRes = await fetch('https://adm.bivvo.com.br/tenantApiShowTenant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token },
+        body: JSON.stringify({ id: parsedId }),
+      });
+      const contentType = bivvoRes.headers.get('content-type') || '';
+      const raw = contentType.includes('application/json') ? await bivvoRes.json() : await bivvoRes.text();
+
+      if (!bivvoRes.ok) {
+        return new Response(JSON.stringify({
+          ok: false, exists: false, status: bivvoRes.status,
+          error: typeof raw === 'string' ? raw : (raw?.message || raw?.error || 'Tenant não encontrado no Bivvo'),
+        }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      return new Response(JSON.stringify({ ok: true, exists: true, tenant: raw }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── AFFILIATES ──────────────────────────────────────────
 
 
