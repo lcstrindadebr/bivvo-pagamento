@@ -114,6 +114,7 @@ interface AdminFinanceDashboardProps {
 export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps) {
   const { toast } = useToast();
   const [stats, setStats] = useState<FinanceStats | null>(null);
+  const [series, setSeries] = useState<FinanceSeriesPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'today' | '7days' | '30days' | 'month' | 'custom'>('month');
   const [customStart, setCustomStart] = useState('');
@@ -125,7 +126,7 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
       const now = new Date();
       let startDate = new Date();
       let endDate = new Date();
-      
+
       if (selectedPeriod === 'today') {
         startDate.setHours(0, 0, 0, 0);
       } else if (selectedPeriod === '7days') {
@@ -139,19 +140,32 @@ export function AdminFinanceDashboard({ adminFetch }: AdminFinanceDashboardProps
         endDate = new Date(end + 'T23:59:59');
       }
 
+      const startStr = startDate.toISOString().split('T')[0];
+      const endStr = endDate.toISOString().split('T')[0];
       const params: Record<string, string> = {
-        'dateCreated[ge]': startDate.toISOString().split('T')[0],
-        'dateCreated[le]': endDate.toISOString().split('T')[0]
+        'dateCreated[ge]': startStr,
+        'dateCreated[le]': endStr,
       };
 
-      const data = await adminFetch('finance-stats', params);
-      setStats(data);
+      const rangeDays = Math.max(
+        1,
+        Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1,
+      );
+      const granularity = rangeDays > 60 ? 'month' : 'day';
+
+      const [statsData, seriesData] = await Promise.all([
+        adminFetch('finance-stats', params),
+        adminFetch('finance-series', { start: startStr, end: endStr, granularity }).catch(() => ({ series: [] })),
+      ]);
+      setStats(statsData);
+      setSeries(seriesData?.series || []);
     } catch (err) {
       console.error('Failed to load finance stats:', err);
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     if (period !== 'custom') {
