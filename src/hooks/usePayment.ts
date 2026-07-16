@@ -9,7 +9,9 @@ interface PaymentData {
   affiliateSlug?: string;
   trackingId?: string;
   customerData: {
+    personType?: 'FISICA' | 'JURIDICA';
     name: string;
+    companyName?: string;
     email: string;
     cpf: string;
     whatsapp: string;

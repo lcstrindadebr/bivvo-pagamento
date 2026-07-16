@@ -17,9 +17,11 @@ import bivvoLogo from '@/assets/bivvo-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import {
   validateCPF,
+  validateCNPJ,
   validateCardNumber,
   validateExpiry,
   maskCPF,
+  maskCNPJ,
   maskCardNumber,
   maskCEP,
   maskExpiry,
@@ -114,10 +116,13 @@ const Checkout = () => {
   const [generatingPayment, setGeneratingPayment] = useState(false);
 
   const [formData, setFormData] = useState({
+    personType: 'FISICA' as 'FISICA' | 'JURIDICA',
     name: '',
+    companyName: '',
     email: '',
     whatsapp: '',
     cpf: '',
+    cnpj: '',
     billingName: '',
     cep: '',
     endereco: '',
@@ -180,6 +185,9 @@ const Checkout = () => {
       case 'cpf':
         maskedValue = maskCPF(value);
         break;
+      case 'cnpj':
+        maskedValue = maskCNPJ(value);
+        break;
       case 'whatsapp':
         maskedValue = maskPhone(value);
         break;
@@ -228,7 +236,12 @@ const Checkout = () => {
       if (!formData.whatsapp.trim() || formData.whatsapp.replace(/\D/g, '').length < 10) {
         newErrors.whatsapp = 'WhatsApp inválido';
       }
-      if (!validateCPF(formData.cpf)) newErrors.cpf = 'CPF inválido';
+      if (formData.personType === 'FISICA') {
+        if (!validateCPF(formData.cpf)) newErrors.cpf = 'CPF inválido';
+      } else {
+        if (!formData.companyName.trim()) newErrors.companyName = 'Razão social obrigatória';
+        if (!validateCNPJ(formData.cnpj)) newErrors.cnpj = 'CNPJ inválido';
+      }
     }
 
     if (step === 'address') {
@@ -299,9 +312,11 @@ const Checkout = () => {
       affiliateSlug: affiliateSlug || undefined,
       trackingId: cfgParam || undefined,
       customerData: {
+        personType: formData.personType,
         name: formData.name,
+        companyName: formData.companyName,
         email: formData.email,
-        cpf: formData.cpf,
+        cpf: formData.personType === 'FISICA' ? formData.cpf : formData.cnpj,
         whatsapp: formData.whatsapp,
         billingName: formData.billingName,
         cep: formData.cep,
@@ -348,9 +363,11 @@ const Checkout = () => {
           affiliateSlug: affiliateSlug || undefined,
           trackingId: cfgParam || undefined,
           customerData: {
+            personType: formData.personType,
             name: formData.name,
+            companyName: formData.companyName,
             email: formData.email,
-            cpf: formData.cpf,
+            cpf: formData.personType === 'FISICA' ? formData.cpf : formData.cnpj,
             whatsapp: formData.whatsapp,
             billingName: formData.billingName,
             cep: formData.cep,
@@ -667,6 +684,34 @@ const Checkout = () => {
 
             <div className="card-glass rounded-2xl p-5 space-y-4">
               <div className="space-y-2">
+                <Label className="text-sm font-medium">Tipo de cadastro</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData((p) => ({ ...p, personType: 'FISICA' }))}
+                    className={`h-12 rounded-xl border text-sm font-medium transition-all ${
+                      formData.personType === 'FISICA'
+                        ? 'bg-gradient-to-br from-accent to-primary text-white border-transparent shadow-lg shadow-accent/30'
+                        : 'bg-muted/30 text-muted-foreground border-border hover:border-accent/40'
+                    }`}
+                  >
+                    Pessoa Física
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((p) => ({ ...p, personType: 'JURIDICA' }))}
+                    className={`h-12 rounded-xl border text-sm font-medium transition-all ${
+                      formData.personType === 'JURIDICA'
+                        ? 'bg-gradient-to-br from-accent to-primary text-white border-transparent shadow-lg shadow-accent/30'
+                        : 'bg-muted/30 text-muted-foreground border-border hover:border-accent/40'
+                    }`}
+                  >
+                    Pessoa Jurídica
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="name" className="text-sm font-medium">Nome completo</Label>
                 <Input
                   id="name"
@@ -677,6 +722,20 @@ const Checkout = () => {
                 />
                 {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
               </div>
+
+              {formData.personType === 'JURIDICA' && (
+                <div className="space-y-2">
+                  <Label htmlFor="companyName" className="text-sm font-medium">Nome da empresa</Label>
+                  <Input
+                    id="companyName"
+                    value={formData.companyName}
+                    onChange={(e) => handleInputChange('companyName', e.target.value)}
+                    className={`h-12 input-glass rounded-xl ${errors.companyName ? 'border-destructive' : ''}`}
+                    placeholder="Razão social"
+                  />
+                  {errors.companyName && <p className="text-xs text-destructive">{errors.companyName}</p>}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">Email</Label>
@@ -703,17 +762,31 @@ const Checkout = () => {
                 {errors.whatsapp && <p className="text-xs text-destructive">{errors.whatsapp}</p>}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="cpf" className="text-sm font-medium">CPF</Label>
-                <Input
-                  id="cpf"
-                  value={formData.cpf}
-                  onChange={(e) => handleInputChange('cpf', e.target.value)}
-                  placeholder="000.000.000-00"
-                  className={`h-12 input-glass rounded-xl ${errors.cpf ? 'border-destructive' : ''}`}
-                />
-                {errors.cpf && <p className="text-xs text-destructive">{errors.cpf}</p>}
-              </div>
+              {formData.personType === 'FISICA' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="cpf" className="text-sm font-medium">CPF</Label>
+                  <Input
+                    id="cpf"
+                    value={formData.cpf}
+                    onChange={(e) => handleInputChange('cpf', e.target.value)}
+                    placeholder="000.000.000-00"
+                    className={`h-12 input-glass rounded-xl ${errors.cpf ? 'border-destructive' : ''}`}
+                  />
+                  {errors.cpf && <p className="text-xs text-destructive">{errors.cpf}</p>}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="cnpj" className="text-sm font-medium">CNPJ</Label>
+                  <Input
+                    id="cnpj"
+                    value={formData.cnpj}
+                    onChange={(e) => handleInputChange('cnpj', e.target.value)}
+                    placeholder="00.000.000/0000-00"
+                    className={`h-12 input-glass rounded-xl ${errors.cnpj ? 'border-destructive' : ''}`}
+                  />
+                  {errors.cnpj && <p className="text-xs text-destructive">{errors.cnpj}</p>}
+                </div>
+              )}
             </div>
 
             <TrustBadges />
