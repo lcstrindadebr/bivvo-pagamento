@@ -188,6 +188,7 @@ serve(async (req) => {
       status: 'pending',
       asaas_payment_id: firstPayment.id,
       asaas_subscription_id: sRes.id,
+      bivvo_config: bivvoConfig || null,
     }).select('id').single();
 
     // 8. Affiliate Tracking
