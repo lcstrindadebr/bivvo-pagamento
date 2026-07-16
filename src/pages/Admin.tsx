@@ -849,15 +849,15 @@ const Admin = () => {
                 </div>
               ) : (
                 <>
-                  <Table>
+                  <Table className="table-fixed">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Plano / Valor</TableHead>
-                        <TableHead>Pagamento</TableHead>
-                        <TableHead>Status Asaas</TableHead>
-                        <TableHead>Conta Bivvo</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
+                        <TableHead className="w-[110px] text-center">Pagamento</TableHead>
+                        <TableHead className="w-[100px] text-center">Status Asaas</TableHead>
+                        <TableHead className="w-[130px] text-center">Conta Bivvo</TableHead>
+                        <TableHead className="w-[140px] text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -914,13 +914,13 @@ const Admin = () => {
                                 <span className="text-sm font-bold text-accent">{formatCurrency(sub.value)}</span>
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="w-[110px] text-center">
                               <Badge variant="outline" className={`${badgeBase} w-fit ${payCls}`}>{payLabel}</Badge>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="w-[100px] text-center">
                               <Badge variant="outline" className={`${badgeBase} w-fit ${asaasCls}`}>{asaasLabel}</Badge>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="w-[130px] text-center">
                               <Badge variant="outline" className={`${badgeBase} w-fit ${bivvoCls}`}>{bivvoLabel}</Badge>
                             </TableCell>
                             <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
