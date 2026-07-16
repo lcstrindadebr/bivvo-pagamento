@@ -133,7 +133,7 @@ async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_
   // 1. Try local DB first (rico: pega tenant_bivvo + contatos já salvos)
   const { data: localUsers } = await supabase
     .from('users')
-    .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status')
+    .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status, bivvo_status, bivvo_status_checked_at')
     .in('asaas_customer_id', customerIds);
 
   const userMap = new Map(localUsers?.map((u: any) => [u.asaas_customer_id, u]) || []);
@@ -215,7 +215,7 @@ async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_
         // Recarrega o registro completo do banco
         const { data: fresh } = await supabase
           .from('users')
-          .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status')
+          .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status, bivvo_status, bivvo_status_checked_at')
           .eq('asaas_customer_id', u.asaas_customer_id).maybeSingle();
         userMap.set(u.asaas_customer_id, fresh || u);
       } catch (e) {
