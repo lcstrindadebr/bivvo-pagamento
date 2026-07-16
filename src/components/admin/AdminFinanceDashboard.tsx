@@ -20,6 +20,29 @@ import {
 } from 'recharts';
 
 
+interface OverdueCustomer {
+  paymentId: string;
+  asaasCustomerId: string;
+  name: string;
+  email: string;
+  whatsapp: string;
+  amount: number;
+  dueDate: string | null;
+  daysLate: number;
+  invoiceUrl: string | null;
+  billingType: string | null;
+}
+
+interface FinanceSeriesPoint {
+  bucket: string;
+  revenue: number;
+  expenses: number;
+  commissions: number;
+  refunds: number;
+  netProfit: number;
+  cashFlow: number;
+}
+
 interface FinanceStats {
   totalPayments: number;
   paidCount: number;
@@ -36,9 +59,12 @@ interface FinanceStats {
   retainedCommissions: number;
   pendingAffiliatePayout: number;
   totalExpenses: number;
+  periodCommissions: number;
+  netProfit: number;
   monthlyExpenses: number;
   overdueValue: number;
   overdueCount: number;
+  overdueCustomers: OverdueCustomer[];
   freeCash: number;
   bankBalance: number;
   projection: number;
@@ -50,11 +76,13 @@ interface FinanceStats {
     paidCount: number | null;
     totalValue: number | null;
     freeCash: number | null;
+    netProfit: number | null;
     projection: number | null;
-    churnRate: number; // pp diff
+    churnRate: number;
   };
   previousRange: null | { start: string; end: string };
 }
+
 
 function DeltaBadge({ value, kind = 'pct', inverse = false }: { value: number | null | undefined; kind?: 'pct' | 'pp'; inverse?: boolean }) {
   if (value === null || value === undefined || !isFinite(value)) return null;
