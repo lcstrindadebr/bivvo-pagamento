@@ -672,16 +672,7 @@ serve(async (req) => {
               return end.toISOString().slice(0, 10);
             })()
           : row.bucket;
-        // varre datas <= bucketEnd em ordem para achar o último saldo real
-        let found: number | null = null;
-        for (const [d, bal] of dailyClosingBalance) {
-          if (d <= bucketEnd) {
-            if (found === null || d > (found as any).__date) {
-              found = bal;
-              (found as any) = bal;
-            }
-          }
-        }
+        // varre datas <= bucketEnd para achar o último saldo real do bucket
         // simpler: loop again with tracking
         let bestDate = '';
         let bestBal: number | null = null;
