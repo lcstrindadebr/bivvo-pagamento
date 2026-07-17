@@ -393,6 +393,49 @@ async function callUpdateTenant(
   return json ?? { raw: text };
 }
 
+/**
+ * Consulta o tenant na Bivvo e retorna { status, raw } para verificação pós-update.
+ * Não lança em erro de rede/HTTP — devolve status: null para o chamador decidir.
+ */
+export async function verifyTenantStatus(
+  tenantId: string | number,
+  supabase?: any,
+  userId?: string,
+): Promise<{ status: string | null; httpStatus: number; raw: any }> {
+  const auth = await getBivvoAuth(supabase);
+  const idNum = Number(tenantId);
+  const idField: number | string =
+    /^\d+$/.test(String(tenantId)) && Number.isSafeInteger(idNum) ? idNum : String(tenantId);
+  try {
+    const res = await fetch(`${BIVVO_API_URL}/tenantApiShowTenant`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: auth.header,
+      },
+      body: JSON.stringify({ id: idField }),
+    });
+    const text = await res.text();
+    let json: any = null;
+    try { json = JSON.parse(text); } catch { /* keep text */ }
+    const tenantData = Array.isArray(json?.tenant)
+      ? json.tenant[0]
+      : (json?.tenant ?? json?.data?.tenant ?? json?.data ?? json);
+    const status = tenantData?.status ? String(tenantData.status).toLowerCase() : null;
+    await log.info("bivvo-api", `verifyTenantStatus id:${idField} → ${status ?? "n/a"}`, {
+      userId,
+      httpStatus: res.status,
+      status,
+    });
+    return { status, httpStatus: res.status, raw: json ?? text.slice(0, 2000) };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await log.error("bivvo-api", `verifyTenantStatus falhou: ${msg}`, { userId, tenantId });
+    return { status: null, httpStatus: 0, raw: { error: msg } };
+  }
+}
+
 export async function provisionBivvoTenant(
   user: UserRow,
   cfg: BivvoCfg,
@@ -609,6 +652,50 @@ export async function runInactivateAndPersist(supabase: any, userId: string) {
       { maxUsers, maxConnections, limits, status: "inactive" },
       supabase,
     );
+
+    // Verificação pós-update: confirmar que o tenant realmente ficou inativo na Bivvo.
+    // Faz até 3 tentativas com backoff, pois a API pode levar alguns segundos para consolidar.
+    let verifyResult: Awaited<ReturnType<typeof verifyTenantStatus>> | null = null;
+    let confirmed = false;
+    if (user.bivvo_tenant_id) {
+      const delays = [1500, 2500, 4000];
+      for (let attempt = 0; attempt < delays.length; attempt++) {
+        await new Promise((r) => setTimeout(r, delays[attempt]));
+        verifyResult = await verifyTenantStatus(user.bivvo_tenant_id, supabase, user.id);
+        if (verifyResult.status === "inactive" || verifyResult.status === "inativo") {
+          confirmed = true;
+          break;
+        }
+        await log.warn(
+          "bivvo-api",
+          `Verificação de inatividade tentativa ${attempt + 1} retornou status="${verifyResult.status}"`,
+          { userId: user.id, tenantId: user.bivvo_tenant_id },
+        );
+      }
+    }
+
+    if (!confirmed) {
+      const statusVisto = verifyResult?.status ?? "desconhecido";
+      const errMsg = `Update retornou OK mas verificação falhou: tenant ainda com status="${statusVisto}" na Bivvo.`;
+      await log.error("bivvo-api", errMsg, {
+        userId: user.id,
+        tenantId: user.bivvo_tenant_id,
+        verifyResult,
+      });
+      await supabase
+        .from("users")
+        .update({ tenant_provision_error: errMsg.slice(0, 1000) })
+        .eq("id", userId);
+      return {
+        skipped: false,
+        tenantId: user.bivvo_tenant_id || null,
+        updateResponse,
+        verified: false,
+        verifyResult,
+        error: errMsg,
+      };
+    }
+
     await supabase
       .from("users")
       .update({
@@ -620,6 +707,8 @@ export async function runInactivateAndPersist(supabase: any, userId: string) {
       skipped: false,
       tenantId: user.bivvo_tenant_id || null,
       updateResponse,
+      verified: true,
+      verifyResult,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
