@@ -311,8 +311,8 @@ serve(async (req) => {
             customerEmail: userData?.email || '',
             customerWhatsapp: userData?.whatsapp || '',
             customerCpf: userData?.cpf || '',
-            tenantBivvo: userData?.tenant_bivvo || '',
-            bivvoStatus: userData?.bivvo_status || (userData?.tenant_bivvo ? 'Não possui Tenant' : 'Inserir ID'),
+            tenantBivvo: userData?.bivvo_tenant_id || '',
+            bivvoStatus: userData?.bivvo_status || (userData?.bivvo_tenant_id ? 'Não possui Tenant' : 'Inserir ID'),
             localUserId: userData?.id || null,
             paymentStatus: isOverdue ? 'inadimplente' : 'adimplente',
           };
