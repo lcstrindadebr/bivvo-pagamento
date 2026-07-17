@@ -146,6 +146,40 @@ export const fmtBRL = (v: number) =>
 
 function round2(n: number) { return Math.round(n * 100) / 100; }
 
+// ─────────────────────────────────────────────
+// Normalização + diff (espelho client-side de _shared/bivvo-logic.ts)
+// ─────────────────────────────────────────────
+export function normalizeBivvoConfig(cfg: any): BivvoConfig | null {
+  if (!cfg || typeof cfg !== 'object') return null;
+  const channels: Record<string, number> = {};
+  const src = cfg.channels || {};
+  for (const c of CANAIS_DEF) {
+    const q = Math.max(0, Math.floor(Number(src[c.id]) || 0));
+    if (q > 0) channels[c.id] = q;
+  }
+  return {
+    plan: String(cfg.plan || 'standard') as PlanSlug,
+    users: Math.max(1, Math.floor(Number(cfg.users) || 0)),
+    channels,
+    telefonia: !!cfg.telefonia,
+    disparo: !!cfg.disparo,
+    protagonista: !!cfg.protagonista,
+  };
+}
+
+export function configsEqual(a: any, b: any): boolean {
+  const na = normalizeBivvoConfig(a);
+  const nb = normalizeBivvoConfig(b);
+  return JSON.stringify(na) === JSON.stringify(nb);
+}
+
+/** Retorna valor recorrente (totalRec) de uma bivvo_config normalizada, ou null se inválida. */
+export function safeRecurring(cfg: any): number | null {
+  const n = normalizeBivvoConfig(cfg);
+  if (!n) return null;
+  try { return quoteBivvo(n).totalRec; } catch { return null; }
+}
+
 export function encodeBivvoConfig(cfg: BivvoConfig): string {
   return btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
 }
