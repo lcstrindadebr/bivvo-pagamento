@@ -1625,58 +1625,64 @@ const Admin = () => {
                           <p className="text-[10px] uppercase text-muted-foreground">Ações do Tenant</p>
                           {(() => {
                             const isProvisioned = !!tenantInfo?.bivvo_tenant_id && !!tenantInfo?.tenant_provisioned_at;
+                            const bivvoStatusRaw = String(selectedSub?.bivvoStatus || '');
+                            const bivvoStatusLc = bivvoStatusRaw.toLowerCase();
+                            const isBivvoActive = bivvoStatusLc === 'active' || bivvoStatusLc === 'ativo';
+                            const hasTenantId = !!tenantInfo?.bivvo_tenant_id;
+                            const tenantExistsOnBivvo = isProvisioned && bivvoStatusRaw !== '' && bivvoStatusRaw !== 'Não possui Tenant';
+                            const canProvisionOrUpdate = !tenantExistsOnBivvo || needsBivvoSync;
+                            const canInactivate = isBivvoActive && hasTenantId;
+                            const nothingToDo = !canProvisionOrUpdate && !canInactivate;
+                            const provisionLabel = !tenantExistsOnBivvo ? 'Provisionar tenant via API Bivvo' : 'Atualizar tenant no Bivvo';
+                            const provisionTitle = !canProvisionOrUpdate
+                              ? 'Tenant já existe no Bivvo e está sincronizado — nada a fazer.'
+                              : (!tenantExistsOnBivvo ? 'Cria o tenant na API Bivvo com base na configuração contratada.' : 'Envia a configuração atual para o tenant existente no Bivvo.');
                             return (
                               <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="w-full h-8 text-xs"
-                                  onClick={handleProvisionTenant}
-                                  disabled={provisioningTenant || !tenantInfo?.id}
-                                >
-                                  {provisioningTenant ? (
-                                    <Loader2 className="h-3 w-3 animate-spin mr-2" />
-                                  ) : (
-                                    <RefreshCw className="h-3 w-3 mr-2" />
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1 h-8 text-xs"
+                                    onClick={handleProvisionTenant}
+                                    disabled={provisioningTenant || !tenantInfo?.id || !canProvisionOrUpdate}
+                                    title={provisionTitle}
+                                  >
+                                    {provisioningTenant ? (
+                                      <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                    ) : (
+                                      <RefreshCw className="h-3 w-3 mr-2" />
+                                    )}
+                                    {provisionLabel}
+                                  </Button>
+                                  {canInactivate && (
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      className="flex-1 h-8 text-xs"
+                                      onClick={handleInactivateTenant}
+                                      disabled={provisioningTenant || !tenantInfo?.id}
+                                      title={`Inativa o tenant ${tenantInfo.bivvo_tenant_id} na API Bivvo`}
+                                    >
+                                      {provisioningTenant ? (
+                                        <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                      ) : (
+                                        <Ban className="h-3 w-3 mr-2" />
+                                      )}
+                                      Inativar (ID {tenantInfo.bivvo_tenant_id})
+                                    </Button>
                                   )}
-                                  {isProvisioned ? 'Atualizar tenant via API Bivvo' : 'Provisionar tenant via API Bivvo'}
-                                </Button>
-                                <p className="text-[10px] text-muted-foreground">
-                                  {isProvisioned
-                                    ? 'Atualiza o tenant já criado na API Bivvo com base na configuração contratada atual.'
-                                    : 'Dispara manualmente a criação/atualização do tenant na API Bivvo com base na configuração contratada.'}
-                                </p>
-                                {(() => {
-                                  const bivvoStatus = String(selectedSub?.bivvoStatus || '').toLowerCase();
-                                  const isBivvoActive = bivvoStatus === 'active' || bivvoStatus === 'ativo';
-                                  const hasTenantId = !!tenantInfo?.bivvo_tenant_id;
-                                  if (!isBivvoActive || !hasTenantId) return null;
-                                  return (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        className="w-full h-8 text-xs mt-2"
-                                        onClick={handleInactivateTenant}
-                                        disabled={provisioningTenant || !tenantInfo?.id}
-                                      >
-                                        {provisioningTenant ? (
-                                          <Loader2 className="h-3 w-3 animate-spin mr-2" />
-                                        ) : (
-                                          <Ban className="h-3 w-3 mr-2" />
-                                        )}
-                                        Inativar Conta Bivvo (ID {tenantInfo.bivvo_tenant_id})
-                                      </Button>
-                                      <p className="text-[10px] text-muted-foreground mt-1">
-                                        Envia a inativação ao Bivvo via API usando o ID do tenant como referência. Contas com 5+ dias de inadimplência são inativadas automaticamente todos os dias.
-                                      </p>
-                                    </>
-                                  );
-                                })()}
+                                </div>
+                                {nothingToDo ? (
+                                  <p className="text-[10px] text-muted-foreground">Nenhuma ação pendente — tenant sincronizado.</p>
+                                ) : (
+                                  <p className="text-[10px] text-muted-foreground">{provisionTitle}</p>
+                                )}
                               </>
                             );
                           })()}
                         </div>
+
 
                         <div className="pt-2 border-t space-y-1 text-[11px]">
                           <div className="flex justify-between">
