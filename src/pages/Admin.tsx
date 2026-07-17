@@ -125,6 +125,36 @@ const Admin = () => {
   const [contractedConfig, setContractedConfig] = useState<any>(null);
   const [tenantInfo, setTenantInfo] = useState<{ id?: string | null; bivvo_tenant_id?: string | null; tenant_provisioned_at?: string | null; tenant_provision_error?: string | null; person_type?: string | null; company_name?: string | null } | null>(null);
   const [provisioningTenant, setProvisioningTenant] = useState(false);
+  const [legacyConfigForm, setLegacyConfigForm] = useState<{ plan: string; users: number; channels: Record<string, number>; telefonia: boolean; disparo: boolean; protagonista: boolean }>({ plan: 'standard', users: 3, channels: {}, telefonia: false, disparo: false, protagonista: false });
+  const [savingLegacyConfig, setSavingLegacyConfig] = useState(false);
+
+  const handleSaveLegacyConfig = async () => {
+    if (!tenantInfo?.id) {
+      toast({ title: 'Cliente não encontrado', variant: 'destructive' });
+      return;
+    }
+    setSavingLegacyConfig(true);
+    try {
+      const payload = {
+        plan: legacyConfigForm.plan,
+        users: Number(legacyConfigForm.users) || 0,
+        channels: Object.fromEntries(Object.entries(legacyConfigForm.channels).filter(([, v]) => Number(v) > 0).map(([k, v]) => [k, Number(v)])),
+        telefonia: !!legacyConfigForm.telefonia,
+        disparo: !!legacyConfigForm.disparo,
+        protagonista: !!legacyConfigForm.protagonista,
+        _addedByAdmin: true,
+        _addedAt: new Date().toISOString(),
+      };
+      const { error } = await supabase.from('users').update({ bivvo_config: payload as any }).eq('id', tenantInfo.id);
+      if (error) throw error;
+      setContractedConfig(payload);
+      toast({ title: 'Configuração salva', description: 'A configuração contratada foi adicionada para este cliente.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e?.message || 'Falha ao salvar configuração.', variant: 'destructive' });
+    } finally {
+      setSavingLegacyConfig(false);
+    }
+  };
 
   // Contato do cliente (Asaas + local)
   const [contactForm, setContactForm] = useState({
