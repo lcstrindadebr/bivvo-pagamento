@@ -299,7 +299,6 @@ async function callUpdateTenant(
   };
   if (ctx.status !== "inactive") {
     updatePayload.id = tenantIdField;
-    maxUsers: ctx.maxUsers,
     updatePayload.maxUsers = ctx.maxUsers;
     updatePayload.maxConnections = ctx.maxConnections;
   }
