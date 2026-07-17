@@ -652,6 +652,50 @@ export async function runInactivateAndPersist(supabase: any, userId: string) {
       { maxUsers, maxConnections, limits, status: "inactive" },
       supabase,
     );
+
+    // Verificação pós-update: confirmar que o tenant realmente ficou inativo na Bivvo.
+    // Faz até 3 tentativas com backoff, pois a API pode levar alguns segundos para consolidar.
+    let verifyResult: Awaited<ReturnType<typeof verifyTenantStatus>> | null = null;
+    let confirmed = false;
+    if (user.bivvo_tenant_id) {
+      const delays = [1500, 2500, 4000];
+      for (let attempt = 0; attempt < delays.length; attempt++) {
+        await new Promise((r) => setTimeout(r, delays[attempt]));
+        verifyResult = await verifyTenantStatus(user.bivvo_tenant_id, supabase, user.id);
+        if (verifyResult.status === "inactive" || verifyResult.status === "inativo") {
+          confirmed = true;
+          break;
+        }
+        await log.warn(
+          "bivvo-api",
+          `Verificação de inatividade tentativa ${attempt + 1} retornou status="${verifyResult.status}"`,
+          { userId: user.id, tenantId: user.bivvo_tenant_id },
+        );
+      }
+    }
+
+    if (!confirmed) {
+      const statusVisto = verifyResult?.status ?? "desconhecido";
+      const errMsg = `Update retornou OK mas verificação falhou: tenant ainda com status="${statusVisto}" na Bivvo.`;
+      await log.error("bivvo-api", errMsg, {
+        userId: user.id,
+        tenantId: user.bivvo_tenant_id,
+        verifyResult,
+      });
+      await supabase
+        .from("users")
+        .update({ tenant_provision_error: errMsg.slice(0, 1000) })
+        .eq("id", userId);
+      return {
+        skipped: false,
+        tenantId: user.bivvo_tenant_id || null,
+        updateResponse,
+        verified: false,
+        verifyResult,
+        error: errMsg,
+      };
+    }
+
     await supabase
       .from("users")
       .update({
@@ -663,6 +707,8 @@ export async function runInactivateAndPersist(supabase: any, userId: string) {
       skipped: false,
       tenantId: user.bivvo_tenant_id || null,
       updateResponse,
+      verified: true,
+      verifyResult,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
