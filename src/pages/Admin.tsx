@@ -401,6 +401,7 @@ const Admin = () => {
         description: selectedSub.description || ''
       });
       setTenantBivvo(selectedSub.tenantBivvo || '');
+      setIsEditingTenant(false);
       setContactForm({
         name: selectedSub.customerName || '',
         email: selectedSub.customerEmail || '',
