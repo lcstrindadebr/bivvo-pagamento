@@ -1,55 +1,50 @@
-# Plano: melhorias em Setup Bivvo (Detalhes da Assinatura)
 
-Escopo puramente frontend, em `src/pages/Admin.tsx`. Nenhuma mudança em edge functions, banco ou `new_deploy/`.
+## Problema detectado
 
-## 1. Salvar Tenant Bivvo com confirmação + modo edição via caneta
+Hoje existem **duas colunas paralelas** na tabela `users` representando o mesmo dado (o ID do tenant na API Bivvo), e cada parte do código usa uma delas:
 
-**Hoje:** o input do Tenant Bivvo é editável enquanto `bivvo_tenant_id` estiver vazio. Ao preencher e clicar "Salvar Tenant", o valor é gravado direto (`handleSaveTenant`). Depois, o input fica travado (`readOnly`/`disabled`) e sem botão.
+| Coluna | Onde é lida/escrita |
+|---|---|
+| `tenant_bivvo` | `admin-api` (checagem de status via `tenantApiShowTenant`, listagem de assinaturas, ação `update-user-tenant`, `refresh-all-bivvo-statuses`) |
+| `bivvo_tenant_id` | `_shared/bivvo-api.ts` (store/update/inactivate na Bivvo), `provision-bivvo-tenant`, `auto-inactivate-overdue`, `Admin.tsx` (Setup Bivvo / Ações do Tenant) |
 
-**Depois:**
+Consequência prática:
+- Ao salvar o Tenant ID em "Setup Bivvo" (grava em `bivvo_tenant_id`), a coluna `bivvo_status` (que consulta `tenant_bivvo`) continua vazia — o status "Inserir ID" nunca sai.
+- `refresh-all-bivvo-statuses` ignora tenants provisionados pelo fluxo automático.
+- `handleSaveTenant` da UI e a action `update-user-tenant` gravam em campos diferentes.
 
-- **Estado local novo:** `isEditingTenant` (boolean). Inicia `false`.
-- **Quando NÃO há `bivvo_tenant_id` salvo:** input editável + botão "Salvar Tenant" (fluxo atual), mas o clique em Salvar agora abre um `AlertDialog` de confirmação:
-  > "Confirmar vínculo do Tenant ID `<valor>` a este cliente? Depois de salvo, o ID só poderá ser alterado clicando no ícone de edição."
-  Ao confirmar → chama `handleSaveTenant`. Ao cancelar → fecha o diálogo, nada acontece.
-- **Quando JÁ há `bivvo_tenant_id` salvo e `isEditingTenant === false`:** input em modo read-only mostrando o ID atual, com um pequeno **ícone de caneta** (`Pencil` do lucide) ao lado. Clique na caneta → `setIsEditingTenant(true)` (input volta a ser editável, aparece botão "Salvar Tenant" + botão "Cancelar" que reverte `tenantBivvo` para o valor original e fecha edição).
-- **Ao salvar em modo edição:** mesmo `AlertDialog` de confirmação (texto ajustado para "alteração do Tenant ID de `<antigo>` para `<novo>`"). Confirmar → `handleSaveTenant` + `setIsEditingTenant(false)`.
-- Remover a atual regra `apiLocked = !!tenantInfo?.bivvo_tenant_id` que bloqueia edição de forma irreversível — o lock passa a ser controlado por `isEditingTenant`.
-- Texto de ajuda abaixo do campo continua, adaptado ao estado (visualização vs. edição).
+## Objetivo
 
-Nenhuma mudança em `handleSaveTenant` em si (continua fazendo `update` direto no `users` via supabase client, como hoje).
+Consolidar tudo em **um único campo canônico: `bivvo_tenant_id`** (nome mais semântico e já usado pelo fluxo de provisionamento). Remover `tenant_bivvo` após migrar os dados.
 
-## 2. "Ações do Tenant" habilitadas condicionalmente
+## Passos
 
-**Hoje:** o botão "Provisionar/Atualizar Tenant via API Bivvo" (`handleProvisionTenant`) fica sempre habilitado (só desabilita durante loading). O botão "Inativar Conta Bivvo" aparece apenas quando há tenant provisionado e assinatura ativa, e fica embaixo, em bloco separado.
+### 1. Migração SQL
+- Copiar valores existentes: `UPDATE users SET bivvo_tenant_id = COALESCE(bivvo_tenant_id, tenant_bivvo) WHERE tenant_bivvo IS NOT NULL;`
+- `ALTER TABLE users DROP COLUMN tenant_bivvo;`
 
-**Depois:**
+### 2. `supabase/functions/admin-api/index.ts`
+Substituir todas as referências a `tenant_bivvo` por `bivvo_tenant_id`:
+- `checkBivvoStatus` (linhas ~85, 96): usar `u.bivvo_tenant_id`.
+- Listagem de assinaturas (linhas ~145, 227, 314, 315): selecionar `bivvo_tenant_id`; manter chave de retorno `tenantBivvo` no JSON para não quebrar a UI, mas alimentada por `bivvo_tenant_id`.
+- Ação `update-user-tenant` (linhas ~1079, 1086): gravar em `bivvo_tenant_id`. Também zerar `tenant_provisioned_at` / `tenant_provision_error` se o ID mudar manualmente (opcional, mais coerente).
+- `refresh-all-bivvo-statuses` (linha 1141): selecionar `bivvo_tenant_id`.
 
-- **Cálculo de disponibilidade** (memo local):
-  - `hasTenantId = !!tenantInfo?.bivvo_tenant_id`
-  - `hasBivvoConfigDrift` — reutiliza o mesmo indicador que hoje decide se "Atualizar Tenant Bivvo" (sync após edição de config) aparece: `!isBivvoConfigEqual(bivvoConfig, tenantInfo?.bivvo_config_synced_bivvo)`. Já existe no arquivo.
-  - `tenantExistsOnBivvo` — vem de `selectedSub.bivvoStatus` (a listagem já checa a API Bivvo e classifica como "Não possui Tenant" / status válidos). Considerar "não existe no Bivvo" quando `bivvoStatus === 'Não possui Tenant'` ou quando não há `tenant_provisioned_at`.
-  - `canProvisionOrUpdate = !tenantExistsOnBivvo || hasBivvoConfigDrift`
-- **Botão "Provisionar/Atualizar Tenant via API"**:
-  - `disabled` quando `!canProvisionOrUpdate` (além do loading atual).
-  - Tooltip explicando o motivo do disable: "Tenant já existe no Bivvo e está sincronizado — nada a fazer."
-  - Rótulo dinâmico: "Provisionar Tenant" quando não existe no Bivvo; "Atualizar Tenant no Bivvo" quando existe mas há drift.
-- **Botão "Inativar Conta Bivvo"**:
-  - Passa a ficar **ao lado** de "Provisionar/Atualizar" (mesmo `<div className="flex gap-2">`), não mais em bloco separado abaixo.
-  - Mantém a condição atual de visibilidade (só quando `isBivvoActive && hasTenantId`).
-  - Mantém `handleInactivateTenant` inalterado.
-- Se ambos os botões ficarem indisponíveis (sem drift + tenant existe + assinatura já inativa), a seção "Ações do Tenant" mostra apenas uma linha de texto: "Nenhuma ação pendente — tenant sincronizado."
+### 3. Frontend `src/pages/Admin.tsx`
+- `handleSaveTenant`: já grava em `bivvo_tenant_id`. Adicional: **após salvar, também disparar imediatamente `check-bivvo-tenant`** (ou chamar `refresh-all-bivvo-statuses` só para esse usuário) para popular `bivvo_status` na hora — assim o card "Detalhes da Assinatura" mostra status correto sem esperar cron.
+- Nenhuma mudança de UI/labels: continua "Setup Bivvo" / "Tenant Bivvo".
 
-## Fora do escopo
+### 4. `src/integrations/supabase/types.ts`
+- Remover as três aparições de `tenant_bivvo` (Row / Insert / Update) da tabela `users`. (Se o arquivo for autogerado, deixar que próximo pull do schema regenere.)
 
-- Não mexer em `handleSaveTenant`, `handleProvisionTenant`, `handleInactivateTenant`.
-- Não alterar edge functions, migrations, RLS.
-- Não redesenhar o card Setup Bivvo — só a sub-seção Tenant Bivvo e a sub-seção Ações do Tenant.
+### 5. Verificação
+- Grep final: `rg "tenant_bivvo" src supabase` deve retornar apenas linhas em `supabase/migrations/` antigas (histórico) — nenhum código ativo.
+- Fluxo end-to-end: salvar ID manual → status atualiza; provisionar via botão → mesmo campo alimenta status; inativar → mesmo campo.
 
-## Arquivo afetado
-
-- `src/pages/Admin.tsx` (única edição).
+## Fora de escopo
+- `new_deploy/` e `deploy/` (snapshots de exportação): não tocamos.
+- Renomear `bivvo_tenant_id` para outro nome: mantemos como está.
+- Nenhuma mudança em `_shared/bivvo-api.ts`, `provision-bivvo-tenant`, `auto-inactivate-overdue` — já usam o campo correto.
 
 ## Riscos
-
-Baixos. Adiciona um estado local (`isEditingTenant`), um `AlertDialog` (componente shadcn já usado no projeto) e refina `disabled`/layout dos botões existentes. Nenhuma mudança de fluxo backend.
+- Se algum usuário em produção só tem `tenant_bivvo` preenchido (não `bivvo_tenant_id`), a migração cobre com `COALESCE`. Após deploy da migração, `tenant_bivvo` deixa de existir; qualquer código externo que ainda consulte essa coluna quebra — não há consumidores fora do próprio projeto.
