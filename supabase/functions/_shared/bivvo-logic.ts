@@ -68,3 +68,89 @@ export function quoteBivvo(cfg: any) {
     channelLines
   };
 }
+
+// ─────────────────────────────────────────────
+// Diff canônico entre duas bivvo_config
+// Fonte única da verdade para "precisa sincronizar Bivvo/Asaas"
+// ─────────────────────────────────────────────
+export interface BivvoConfigDiff {
+  bivvoRelevantChanged: boolean;
+  asaasValueChanged: boolean;
+  changedFields: string[];
+  previousRecurringValue: number | null;
+  newRecurringValue: number | null;
+}
+
+const BIVVO_RELEVANT_KEYS = ['plan', 'users', 'telefonia', 'disparo', 'protagonista'];
+
+export function normalizeBivvoConfig(cfg: any): any {
+  if (!cfg || typeof cfg !== 'object') return null;
+  const channels: Record<string, number> = {};
+  const src = cfg.channels || {};
+  for (const c of CANAIS_DEF) {
+    const q = Math.max(0, Math.floor(Number(src[c.id]) || 0));
+    if (q > 0) channels[c.id] = q;
+  }
+  return {
+    plan: String(cfg.plan || 'standard'),
+    users: Math.max(1, Math.floor(Number(cfg.users) || 0)),
+    channels,
+    telefonia: !!cfg.telefonia,
+    disparo: !!cfg.disparo,
+    protagonista: !!cfg.protagonista,
+  };
+}
+
+export function computeConfigDiff(before: any, after: any): BivvoConfigDiff {
+  const a = normalizeBivvoConfig(before);
+  const b = normalizeBivvoConfig(after);
+  const changed: string[] = [];
+
+  if (!a && b) {
+    // primeira configuração
+    return {
+      bivvoRelevantChanged: true,
+      asaasValueChanged: true,
+      changedFields: ['*'],
+      previousRecurringValue: null,
+      newRecurringValue: safeQuoteRec(b),
+    };
+  }
+  if (a && !b) {
+    return {
+      bivvoRelevantChanged: true,
+      asaasValueChanged: true,
+      changedFields: ['*'],
+      previousRecurringValue: safeQuoteRec(a),
+      newRecurringValue: null,
+    };
+  }
+  if (!a && !b) {
+    return { bivvoRelevantChanged: false, asaasValueChanged: false, changedFields: [], previousRecurringValue: null, newRecurringValue: null };
+  }
+
+  for (const k of BIVVO_RELEVANT_KEYS) {
+    if ((a as any)[k] !== (b as any)[k]) changed.push(k);
+  }
+  // Canais
+  const allChKeys = new Set([...Object.keys(a.channels), ...Object.keys(b.channels)]);
+  for (const k of allChKeys) {
+    if ((a.channels[k] || 0) !== (b.channels[k] || 0)) changed.push(`channels.${k}`);
+  }
+
+  const prevRec = safeQuoteRec(a);
+  const newRec = safeQuoteRec(b);
+  const asaasValueChanged = Math.abs((prevRec || 0) - (newRec || 0)) > 0.005;
+
+  return {
+    bivvoRelevantChanged: changed.length > 0,
+    asaasValueChanged,
+    changedFields: changed,
+    previousRecurringValue: prevRec,
+    newRecurringValue: newRec,
+  };
+}
+
+function safeQuoteRec(cfg: any): number | null {
+  try { return quoteBivvo(cfg).totalRec; } catch { return null; }
+}
