@@ -145,20 +145,26 @@ async function callUpdateTenant(
   }
   const tenantIdNum = Number(tenantIdRaw);
   const tenantIdField: number | string = Number.isFinite(tenantIdNum) && String(tenantIdNum) === tenantIdRaw ? tenantIdNum : tenantIdRaw;
-  const updatePayload = {
-    id: tenantIdField,
-    status: ctx.status || 'active',
-    maxUsers: ctx.maxUsers,
-    maxConnections: ctx.maxConnections,
-    paymentGateway: 'asaas',
-    supportChatEnabled: 'enabled',
-    menuVisibility: buildMenuVisibility(cfg),
-    allowedChannels: DEFAULT_ALLOWED_CHANNELS,
-    channelConnectionLimits: ctx.limits,
-    oauthEnabled: false,
-  };
+  const isInactivate = ctx.status === 'inactive';
+  const updatePayload: Record<string, unknown> = isInactivate
+    ? {
+        id: tenantIdField,
+        status: 'inactive',
+      }
+    : {
+        id: tenantIdField,
+        status: ctx.status || 'active',
+        maxUsers: ctx.maxUsers,
+        maxConnections: ctx.maxConnections,
+        paymentGateway: 'asaas',
+        supportChatEnabled: 'enabled',
+        menuVisibility: buildMenuVisibility(cfg),
+        allowedChannels: DEFAULT_ALLOWED_CHANNELS,
+        channelConnectionLimits: ctx.limits,
+        oauthEnabled: false,
+      };
 
-  console.log('[Bivvo] updateTenant → id:', tenantIdField, 'menu:', updatePayload.menuVisibility, 'limits:', ctx.limits);
+  console.log('[Bivvo] updateTenant → id:', tenantIdField, 'status:', updatePayload.status, 'payload keys:', Object.keys(updatePayload));
   await log.info('bivvo-api', `updateTenant → id:${tenantIdField}`, {
     userId: user.id, payload: updatePayload,
   });
