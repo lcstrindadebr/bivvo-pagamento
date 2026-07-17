@@ -408,15 +408,23 @@ const Admin = () => {
       loadSubPayments(selectedSub.id);
       // Load contracted Bivvo config from users table
       supabase.from('users')
-        .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name')
+        .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name, bivvo_config_synced_bivvo, bivvo_config_synced_asaas_value, bivvo_config_previous')
         .eq('asaas_customer_id', selectedSub.customer)
         .maybeSingle()
-        .then(({ data }) => {
+        .then(async ({ data }) => {
           setContractedConfig(data?.bivvo_config || null);
-          setTenantInfo(data || null);
-          // Se cliente foi provisionado via API, sincroniza o campo com o bivvo_tenant_id (fonte da verdade)
+          setTenantInfo(data as any || null);
+          setIsEditingConfig(false);
           if (data?.bivvo_tenant_id) {
             setTenantBivvo(String(data.bivvo_tenant_id));
+          }
+          if (data?.id) {
+            try {
+              const res: any = await adminFetch(`list-config-logs&userId=${data.id}`);
+              setConfigLogs(res?.data || []);
+            } catch (e) { console.error(e); }
+          } else {
+            setConfigLogs([]);
           }
         });
     } else {
