@@ -125,6 +125,36 @@ const Admin = () => {
   const [contractedConfig, setContractedConfig] = useState<any>(null);
   const [tenantInfo, setTenantInfo] = useState<{ id?: string | null; bivvo_tenant_id?: string | null; tenant_provisioned_at?: string | null; tenant_provision_error?: string | null; person_type?: string | null; company_name?: string | null } | null>(null);
   const [provisioningTenant, setProvisioningTenant] = useState(false);
+  const [legacyConfigForm, setLegacyConfigForm] = useState<{ plan: string; users: number; channels: Record<string, number>; telefonia: boolean; disparo: boolean; protagonista: boolean }>({ plan: 'standard', users: 3, channels: {}, telefonia: false, disparo: false, protagonista: false });
+  const [savingLegacyConfig, setSavingLegacyConfig] = useState(false);
+
+  const handleSaveLegacyConfig = async () => {
+    if (!tenantInfo?.id) {
+      toast({ title: 'Cliente não encontrado', variant: 'destructive' });
+      return;
+    }
+    setSavingLegacyConfig(true);
+    try {
+      const payload = {
+        plan: legacyConfigForm.plan,
+        users: Number(legacyConfigForm.users) || 0,
+        channels: Object.fromEntries(Object.entries(legacyConfigForm.channels).filter(([, v]) => Number(v) > 0).map(([k, v]) => [k, Number(v)])),
+        telefonia: !!legacyConfigForm.telefonia,
+        disparo: !!legacyConfigForm.disparo,
+        protagonista: !!legacyConfigForm.protagonista,
+        _addedByAdmin: true,
+        _addedAt: new Date().toISOString(),
+      };
+      const { error } = await supabase.from('users').update({ bivvo_config: payload as any }).eq('id', tenantInfo.id);
+      if (error) throw error;
+      setContractedConfig(payload);
+      toast({ title: 'Configuração salva', description: 'A configuração contratada foi adicionada para este cliente.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e?.message || 'Falha ao salvar configuração.', variant: 'destructive' });
+    } finally {
+      setSavingLegacyConfig(false);
+    }
+  };
 
   // Contato do cliente (Asaas + local)
   const [contactForm, setContactForm] = useState({
@@ -1229,7 +1259,68 @@ const Admin = () => {
                             </div>
                           </div>
                         ) : (
-                          <p className="text-[11px] text-muted-foreground">Sem configuração salva (cliente anterior à mudança).</p>
+                          <div className="space-y-3">
+                            <p className="text-[11px] text-muted-foreground">Sem configuração salva (cliente anterior à mudança). Adicione manualmente abaixo — este editor só aparece para clientes legados; novas contratações não podem ser editadas aqui.</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <Label className="text-[10px] uppercase text-muted-foreground">Plano</Label>
+                                <select
+                                  className="w-full h-8 text-xs rounded-md border bg-background px-2"
+                                  value={legacyConfigForm.plan}
+                                  onChange={(e) => setLegacyConfigForm(f => ({ ...f, plan: e.target.value }))}
+                                >
+                                  {(plans.length > 0 ? plans.map(p => p.slug) : ['standard','silver','pro']).map(slug => (
+                                    <option key={slug} value={slug}>{slug.toUpperCase()}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <Label className="text-[10px] uppercase text-muted-foreground">Usuários</Label>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  className="h-8 text-xs"
+                                  value={legacyConfigForm.users}
+                                  onChange={(e) => setLegacyConfigForm(f => ({ ...f, users: Number(e.target.value) || 0 }))}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-3 pt-1">
+                              <label className="flex items-center gap-1.5 text-[11px]">
+                                <Switch checked={legacyConfigForm.telefonia} onCheckedChange={(v) => setLegacyConfigForm(f => ({ ...f, telefonia: v }))} />
+                                📞 Telefonia
+                              </label>
+                              <label className="flex items-center gap-1.5 text-[11px]">
+                                <Switch checked={legacyConfigForm.disparo} onCheckedChange={(v) => setLegacyConfigForm(f => ({ ...f, disparo: v }))} />
+                                🚀 Disparo em Massa
+                              </label>
+                              <label className="flex items-center gap-1.5 text-[11px]">
+                                <Switch checked={legacyConfigForm.protagonista} onCheckedChange={(v) => setLegacyConfigForm(f => ({ ...f, protagonista: v }))} />
+                                ⭐ Protagonista
+                              </label>
+                            </div>
+                            <div className="pt-1">
+                              <p className="text-[10px] uppercase text-muted-foreground mb-1">Canais Contratados</p>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {CANAIS_DEF.map(c => (
+                                  <div key={c.id} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-background/60 border text-[11px]">
+                                    <span className="truncate">{c.emoji} {c.label}</span>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      className="h-6 w-14 text-xs"
+                                      value={legacyConfigForm.channels[c.id] || 0}
+                                      onChange={(e) => setLegacyConfigForm(f => ({ ...f, channels: { ...f.channels, [c.id]: Number(e.target.value) || 0 } }))}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <Button size="sm" className="w-full h-8 text-xs" onClick={handleSaveLegacyConfig} disabled={savingLegacyConfig || !tenantInfo?.id}>
+                              {savingLegacyConfig ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Check className="h-3 w-3 mr-2" />}
+                              Salvar Configuração Contratada
+                            </Button>
+                          </div>
                         )}
                         <div className="pt-2 border-t space-y-1 text-[11px]">
                           <div className="flex justify-between">
