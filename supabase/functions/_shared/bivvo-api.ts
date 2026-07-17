@@ -10,8 +10,8 @@ const DEFAULT_MENU = ['Groups', 'Kanban', 'Tasks', 'Api', 'ChatBot', 'Reports', 
 
 // Canais permitidos por padrão conforme especificação 4.2
 const DEFAULT_ALLOWED_CHANNELS = [
-  'waba', 'baileys', 'whatsapp', 'meow', 'evo', 'zapi', 'uazapi',
-  'telegram', 'hub', 'webchat', 'webmail', 'wabaoauth',
+  'waba', 'baileys', 'whatsapp',
+  'telegram', 'webchat', 'webmail', 'wabaoauth',
   'instagramoauth', 'facebookoauth',
 ];
 
@@ -212,13 +212,41 @@ async function callUpdateTenant(
   const tenantIdNum = Number(tenantIdRaw);
   const tenantIdField: number | string = /^\d+$/.test(tenantIdRaw) && Number.isSafeInteger(tenantIdNum) ? tenantIdNum : tenantIdRaw;
   const auth = await getBivvoAuth(supabase);
-  const identity = onlyDigits(user.cpf);
+  const showRes = await fetch(`${BIVVO_API_URL}/tenantApiShowTenant`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth.header },
+    body: JSON.stringify({ id: tenantIdField }),
+  });
+  const showText = await showRes.text();
+  let showJson: any = null;
+  try { showJson = JSON.parse(showText); } catch { /* keep text */ }
+  await log.info('bivvo-api', `showTenant response ${showRes.status}`, {
+    userId: user.id,
+    tenantIdRaw,
+    tenantIdType: typeof tenantIdField,
+    status: showRes.status,
+    ok: showRes.ok,
+    body: redactSensitive(showJson ?? showText.slice(0, 2000)),
+  });
+  if (!showRes.ok) {
+    await log.error('bivvo-api', `showTenant falhou ${showRes.status}`, { userId: user.id, tenantIdRaw, body: showText.slice(0, 2000) });
+    throw new Error(`showTenant ${showRes.status}: ${showText.slice(0, 500)}`);
+  }
+
+  const tenant = showJson?.tenant ?? showJson?.data?.tenant ?? showJson?.data ?? showJson;
+  const remoteIdentity = onlyDigits(tenant?.identity);
+  const localIdentity = onlyDigits(user.cpf);
+  const identity = remoteIdentity || localIdentity;
+  if (!identity) {
+    throw new Error('Identidade CPF/CNPJ do tenant Bivvo não encontrada para atualização.');
+  }
+
   const updatePayload: Record<string, unknown> = {
-    id: tenantIdField,
-    ...(identity ? { identity } : {}),
+    identity,
     status: ctx.status || 'active',
     maxUsers: ctx.maxUsers,
     maxConnections: ctx.maxConnections,
+    supportChatEnabled: 'enabled',
     paymentGateway: 'asaas',
     menuVisibility: buildMenuVisibility(cfg),
     allowedChannels: DEFAULT_ALLOWED_CHANNELS,
@@ -235,6 +263,7 @@ async function callUpdateTenant(
     hadBearerPrefix: auth.hadBearerPrefix,
     tenantIdRaw,
     tenantIdType: typeof tenantIdField,
+    remoteIdentityFound: Boolean(remoteIdentity),
     payload: redactSensitive(updatePayload),
   });
   const res = await fetch(`${BIVVO_API_URL}/tenantApiUpdateTenant`, {
