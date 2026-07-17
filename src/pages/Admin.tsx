@@ -1393,7 +1393,11 @@ const Admin = () => {
 
                         {/* TENANT BIVVO - ID + STATUS */}
                         {(() => {
-                          const apiLocked = !!tenantInfo?.bivvo_tenant_id;
+                          const savedTenantId = tenantInfo?.bivvo_tenant_id ? String(tenantInfo.bivvo_tenant_id) : '';
+                          const hasSavedId = !!savedTenantId;
+                          const inEditMode = !hasSavedId || isEditingTenant;
+                          const trimmed = tenantBivvo.trim();
+                          const canSave = trimmed.length > 0 && trimmed !== savedTenantId;
                           return (
                             <div className="space-y-2">
                               <p className="text-[10px] uppercase text-muted-foreground">Tenant Bivvo</p>
@@ -1403,13 +1407,39 @@ const Admin = () => {
                                   onChange={(e) => setTenantBivvo(e.target.value)}
                                   placeholder="ID do tenant (ex: 1)"
                                   className="h-8 text-sm flex-1"
-                                  readOnly={apiLocked}
-                                  disabled={apiLocked}
+                                  readOnly={!inEditMode}
+                                  disabled={!inEditMode}
                                 />
-                                {!apiLocked && (
-                                  <Button size="sm" onClick={handleSaveTenant} disabled={savingTenant}>
-                                    {savingTenant ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                                    <span className="ml-2">Salvar Tenant</span>
+                                {inEditMode ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => setConfirmTenantOpen(true)}
+                                      disabled={savingTenant || !canSave}
+                                    >
+                                      {savingTenant ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                      <span className="ml-2">Salvar Tenant</span>
+                                    </Button>
+                                    {hasSavedId && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => { setTenantBivvo(savedTenantId); setIsEditingTenant(false); }}
+                                        disabled={savingTenant}
+                                        title="Cancelar edição"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setIsEditingTenant(true)}
+                                    title="Editar Tenant ID"
+                                  >
+                                    <Pencil className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
@@ -1419,13 +1449,36 @@ const Admin = () => {
                                 </div>
                               )}
                               <p className="text-[10px] text-muted-foreground">
-                                {apiLocked
-                                  ? 'Tenant provisionado automaticamente via API Bivvo. Sincronizado; não editável manualmente.'
-                                  : 'ID do tenant Bivvo associado a este cliente. A verificação com a API é feita ao listar assinaturas.'}
+                                {inEditMode
+                                  ? (hasSavedId
+                                      ? 'Alterando o Tenant ID: será pedida confirmação antes de salvar.'
+                                      : 'Informe o ID do tenant Bivvo. Uma confirmação será exibida antes de salvar.')
+                                  : 'ID do tenant salvo. Clique no ícone de caneta para editar.'}
                               </p>
+
+                              <AlertDialog open={confirmTenantOpen} onOpenChange={setConfirmTenantOpen}>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Confirmar Tenant Bivvo</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      {hasSavedId
+                                        ? <>Alterar o Tenant ID de <strong className="font-mono">{savedTenantId}</strong> para <strong className="font-mono">{trimmed}</strong>? Isso muda o vínculo deste cliente com o tenant na Bivvo.</>
+                                        : <>Vincular o Tenant ID <strong className="font-mono">{trimmed}</strong> a este cliente? Depois de salvo, o ID só poderá ser alterado clicando no ícone de edição.</>}
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel disabled={savingTenant}>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={(e) => { e.preventDefault(); handleSaveTenant(); }} disabled={savingTenant}>
+                                      {savingTenant && <Loader2 className="h-3 w-3 animate-spin mr-2" />}
+                                      Confirmar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           );
                         })()}
+
 
                         <div className="border-t pt-3 space-y-3">
                           <p className="text-[10px] uppercase text-muted-foreground">Configuração Contratada</p>
