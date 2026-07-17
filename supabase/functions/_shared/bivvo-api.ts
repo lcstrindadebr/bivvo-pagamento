@@ -286,22 +286,56 @@ async function callUpdateTenant(
       ? tenantIdNum
       : tenantIdRaw;
   const auth = await getBivvoAuth(supabase);
-  const identity = onlyDigits(user.cpf);
+  let identity = onlyDigits(user.cpf);
+
+  // Se não temos CPF/CNPJ local, tenta buscar via showTenant (necessário p/ update)
+  if (!identity) {
+    try {
+      const showRes = await fetch(`${BIVVO_API_URL}/tenantApiShowTenant`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: auth.header,
+        },
+        body: JSON.stringify({ id: tenantIdField }),
+      });
+      const showText = await showRes.text();
+      let showJson: any = null;
+      try { showJson = JSON.parse(showText); } catch { /* ignore */ }
+      const tenantData = Array.isArray(showJson?.tenant)
+        ? showJson.tenant[0]
+        : (showJson?.tenant ?? showJson?.data?.tenant ?? showJson?.data ?? showJson);
+      const remoteIdentity = onlyDigits(tenantData?.identity ?? tenantData?.cpf ?? tenantData?.cnpj);
+      if (remoteIdentity) identity = remoteIdentity;
+      await log.info("bivvo-api", `showTenant lookup id:${tenantIdField}`, {
+        userId: user.id,
+        status: showRes.status,
+        found: Boolean(remoteIdentity),
+      });
+    } catch (e) {
+      await log.error("bivvo-api", `showTenant lookup falhou`, {
+        userId: user.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   if (!identity) {
     throw new Error(
       "Identidade CPF/CNPJ do tenant Bivvo não encontrada para atualização.",
     );
   }
 
+  // Payload sempre inclui id + identity. Bivvo exige campos completos mesmo para inactivate.
   const updatePayload: Record<string, unknown> = {
+    id: tenantIdField,
     identity,
     status: ctx.status || "active",
+    maxUsers: ctx.maxUsers,
+    maxConnections: ctx.maxConnections,
   };
-  if (ctx.status !== "inactive") {
-    updatePayload.id = tenantIdField;
-    updatePayload.maxUsers = ctx.maxUsers;
-    updatePayload.maxConnections = ctx.maxConnections;
-  }
+
 
   console.log(
     "[Bivvo] updateTenant → id:",
