@@ -286,60 +286,23 @@ async function callUpdateTenant(
       ? tenantIdNum
       : tenantIdRaw;
   const auth = await getBivvoAuth(supabase);
-  const show = await postBivvoJson("tenantApiShowTenant", auth.header, {
-    id: tenantIdField,
-  });
-  await log.info("bivvo-api", `showTenant response ${show.res.status}`, {
-    userId: user.id,
-    tenantIdRaw,
-    tenantIdType: typeof tenantIdField,
-    status: show.res.status,
-    ok: show.res.ok,
-    body: redactSensitive(show.body ?? show.text.slice(0, 2000)),
-  });
-  if (!show.res.ok) {
-    await log.error("bivvo-api", `showTenant falhou ${show.res.status}`, {
-      userId: user.id,
-      tenantIdRaw,
-      body: show.text.slice(0, 2000),
-    });
-    throw new Error(`showTenant ${show.res.status}: ${show.text.slice(0, 500)}`);
-  }
-
-  const tenant = normalizeTenantResponse(show.body);
-  const remoteIdentity = onlyDigits(tenant?.identity);
-  const localIdentity = onlyDigits(user.cpf);
-  const identity = remoteIdentity || localIdentity;
-  if (!identity && ctx.status !== "inactive") {
+  const identity = onlyDigits(user.cpf);
+  if (!identity) {
     throw new Error(
       "Identidade CPF/CNPJ do tenant Bivvo não encontrada para atualização.",
     );
   }
 
-  const basePayload: Record<string, unknown> = {
-    id: tenantIdField,
+  const updatePayload: Record<string, unknown> = {
+    identity,
     status: ctx.status || "active",
   };
-  if (identity) basePayload.identity = identity;
-
-  const fullUpdatePayload: Record<string, unknown> = {
-    ...basePayload,
+  if (ctx.status !== "inactive") {
+    updatePayload.id = tenantIdField;
     maxUsers: ctx.maxUsers,
-    maxConnections: ctx.maxConnections,
-    paymentGateway: "asaas",
-    menuVisibility: buildMenuVisibility(cfg),
-    allowedChannels: DEFAULT_ALLOWED_CHANNELS,
-    channelConnectionLimits: ctx.limits,
-    oauthEnabled: false,
-  };
-
-  const safeUpdatePayload: Record<string, unknown> = {
-    ...basePayload,
-    maxUsers: ctx.maxUsers,
-    maxConnections: ctx.maxConnections,
-  };
-
-  const updatePayload = ctx.status === "inactive" ? basePayload : fullUpdatePayload;
+    updatePayload.maxUsers = ctx.maxUsers;
+    updatePayload.maxConnections = ctx.maxConnections;
+  }
 
   console.log(
     "[Bivvo] updateTenant → id:",
@@ -357,43 +320,35 @@ async function callUpdateTenant(
     hadBearerPrefix: auth.hadBearerPrefix,
     tenantIdRaw,
     tenantIdType: typeof tenantIdField,
-    remoteIdentityFound: Boolean(remoteIdentity),
     payload: redactSensitive(updatePayload),
   });
-  let update = await postBivvoJson(
-    "tenantApiUpdateTenant",
-    auth.header,
-    updatePayload,
-  );
-
-  if (!update.res.ok && isTicketProtocolError(update.body) && ctx.status !== "inactive") {
-    await log.info("bivvo-api", "updateTenant retry com payload mínimo", {
-      userId: user.id,
-      status: update.res.status,
-      body: redactSensitive(update.body),
-      payload: redactSensitive(safeUpdatePayload),
-    });
-    update = await postBivvoJson(
-      "tenantApiUpdateTenant",
-      auth.header,
-      safeUpdatePayload,
-    );
-  }
-
-  const res = update.res;
-  const text = update.text;
-  const json = update.body;
+  const res = await fetch(`${BIVVO_API_URL}/tenantApiUpdateTenant`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: auth.header,
+    },
+    body: JSON.stringify(updatePayload),
+  });
+  const text = await res.text();
   console.log(
     "[Bivvo] updateTenant status:",
     res.status,
     "body:",
     text.slice(0, 800),
   );
+  let json: any = null;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    /* keep text */
+  }
   await log.info("bivvo-api", `updateTenant response ${res.status}`, {
     userId: user.id,
     status: res.status,
     ok: res.ok,
-    body: redactSensitive(json ?? text.slice(0, 2000)),
+    body: json ?? text.slice(0, 2000),
   });
   if (!res.ok) {
     await log.error("bivvo-api", `updateTenant falhou ${res.status}`, {
