@@ -266,7 +266,7 @@ const Admin = () => {
   const loadConfigLogs = async () => {
     if (!tenantInfo?.id) return;
     try {
-      const res: any = await adminFetch(`list-config-logs&userId=${tenantInfo.id}`);
+      const res: any = await adminFetch('list-config-logs', { userId: tenantInfo.id });
       setConfigLogs(res?.data || []);
     } catch (e) {
       console.error('loadConfigLogs', e);
@@ -424,7 +424,7 @@ const Admin = () => {
           }
           if (data?.id) {
             try {
-              const res: any = await adminFetch(`list-config-logs&userId=${data.id}`);
+              const res: any = await adminFetch('list-config-logs', { userId: data.id });
               setConfigLogs(res?.data || []);
             } catch (e) { console.error(e); }
           } else {
