@@ -3,15 +3,16 @@
 
 import { log } from './logger.ts';
 
-const BIVVO_API_URL = Deno.env.get('BIVVO_API_URL') || 'https://adm.bivvo.com.br';
+const BIVVO_API_URL = (Deno.env.get('BIVVO_API_URL') || 'https://adm.bivvo.com.br').replace(/\/+$/, '');
 
 // Menu base SEM MassDispatch — MassDispatch só é adicionado se cliente contratar disparo em massa.
 const DEFAULT_MENU = ['Groups', 'Kanban', 'Tasks', 'Api', 'ChatBot', 'Reports', 'Campaigns', 'PrivateChat', 'Teams', 'AllowedChannels'];
 
 // Canais permitidos por padrão conforme especificação 4.2
 const DEFAULT_ALLOWED_CHANNELS = [
-  'waba', 'baileys', 'whatsapp', 'telegram', 'webchat', 'webmail',
-  'wabaoauth', 'instagramoauth', 'facebookoauth',
+  'waba', 'baileys', 'whatsapp', 'meow', 'evo', 'zapi', 'uazapi',
+  'telegram', 'hub', 'webchat', 'webmail', 'wabaoauth',
+  'instagramoauth', 'facebookoauth',
 ];
 
 interface UserRow {
@@ -35,10 +36,58 @@ interface BivvoCfg {
   protagonista?: boolean;
 }
 
-function bearer() {
-  const token = Deno.env.get('BIVVO_API_TOKEN');
-  if (!token) throw new Error('BIVVO_API_TOKEN não configurado');
-  return `Bearer ${token}`;
+function normalizeBearer(rawToken: string, source: string) {
+  const raw = rawToken.trim();
+  if (!raw) throw new Error('Token da API Bivvo vazio');
+  const hadBearerPrefix = raw.toLowerCase().startsWith('bearer ');
+  const token = hadBearerPrefix ? raw.slice(7).trim() : raw;
+  return {
+    header: `Bearer ${token}`,
+    source,
+    tokenLength: token.length,
+    hadBearerPrefix,
+  };
+}
+
+async function getBivvoAuth(supabase?: any) {
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from('admin_secrets')
+        .select('value')
+        .eq('key', 'bivvo_api_token')
+        .maybeSingle();
+      const dbToken = typeof data?.value === 'string' ? data.value.trim() : '';
+      if (dbToken) return normalizeBearer(dbToken, 'admin_secrets.bivvo_api_token');
+    } catch (err) {
+      console.warn('[Bivvo] Não foi possível ler admin_secrets.bivvo_api_token; usando fallback do ambiente.', err);
+    }
+  }
+
+  const envToken = Deno.env.get('BIVVO_API_TOKEN')?.trim();
+  if (!envToken) throw new Error('Token da API Bivvo não configurado');
+  return normalizeBearer(envToken, 'BIVVO_API_TOKEN');
+}
+
+function onlyDigits(value?: string | null) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits || undefined;
+}
+
+function redactSensitive(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactSensitive);
+  if (!value || typeof value !== 'object') return value;
+
+  const out: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+    const k = key.toLowerCase();
+    if (k.includes('token') || k.includes('password') || k.includes('secret') || k === 'authorization') {
+      out[key] = '[redacted]';
+    } else {
+      out[key] = redactSensitive(val);
+    }
+  }
+  return out;
 }
 
 function computeUsers(cfg: BivvoCfg): number {
@@ -71,8 +120,14 @@ function computeChannelLimits(cfg: BivvoCfg) {
   };
 }
 
-function totalConnections(limits: ReturnType<typeof computeChannelLimits>) {
-  return Object.values(limits).reduce((a, b) => a + b, 0);
+function computeMaxConnections(cfg: BivvoCfg) {
+  const ch = cfg.channels || {};
+  // maxConnections representa a quantidade contratada; não deve duplicar waof
+  // porque waof também é espelhado em wabaoauth dentro de channelConnectionLimits.
+  const total = ['waof', 'wano', 'ig', 'fb'].reduce((sum, key) => {
+    return sum + Math.max(0, Math.floor(Number(ch[key]) || 0));
+  }, 0);
+  return Math.max(1, total);
 }
 
 function buildMenuVisibility(cfg: BivvoCfg): string[] {
@@ -84,10 +139,11 @@ function buildMenuVisibility(cfg: BivvoCfg): string[] {
   return menu;
 }
 
-async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string) {
+async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string, supabase?: any) {
   const maxUsers = computeUsers(cfg);
   const limits = computeChannelLimits(cfg);
-  const maxConnections = Math.max(1, totalConnections(limits));
+  const maxConnections = computeMaxConnections(cfg);
+  const auth = await getBivvoAuth(supabase);
 
   const isPJ = (user.person_type || '').toUpperCase() === 'JURIDICA';
   const tenantName = isPJ && user.company_name ? user.company_name : user.name;
@@ -110,11 +166,20 @@ async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string)
 
   console.log('[Bivvo] storeTenant →', tenantName, `${maxUsers}u`, `${maxConnections}c`);
   await log.info('bivvo-api', `storeTenant → ${tenantName}`, {
-    userId: user.id, email: user.email, maxUsers, maxConnections, limits, payload: storePayload,
+    userId: user.id,
+    endpoint: `${BIVVO_API_URL}/tenantApiStoreTenant`,
+    authSource: auth.source,
+    tokenLength: auth.tokenLength,
+    hadBearerPrefix: auth.hadBearerPrefix,
+    email: user.email,
+    maxUsers,
+    maxConnections,
+    limits,
+    payload: redactSensitive(storePayload),
   });
   const res = await fetch(`${BIVVO_API_URL}/tenantApiStoreTenant`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: bearer() },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth.header },
     body: JSON.stringify(storePayload),
   });
   const text = await res.text();
@@ -138,39 +203,44 @@ async function callUpdateTenant(
   user: UserRow,
   cfg: BivvoCfg,
   ctx: { maxUsers: number; maxConnections: number; limits: ReturnType<typeof computeChannelLimits>; status?: string },
+  supabase?: any,
 ) {
   const tenantIdRaw = user.bivvo_tenant_id ? String(user.bivvo_tenant_id).trim() : '';
   if (!tenantIdRaw) {
     throw new Error('Tenant Bivvo não encontrado (bivvo_tenant_id ausente). Provisione a conta antes de atualizar.');
   }
   const tenantIdNum = Number(tenantIdRaw);
-  const tenantIdField: number | string = Number.isFinite(tenantIdNum) && String(tenantIdNum) === tenantIdRaw ? tenantIdNum : tenantIdRaw;
-  const isInactivate = ctx.status === 'inactive';
-  const updatePayload: Record<string, unknown> = isInactivate
-    ? {
-        id: tenantIdField,
-        status: 'inactive',
-      }
-    : {
-        id: tenantIdField,
-        status: ctx.status || 'active',
-        maxUsers: ctx.maxUsers,
-        maxConnections: ctx.maxConnections,
-        paymentGateway: 'asaas',
-        supportChatEnabled: 'enabled',
-        menuVisibility: buildMenuVisibility(cfg),
-        allowedChannels: DEFAULT_ALLOWED_CHANNELS,
-        channelConnectionLimits: ctx.limits,
-        oauthEnabled: false,
-      };
+  const tenantIdField: number | string = /^\d+$/.test(tenantIdRaw) && Number.isSafeInteger(tenantIdNum) ? tenantIdNum : tenantIdRaw;
+  const auth = await getBivvoAuth(supabase);
+  const identity = onlyDigits(user.cpf);
+  const updatePayload: Record<string, unknown> = {
+    id: tenantIdField,
+    ...(identity ? { identity } : {}),
+    status: ctx.status || 'active',
+    maxUsers: ctx.maxUsers,
+    maxConnections: ctx.maxConnections,
+    paymentGateway: 'asaas',
+    supportChatEnabled: 'enabled',
+    menuVisibility: buildMenuVisibility(cfg),
+    allowedChannels: DEFAULT_ALLOWED_CHANNELS,
+    channelConnectionLimits: ctx.limits,
+    oauthEnabled: false,
+  };
 
   console.log('[Bivvo] updateTenant → id:', tenantIdField, 'status:', updatePayload.status, 'payload keys:', Object.keys(updatePayload));
   await log.info('bivvo-api', `updateTenant → id:${tenantIdField}`, {
-    userId: user.id, payload: updatePayload,
+    userId: user.id,
+    endpoint: `${BIVVO_API_URL}/tenantApiUpdateTenant`,
+    authSource: auth.source,
+    tokenLength: auth.tokenLength,
+    hadBearerPrefix: auth.hadBearerPrefix,
+    tenantIdRaw,
+    tenantIdType: typeof tenantIdField,
+    payload: redactSensitive(updatePayload),
   });
   const res = await fetch(`${BIVVO_API_URL}/tenantApiUpdateTenant`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: bearer() },
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth.header },
     body: JSON.stringify(updatePayload),
   });
   const text = await res.text();
@@ -208,7 +278,7 @@ export async function provisionBivvoTenant(user: UserRow, cfg: BivvoCfg, supabas
 
   // ── Fase 1: Store (só se ainda não temos tenant_id) ──
   if (!tenantId) {
-    const stored = await callStoreTenant(user, cfg, asaasToken);
+    const stored = await callStoreTenant(user, cfg, asaasToken, supabase);
     tenantId = stored.tenantId;
     storeResponse = stored.response;
 
@@ -228,7 +298,7 @@ export async function provisionBivvoTenant(user: UserRow, cfg: BivvoCfg, supabas
 
   // ── Fase 2: Update (sempre referenciando pelo tenant id) ──
   const userForUpdate: UserRow = { ...user, bivvo_tenant_id: tenantId };
-  const updateResponse = await callUpdateTenant(userForUpdate, cfg, { maxUsers, maxConnections, limits });
+  const updateResponse = await callUpdateTenant(userForUpdate, cfg, { maxUsers, maxConnections, limits }, supabase);
 
   return { skipped: false, tenantId, storeResponse, updateResponse };
 }
@@ -292,11 +362,11 @@ export async function runUpdateAndPersist(supabase: any, userId: string) {
   const cfg = user.bivvo_config as BivvoCfg;
   const limits = computeChannelLimits(cfg);
   const maxUsers = computeUsers(cfg);
-  const maxConnections = Math.max(1, totalConnections(limits));
+  const maxConnections = computeMaxConnections(cfg);
 
   try {
     await log.info('bivvo-api', `runUpdateAndPersist → ${user.id}`, { userId });
-    const updateResponse = await callUpdateTenant(user, cfg, { maxUsers, maxConnections, limits });
+    const updateResponse = await callUpdateTenant(user, cfg, { maxUsers, maxConnections, limits }, supabase);
     const nowIso = new Date().toISOString();
     await supabase.from('users').update({
       tenant_provisioned_at: nowIso,
@@ -340,11 +410,11 @@ export async function runInactivateAndPersist(supabase: any, userId: string) {
   const cfg = (user.bivvo_config as BivvoCfg) || {};
   const limits = computeChannelLimits(cfg);
   const maxUsers = computeUsers(cfg);
-  const maxConnections = Math.max(1, totalConnections(limits));
+  const maxConnections = computeMaxConnections(cfg);
 
   try {
     await log.info('bivvo-api', `runInactivateAndPersist → ${user.id}`, { userId });
-    const updateResponse = await callUpdateTenant(user, cfg, { maxUsers, maxConnections, limits, status: 'inactive' });
+    const updateResponse = await callUpdateTenant(user, cfg, { maxUsers, maxConnections, limits, status: 'inactive' }, supabase);
     await supabase.from('users').update({
       status: 'inativo',
       tenant_provision_error: null,
