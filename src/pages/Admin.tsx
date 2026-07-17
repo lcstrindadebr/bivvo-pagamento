@@ -1360,50 +1360,78 @@ const Admin = () => {
                     </div>
 
                     {/* CONFIGURAÇÃO CONTRATADA */}
-                    {(contractedConfig || tenantInfo) && (
+                    {tenantInfo && (
                       <div className="border rounded-lg p-4 bg-primary/5 space-y-3">
-                        <h3 className="text-sm font-bold flex items-center gap-2">
-                          <Package className="h-3 w-3" /> Configuração Contratada
-                        </h3>
-                        {contractedConfig ? (
-                          <div className="space-y-2 text-xs">
-                            <div className="grid grid-cols-2 gap-2">
-                              <div><span className="text-muted-foreground">Plano:</span> <strong className="uppercase">{contractedConfig.plan}</strong></div>
-                              <div><span className="text-muted-foreground">Usuários:</span> <strong>{contractedConfig.users}</strong></div>
-                              <div><span className="text-muted-foreground">Tipo:</span> <strong>{tenantInfo?.person_type === 'JURIDICA' ? 'PJ' : tenantInfo?.person_type === 'FISICA' ? 'PF' : '—'}</strong></div>
-                              {tenantInfo?.company_name && <div><span className="text-muted-foreground">Empresa:</span> <strong>{tenantInfo.company_name}</strong></div>}
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold flex items-center gap-2">
+                            <Package className="h-3 w-3" /> Configuração Contratada
+                          </h3>
+                          {!isEditingConfig && (
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={beginEditConfig} disabled={!tenantInfo?.id}>
+                                <Pencil className="h-3 w-3 mr-1" /> Editar
+                              </Button>
+                              {tenantInfo?.bivvo_config_previous && (
+                                <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={handleRollbackConfig}>
+                                  <RefreshCw className="h-3 w-3 mr-1" /> Restaurar anterior
+                                </Button>
+                              )}
                             </div>
-                            <div className="flex flex-wrap gap-1.5 pt-1">
-                              {contractedConfig.telefonia && <Badge variant="outline" className="text-[9px]">📞 Telefonia</Badge>}
-                              {contractedConfig.disparo && <Badge variant="outline" className="text-[9px]">🚀 Disparo em Massa</Badge>}
-                              {contractedConfig.protagonista && <Badge variant="outline" className="text-[9px]">⭐ Protagonista</Badge>}
-                            </div>
-                            <div className="pt-2">
-                              <p className="text-[10px] uppercase text-muted-foreground mb-1">Canais Contratados</p>
-                              <div className="grid grid-cols-2 gap-1">
-                                {CANAIS_DEF.map(c => {
-                                  const qty = Number((contractedConfig.channels || {})[c.id] || 0);
-                                  if (!qty) return null;
-                                  return (
-                                    <div key={c.id} className="flex justify-between px-2 py-1 rounded bg-background/60 border text-[11px]">
-                                      <span>{c.emoji} {c.label}</span>
-                                      <strong>{qty}</strong>
-                                    </div>
-                                  );
-                                })}
+                          )}
+                        </div>
+
+                        {/* VISUALIZAÇÃO */}
+                        {!isEditingConfig && (
+                          contractedConfig ? (
+                            <div className="space-y-2 text-xs">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div><span className="text-muted-foreground">Plano:</span> <strong className="uppercase">{contractedConfig.plan}</strong></div>
+                                <div><span className="text-muted-foreground">Usuários:</span> <strong>{contractedConfig.users}</strong></div>
+                                <div><span className="text-muted-foreground">Tipo:</span> <strong>{tenantInfo?.person_type === 'JURIDICA' ? 'PJ' : tenantInfo?.person_type === 'FISICA' ? 'PF' : '—'}</strong></div>
+                                {tenantInfo?.company_name && <div><span className="text-muted-foreground">Empresa:</span> <strong>{tenantInfo.company_name}</strong></div>}
+                                {currentRecurring != null && (
+                                  <div><span className="text-muted-foreground">Recorrente calculado:</span> <strong>{fmtBRL(currentRecurring)}</strong></div>
+                                )}
+                                {syncedAsaasValue != null && (
+                                  <div><span className="text-muted-foreground">Valor Asaas atual:</span> <strong>{fmtBRL(syncedAsaasValue)}</strong></div>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {contractedConfig.telefonia && <Badge variant="outline" className="text-[9px]">📞 Telefonia</Badge>}
+                                {contractedConfig.disparo && <Badge variant="outline" className="text-[9px]">🚀 Disparo em Massa</Badge>}
+                                {contractedConfig.protagonista && <Badge variant="outline" className="text-[9px]">⭐ Protagonista</Badge>}
+                              </div>
+                              <div className="pt-2">
+                                <p className="text-[10px] uppercase text-muted-foreground mb-1">Canais Contratados</p>
+                                <div className="grid grid-cols-2 gap-1">
+                                  {CANAIS_DEF.map(c => {
+                                    const qty = Number((contractedConfig.channels || {})[c.id] || 0);
+                                    if (!qty) return null;
+                                    return (
+                                      <div key={c.id} className="flex justify-between px-2 py-1 rounded bg-background/60 border text-[11px]">
+                                        <span>{c.emoji} {c.label}</span>
+                                        <strong>{qty}</strong>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ) : (
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground">Nenhuma configuração salva. Clique em "Editar" para adicionar.</p>
+                          )
+                        )}
+
+                        {/* EDIÇÃO */}
+                        {isEditingConfig && (
                           <div className="space-y-3">
-                            <p className="text-[11px] text-muted-foreground">Sem configuração salva (cliente anterior à mudança). Adicione manualmente abaixo — este editor só aparece para clientes legados; novas contratações não podem ser editadas aqui.</p>
                             <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <Label className="text-[10px] uppercase text-muted-foreground">Plano</Label>
                                 <select
                                   className="w-full h-8 text-xs rounded-md border bg-background px-2"
-                                  value={legacyConfigForm.plan}
-                                  onChange={(e) => setLegacyConfigForm(f => ({ ...f, plan: e.target.value }))}
+                                  value={configForm.plan}
+                                  onChange={(e) => setConfigForm(f => ({ ...f, plan: e.target.value }))}
                                 >
                                   {(plans.length > 0 ? plans.map(p => p.slug) : ['standard','silver','pro']).map(slug => (
                                     <option key={slug} value={slug}>{slug.toUpperCase()}</option>
@@ -1412,26 +1440,23 @@ const Admin = () => {
                               </div>
                               <div>
                                 <Label className="text-[10px] uppercase text-muted-foreground">Usuários</Label>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  className="h-8 text-xs"
-                                  value={legacyConfigForm.users}
-                                  onChange={(e) => setLegacyConfigForm(f => ({ ...f, users: Number(e.target.value) || 0 }))}
+                                <Input type="number" min={1} className="h-8 text-xs"
+                                  value={configForm.users}
+                                  onChange={(e) => setConfigForm(f => ({ ...f, users: Number(e.target.value) || 0 }))}
                                 />
                               </div>
                             </div>
                             <div className="flex flex-wrap gap-3 pt-1">
                               <label className="flex items-center gap-1.5 text-[11px]">
-                                <Switch checked={legacyConfigForm.telefonia} onCheckedChange={(v) => setLegacyConfigForm(f => ({ ...f, telefonia: v }))} />
+                                <Switch checked={configForm.telefonia} onCheckedChange={(v) => setConfigForm(f => ({ ...f, telefonia: v }))} />
                                 📞 Telefonia
                               </label>
                               <label className="flex items-center gap-1.5 text-[11px]">
-                                <Switch checked={legacyConfigForm.disparo} onCheckedChange={(v) => setLegacyConfigForm(f => ({ ...f, disparo: v }))} />
+                                <Switch checked={configForm.disparo} onCheckedChange={(v) => setConfigForm(f => ({ ...f, disparo: v }))} />
                                 🚀 Disparo em Massa
                               </label>
                               <label className="flex items-center gap-1.5 text-[11px]">
-                                <Switch checked={legacyConfigForm.protagonista} onCheckedChange={(v) => setLegacyConfigForm(f => ({ ...f, protagonista: v }))} />
+                                <Switch checked={configForm.protagonista} onCheckedChange={(v) => setConfigForm(f => ({ ...f, protagonista: v }))} />
                                 ⭐ Protagonista
                               </label>
                             </div>
@@ -1441,23 +1466,56 @@ const Admin = () => {
                                 {CANAIS_DEF.map(c => (
                                   <div key={c.id} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-background/60 border text-[11px]">
                                     <span className="truncate">{c.emoji} {c.label}</span>
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      className="h-6 w-14 text-xs"
-                                      value={legacyConfigForm.channels[c.id] || 0}
-                                      onChange={(e) => setLegacyConfigForm(f => ({ ...f, channels: { ...f.channels, [c.id]: Number(e.target.value) || 0 } }))}
+                                    <Input type="number" min={0} className="h-6 w-14 text-xs"
+                                      value={configForm.channels[c.id] || 0}
+                                      onChange={(e) => setConfigForm(f => ({ ...f, channels: { ...f.channels, [c.id]: Number(e.target.value) || 0 } }))}
                                     />
                                   </div>
                                 ))}
                               </div>
                             </div>
-                            <Button size="sm" className="w-full h-8 text-xs" onClick={handleSaveLegacyConfig} disabled={savingLegacyConfig || !tenantInfo?.id}>
-                              {savingLegacyConfig ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Check className="h-3 w-3 mr-2" />}
-                              Salvar Configuração Contratada
-                            </Button>
+                            {(() => {
+                              const preview = safeRecurring(configForm);
+                              const synced = tenantInfo?.bivvo_config_synced_bivvo as any;
+                              const downgradeUsers = synced && Number(configForm.users) < Number(synced.users || 0);
+                              return (
+                                <div className="rounded border bg-background/50 px-2 py-1.5 text-[11px] space-y-1">
+                                  {preview != null && <div>Novo valor recorrente: <strong>{fmtBRL(preview)}</strong></div>}
+                                  {downgradeUsers && <div className="text-amber-600">⚠ Downgrade de usuários detectado ({synced.users} → {configForm.users}).</div>}
+                                </div>
+                              );
+                            })()}
+                            <div className="flex gap-2">
+                              <Button size="sm" className="flex-1 h-8 text-xs" onClick={handleSaveConfig} disabled={savingConfig || !tenantInfo?.id}>
+                                {savingConfig ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Check className="h-3 w-3 mr-2" />}
+                                Salvar Configuração
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setIsEditingConfig(false)} disabled={savingConfig}>
+                                Cancelar
+                              </Button>
+                            </div>
                           </div>
                         )}
+
+                        {/* AÇÕES DE SINCRONIZAÇÃO CONDICIONAIS */}
+                        {!isEditingConfig && contractedConfig && (needsBivvoSync || needsAsaasSync) && (
+                          <div className="pt-2 border-t space-y-2">
+                            <p className="text-[10px] uppercase text-muted-foreground">Pendências de Sincronização</p>
+                            {needsBivvoSync && (
+                              <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={handleProvisionTenant} disabled={provisioningTenant || !tenantInfo?.id}>
+                                {provisioningTenant ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <RefreshCw className="h-3 w-3 mr-2" />}
+                                Atualizar Tenant Bivvo
+                              </Button>
+                            )}
+                            {needsAsaasSync && (
+                              <Button size="sm" variant="outline" className="w-full h-8 text-xs" onClick={handleSyncAsaas} disabled={syncingAsaas || !selectedSub?.id}>
+                                {syncingAsaas ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <RefreshCw className="h-3 w-3 mr-2" />}
+                                Atualizar Valor no Asaas ({syncedAsaasValue != null ? fmtBRL(syncedAsaasValue) : '—'} → {currentRecurring != null ? fmtBRL(currentRecurring) : '—'})
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
                         <div className="pt-2 border-t space-y-1 text-[11px]">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Tenant provisionado:</span>
@@ -1477,6 +1535,71 @@ const Admin = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* HISTÓRICO DE ALTERAÇÕES DA CONFIGURAÇÃO */}
+                    {tenantInfo?.id && (
+                      <div className="border rounded-lg p-4 bg-muted/10 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-bold flex items-center gap-2">
+                            <FileText className="h-3 w-3" /> Histórico de Alterações
+                          </h3>
+                          <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                            <Switch checked={showPlanHistoryOnly} onCheckedChange={setShowPlanHistoryOnly} />
+                            Só mudanças de plano
+                          </label>
+                        </div>
+                        {(() => {
+                          const filtered = configLogs.filter(l => {
+                            if (!showPlanHistoryOnly) return true;
+                            if (l.action !== 'edit' && l.action !== 'rollback') return false;
+                            const bp = l.config_before?.plan;
+                            const ap = l.config_after?.plan;
+                            return bp && ap && bp !== ap;
+                          });
+                          if (!filtered.length) return <p className="text-[11px] text-muted-foreground">Nenhum registro.</p>;
+                          return (
+                            <div className="space-y-2 max-h-80 overflow-auto">
+                              {filtered.map(l => {
+                                const label = l.action === 'edit' ? 'Edição' : l.action === 'sync_bivvo' ? 'Sync Bivvo' : l.action === 'sync_asaas' ? 'Sync Asaas' : 'Restauração';
+                                const color = l.action === 'edit' ? 'bg-blue-500/10 text-blue-600 border-blue-500/30'
+                                  : l.action === 'sync_bivvo' ? 'bg-purple-500/10 text-purple-600 border-purple-500/30'
+                                  : l.action === 'sync_asaas' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+                                  : 'bg-amber-500/10 text-amber-600 border-amber-500/30';
+                                const planBefore = l.config_before?.plan;
+                                const planAfter = l.config_after?.plan;
+                                const planChanged = planBefore && planAfter && planBefore !== planAfter;
+                                return (
+                                  <div key={l.id} className="rounded border bg-background/60 px-2 py-1.5 text-[11px] space-y-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <Badge variant="outline" className={`text-[9px] ${color}`}>{label}</Badge>
+                                      <span className="text-muted-foreground">{new Date(l.created_at).toLocaleString('pt-BR')}</span>
+                                    </div>
+                                    <div className="text-muted-foreground">
+                                      Por: <strong>{l.changed_by_name || l.changed_by_email || 'sistema'}</strong>
+                                    </div>
+                                    {planChanged && (
+                                      <div>Plano: <strong className="uppercase">{planBefore}</strong> → <strong className="uppercase">{planAfter}</strong></div>
+                                    )}
+                                    {l.action === 'sync_asaas' && (
+                                      <div>Valor: <strong>{fmtBRL(Number(l.asaas_value_before) || 0)}</strong> → <strong>{fmtBRL(Number(l.asaas_value_after) || 0)}</strong></div>
+                                    )}
+                                    {Array.isArray(l.changed_fields) && l.changed_fields.length > 0 && !planChanged && (
+                                      <div className="flex flex-wrap gap-1">
+                                        {l.changed_fields.slice(0, 8).map((f: string) => (
+                                          <span key={f} className="px-1.5 py-0.5 rounded bg-muted text-[9px]">{f}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {l.notes && <div className="text-muted-foreground italic">{l.notes}</div>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
 
 
                     {/* TENANT BIVVO */}
