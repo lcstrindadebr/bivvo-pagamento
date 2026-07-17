@@ -331,7 +331,7 @@ async function callUpdateTenant(
   const show = await postBivvoJson("tenantApiShowTenant", auth.header, {
     id: tenantIdField,
   });
-  await log.info("bivvo-api", `showTenant response ${showRes.status}`, {
+  await log.info("bivvo-api", `showTenant response ${show.res.status}`, {
     userId: user.id,
     tenantIdRaw,
     tenantIdType: typeof tenantIdField,
@@ -340,7 +340,7 @@ async function callUpdateTenant(
     body: redactSensitive(show.body ?? show.text.slice(0, 2000)),
   });
   if (!show.res.ok) {
-    await log.error("bivvo-api", `showTenant falhou ${showRes.status}`, {
+    await log.error("bivvo-api", `showTenant falhou ${show.res.status}`, {
       userId: user.id,
       tenantIdRaw,
       body: show.text.slice(0, 2000),
