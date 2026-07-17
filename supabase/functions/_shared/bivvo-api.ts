@@ -271,7 +271,7 @@ export async function provisionBivvoTenant(user: UserRow, cfg: BivvoCfg, supabas
   // Sempre recomputa contexto (limites/usuários) — necessário para o update também
   const limits = computeChannelLimits(cfg);
   const maxUsers = computeUsers(cfg);
-  const maxConnections = Math.max(1, totalConnections(limits));
+  const maxConnections = computeMaxConnections(cfg);
 
   let tenantId = user.bivvo_tenant_id || '';
   let storeResponse: any = null;
