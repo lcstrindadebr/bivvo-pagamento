@@ -393,6 +393,49 @@ async function callUpdateTenant(
   return json ?? { raw: text };
 }
 
+/**
+ * Consulta o tenant na Bivvo e retorna { status, raw } para verificação pós-update.
+ * Não lança em erro de rede/HTTP — devolve status: null para o chamador decidir.
+ */
+export async function verifyTenantStatus(
+  tenantId: string | number,
+  supabase?: any,
+  userId?: string,
+): Promise<{ status: string | null; httpStatus: number; raw: any }> {
+  const auth = await getBivvoAuth(supabase);
+  const idNum = Number(tenantId);
+  const idField: number | string =
+    /^\d+$/.test(String(tenantId)) && Number.isSafeInteger(idNum) ? idNum : String(tenantId);
+  try {
+    const res = await fetch(`${BIVVO_API_URL}/tenantApiShowTenant`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: auth.header,
+      },
+      body: JSON.stringify({ id: idField }),
+    });
+    const text = await res.text();
+    let json: any = null;
+    try { json = JSON.parse(text); } catch { /* keep text */ }
+    const tenantData = Array.isArray(json?.tenant)
+      ? json.tenant[0]
+      : (json?.tenant ?? json?.data?.tenant ?? json?.data ?? json);
+    const status = tenantData?.status ? String(tenantData.status).toLowerCase() : null;
+    await log.info("bivvo-api", `verifyTenantStatus id:${idField} → ${status ?? "n/a"}`, {
+      userId,
+      httpStatus: res.status,
+      status,
+    });
+    return { status, httpStatus: res.status, raw: json ?? text.slice(0, 2000) };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await log.error("bivvo-api", `verifyTenantStatus falhou: ${msg}`, { userId, tenantId });
+    return { status: null, httpStatus: 0, raw: { error: msg } };
+  }
+}
+
 export async function provisionBivvoTenant(
   user: UserRow,
   cfg: BivvoCfg,
