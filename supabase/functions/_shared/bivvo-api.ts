@@ -291,10 +291,23 @@ export async function runUpdateAndPersist(supabase: any, userId: string) {
   try {
     await log.info('bivvo-api', `runUpdateAndPersist → ${user.id}`, { userId });
     const updateResponse = await callUpdateTenant(user, cfg, { maxUsers, maxConnections, limits });
+    const nowIso = new Date().toISOString();
     await supabase.from('users').update({
-      tenant_provisioned_at: new Date().toISOString(),
+      tenant_provisioned_at: nowIso,
       tenant_provision_error: null,
+      bivvo_config_synced_bivvo: cfg,
+      bivvo_config_synced_bivvo_at: nowIso,
     }).eq('id', userId);
+    try {
+      await supabase.from('bivvo_config_change_logs').insert({
+        user_id: userId,
+        action: 'sync_bivvo',
+        config_after: cfg,
+        bivvo_relevant_changed: true,
+        asaas_value_changed: false,
+        notes: `Atualização tenant ${user.bivvo_tenant_id || ''}`.trim(),
+      });
+    } catch (e) { console.error('[Bivvo] log sync_bivvo falhou:', e); }
     return { skipped: false, tenantId: user.bivvo_tenant_id || null, updateResponse };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
