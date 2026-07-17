@@ -1,18 +1,37 @@
 // Helper para provisionar tenant + usuário na API adm.bivvo.com.br
 // Utilizado por process-payment, create-subscription e asaas-webhook.
 
-import { log } from './logger.ts';
+import { log } from "./logger.ts";
 
-const BIVVO_API_URL = (Deno.env.get('BIVVO_API_URL') || 'https://adm.bivvo.com.br').replace(/\/+$/, '');
+const BIVVO_API_URL = (
+  Deno.env.get("BIVVO_API_URL") || "https://adm.bivvo.com.br"
+).replace(/\/+$/, "");
 
 // Menu base SEM MassDispatch — MassDispatch só é adicionado se cliente contratar disparo em massa.
-const DEFAULT_MENU = ['Groups', 'Kanban', 'Tasks', 'Api', 'ChatBot', 'Reports', 'Campaigns', 'PrivateChat', 'Teams', 'AllowedChannels'];
+const DEFAULT_MENU = [
+  "Groups",
+  "Kanban",
+  "Tasks",
+  "Api",
+  "ChatBot",
+  "Reports",
+  "Campaigns",
+  "PrivateChat",
+  "Teams",
+  "AllowedChannels",
+];
 
 // Canais permitidos por padrão conforme especificação 4.2
 const DEFAULT_ALLOWED_CHANNELS = [
-  'waba', 'baileys', 'whatsapp',
-  'telegram', 'webchat', 'webmail', 'wabaoauth',
-  'instagramoauth', 'facebookoauth',
+  "waba",
+  "baileys",
+  "whatsapp",
+  "telegram",
+  "webchat",
+  "webmail",
+  "wabaoauth",
+  "instagramoauth",
+  "facebookoauth",
 ];
 
 interface UserRow {
@@ -38,8 +57,8 @@ interface BivvoCfg {
 
 function normalizeBearer(rawToken: string, source: string) {
   const raw = rawToken.trim();
-  if (!raw) throw new Error('Token da API Bivvo vazio');
-  const hadBearerPrefix = raw.toLowerCase().startsWith('bearer ');
+  if (!raw) throw new Error("Token da API Bivvo vazio");
+  const hadBearerPrefix = raw.toLowerCase().startsWith("bearer ");
   const token = hadBearerPrefix ? raw.slice(7).trim() : raw;
   return {
     header: `Bearer ${token}`,
@@ -53,36 +72,45 @@ async function getBivvoAuth(supabase?: any) {
   if (supabase) {
     try {
       const { data } = await supabase
-        .from('admin_secrets')
-        .select('value')
-        .eq('key', 'bivvo_api_token')
+        .from("admin_secrets")
+        .select("value")
+        .eq("key", "bivvo_api_token")
         .maybeSingle();
-      const dbToken = typeof data?.value === 'string' ? data.value.trim() : '';
-      if (dbToken) return normalizeBearer(dbToken, 'admin_secrets.bivvo_api_token');
+      const dbToken = typeof data?.value === "string" ? data.value.trim() : "";
+      if (dbToken)
+        return normalizeBearer(dbToken, "admin_secrets.bivvo_api_token");
     } catch (err) {
-      console.warn('[Bivvo] Não foi possível ler admin_secrets.bivvo_api_token; usando fallback do ambiente.', err);
+      console.warn(
+        "[Bivvo] Não foi possível ler admin_secrets.bivvo_api_token; usando fallback do ambiente.",
+        err,
+      );
     }
   }
 
-  const envToken = Deno.env.get('BIVVO_API_TOKEN')?.trim();
-  if (!envToken) throw new Error('Token da API Bivvo não configurado');
-  return normalizeBearer(envToken, 'BIVVO_API_TOKEN');
+  const envToken = Deno.env.get("BIVVO_API_TOKEN")?.trim();
+  if (!envToken) throw new Error("Token da API Bivvo não configurado");
+  return normalizeBearer(envToken, "BIVVO_API_TOKEN");
 }
 
 function onlyDigits(value?: string | null) {
-  const digits = String(value || '').replace(/\D/g, '');
+  const digits = String(value || "").replace(/\D/g, "");
   return digits || undefined;
 }
 
 function redactSensitive(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redactSensitive);
-  if (!value || typeof value !== 'object') return value;
+  if (!value || typeof value !== "object") return value;
 
   const out: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
     const k = key.toLowerCase();
-    if (k.includes('token') || k.includes('password') || k.includes('secret') || k === 'authorization') {
-      out[key] = '[redacted]';
+    if (
+      k.includes("token") ||
+      k.includes("password") ||
+      k.includes("secret") ||
+      k === "authorization"
+    ) {
+      out[key] = "[redacted]";
     } else {
       out[key] = redactSensitive(val);
     }
@@ -92,7 +120,7 @@ function redactSensitive(value: unknown): unknown {
 
 function computeUsers(cfg: BivvoCfg): number {
   const planUsers: Record<string, number> = { standard: 3, silver: 6, pro: 12 };
-  const base = planUsers[cfg.plan || ''] || 0;
+  const base = planUsers[cfg.plan || ""] || 0;
   return Math.max(1, Math.floor(cfg.users || base || 1));
 }
 
@@ -124,7 +152,7 @@ function computeMaxConnections(cfg: BivvoCfg) {
   const ch = cfg.channels || {};
   // maxConnections representa a quantidade contratada; não deve duplicar waof
   // porque waof também é espelhado em wabaoauth dentro de channelConnectionLimits.
-  const total = ['waof', 'wano', 'ig', 'fb'].reduce((sum, key) => {
+  const total = ["waof", "wano", "ig", "fb"].reduce((sum, key) => {
     return sum + Math.max(0, Math.floor(Number(ch[key]) || 0));
   }, 0);
   return Math.max(1, total);
@@ -134,38 +162,48 @@ function buildMenuVisibility(cfg: BivvoCfg): string[] {
   const menu = [...DEFAULT_MENU];
   if (cfg.disparo) {
     // Insere logo após Groups conforme padrão Bivvo
-    menu.splice(1, 0, 'MassDispatch');
+    menu.splice(1, 0, "MassDispatch");
   }
   return menu;
 }
 
-async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string, supabase?: any) {
+async function callStoreTenant(
+  user: UserRow,
+  cfg: BivvoCfg,
+  asaasToken: string,
+  supabase?: any,
+) {
   const maxUsers = computeUsers(cfg);
   const limits = computeChannelLimits(cfg);
   const maxConnections = computeMaxConnections(cfg);
   const auth = await getBivvoAuth(supabase);
 
-  const isPJ = (user.person_type || '').toUpperCase() === 'JURIDICA';
+  const isPJ = (user.person_type || "").toUpperCase() === "JURIDICA";
   const tenantName = isPJ && user.company_name ? user.company_name : user.name;
 
   const storePayload = {
-    status: 'active',
+    status: "active",
     name: tenantName,
     maxUsers,
     maxConnections,
     acceptTerms: true,
     email: user.email,
-    password: '@Bivvo123456',
+    password: "@Bivvo123456",
     userName: user.name,
-    profile: 'admin',
-    paymentGateway: 'asaas',
+    profile: "admin",
+    paymentGateway: "asaas",
     asaasCustomerId: user.asaas_customer_id,
     asaasToken,
-    asaas: 'enabled',
+    asaas: "enabled",
   };
 
-  console.log('[Bivvo] storeTenant →', tenantName, `${maxUsers}u`, `${maxConnections}c`);
-  await log.info('bivvo-api', `storeTenant → ${tenantName}`, {
+  console.log(
+    "[Bivvo] storeTenant →",
+    tenantName,
+    `${maxUsers}u`,
+    `${maxConnections}c`,
+  );
+  await log.info("bivvo-api", `storeTenant → ${tenantName}`, {
     userId: user.id,
     endpoint: `${BIVVO_API_URL}/tenantApiStoreTenant`,
     authSource: auth.source,
@@ -178,23 +216,47 @@ async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string,
     payload: redactSensitive(storePayload),
   });
   const res = await fetch(`${BIVVO_API_URL}/tenantApiStoreTenant`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth.header },
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: auth.header,
+    },
     body: JSON.stringify(storePayload),
   });
   const text = await res.text();
   let json: any = null;
-  try { json = JSON.parse(text); } catch { /* keep text */ }
-  console.log('[Bivvo] storeTenant status:', res.status, 'body:', text.slice(0, 800));
-  await log.info('bivvo-api', `storeTenant response ${res.status}`, {
-    userId: user.id, status: res.status, ok: res.ok, body: json ?? text.slice(0, 2000),
+  try {
+    json = JSON.parse(text);
+  } catch {
+    /* keep text */
+  }
+  console.log(
+    "[Bivvo] storeTenant status:",
+    res.status,
+    "body:",
+    text.slice(0, 800),
+  );
+  await log.info("bivvo-api", `storeTenant response ${res.status}`, {
+    userId: user.id,
+    status: res.status,
+    ok: res.ok,
+    body: json ?? text.slice(0, 2000),
   });
   if (!res.ok) {
-    await log.error('bivvo-api', `storeTenant falhou ${res.status}`, { userId: user.id, body: text.slice(0, 2000) });
+    await log.error("bivvo-api", `storeTenant falhou ${res.status}`, {
+      userId: user.id,
+      body: text.slice(0, 2000),
+    });
     throw new Error(`storeTenant ${res.status}: ${text.slice(0, 500)}`);
   }
   const tenantId = String(
-    json?.tenant?.id ?? json?.id ?? json?.tenantId ?? json?.data?.id ?? json?.data?.tenant?.id ?? ''
+    json?.tenant?.id ??
+      json?.id ??
+      json?.tenantId ??
+      json?.data?.id ??
+      json?.data?.tenant?.id ??
+      "",
   );
   return { tenantId, response: json, maxUsers, maxConnections, limits };
 }
@@ -202,25 +264,45 @@ async function callStoreTenant(user: UserRow, cfg: BivvoCfg, asaasToken: string,
 async function callUpdateTenant(
   user: UserRow,
   cfg: BivvoCfg,
-  ctx: { maxUsers: number; maxConnections: number; limits: ReturnType<typeof computeChannelLimits>; status?: string },
+  ctx: {
+    maxUsers: number;
+    maxConnections: number;
+    limits: ReturnType<typeof computeChannelLimits>;
+    status?: string;
+  },
   supabase?: any,
 ) {
-  const tenantIdRaw = user.bivvo_tenant_id ? String(user.bivvo_tenant_id).trim() : '';
+  const tenantIdRaw = user.bivvo_tenant_id
+    ? String(user.bivvo_tenant_id).trim()
+    : "";
   if (!tenantIdRaw) {
-    throw new Error('Tenant Bivvo não encontrado (bivvo_tenant_id ausente). Provisione a conta antes de atualizar.');
+    throw new Error(
+      "Tenant Bivvo não encontrado (bivvo_tenant_id ausente). Provisione a conta antes de atualizar.",
+    );
   }
   const tenantIdNum = Number(tenantIdRaw);
-  const tenantIdField: number | string = /^\d+$/.test(tenantIdRaw) && Number.isSafeInteger(tenantIdNum) ? tenantIdNum : tenantIdRaw;
+  const tenantIdField: number | string =
+    /^\d+$/.test(tenantIdRaw) && Number.isSafeInteger(tenantIdNum)
+      ? tenantIdNum
+      : tenantIdRaw;
   const auth = await getBivvoAuth(supabase);
   const showRes = await fetch(`${BIVVO_API_URL}/tenantApiShowTenant`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth.header },
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: auth.header,
+    },
     body: JSON.stringify({ id: tenantIdField }),
   });
   const showText = await showRes.text();
   let showJson: any = null;
-  try { showJson = JSON.parse(showText); } catch { /* keep text */ }
-  await log.info('bivvo-api', `showTenant response ${showRes.status}`, {
+  try {
+    showJson = JSON.parse(showText);
+  } catch {
+    /* keep text */
+  }
+  await log.info("bivvo-api", `showTenant response ${showRes.status}`, {
     userId: user.id,
     tenantIdRaw,
     tenantIdType: typeof tenantIdField,
@@ -229,33 +311,47 @@ async function callUpdateTenant(
     body: redactSensitive(showJson ?? showText.slice(0, 2000)),
   });
   if (!showRes.ok) {
-    await log.error('bivvo-api', `showTenant falhou ${showRes.status}`, { userId: user.id, tenantIdRaw, body: showText.slice(0, 2000) });
+    await log.error("bivvo-api", `showTenant falhou ${showRes.status}`, {
+      userId: user.id,
+      tenantIdRaw,
+      body: showText.slice(0, 2000),
+    });
     throw new Error(`showTenant ${showRes.status}: ${showText.slice(0, 500)}`);
   }
 
-  const tenant = showJson?.tenant ?? showJson?.data?.tenant ?? showJson?.data ?? showJson;
+  const tenant =
+    showJson?.tenant ?? showJson?.data?.tenant ?? showJson?.data ?? showJson;
   const remoteIdentity = onlyDigits(tenant?.identity);
   const localIdentity = onlyDigits(user.cpf);
   const identity = remoteIdentity || localIdentity;
   if (!identity) {
-    throw new Error('Identidade CPF/CNPJ do tenant Bivvo não encontrada para atualização.');
+    throw new Error(
+      "Identidade CPF/CNPJ do tenant Bivvo não encontrada para atualização.",
+    );
   }
 
   const updatePayload: Record<string, unknown> = {
     identity,
-    status: ctx.status || 'active',
+    status: ctx.status || "active",
     maxUsers: ctx.maxUsers,
     maxConnections: ctx.maxConnections,
-    supportChatEnabled: 'enabled',
-    paymentGateway: 'asaas',
+    supportChatEnabled: "enabled",
+    paymentGateway: "asaas",
     menuVisibility: buildMenuVisibility(cfg),
     allowedChannels: DEFAULT_ALLOWED_CHANNELS,
     channelConnectionLimits: ctx.limits,
     oauthEnabled: false,
   };
 
-  console.log('[Bivvo] updateTenant → id:', tenantIdField, 'status:', updatePayload.status, 'payload keys:', Object.keys(updatePayload));
-  await log.info('bivvo-api', `updateTenant → id:${tenantIdField}`, {
+  console.log(
+    "[Bivvo] updateTenant → id:",
+    tenantIdField,
+    "status:",
+    updatePayload.status,
+    "payload keys:",
+    Object.keys(updatePayload),
+  );
+  await log.info("bivvo-api", `updateTenant → id:${tenantIdField}`, {
     userId: user.id,
     endpoint: `${BIVVO_API_URL}/tenantApiUpdateTenant`,
     authSource: auth.source,
@@ -267,41 +363,69 @@ async function callUpdateTenant(
     payload: redactSensitive(updatePayload),
   });
   const res = await fetch(`${BIVVO_API_URL}/tenantApiUpdateTenant`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: auth.header },
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: auth.header,
+    },
     body: JSON.stringify(updatePayload),
   });
   const text = await res.text();
-  console.log('[Bivvo] updateTenant status:', res.status, 'body:', text.slice(0, 800));
+  console.log(
+    "[Bivvo] updateTenant status:",
+    res.status,
+    "body:",
+    text.slice(0, 800),
+  );
   let json: any = null;
-  try { json = JSON.parse(text); } catch { /* keep text */ }
-  await log.info('bivvo-api', `updateTenant response ${res.status}`, {
-    userId: user.id, status: res.status, ok: res.ok, body: json ?? text.slice(0, 2000),
+  try {
+    json = JSON.parse(text);
+  } catch {
+    /* keep text */
+  }
+  await log.info("bivvo-api", `updateTenant response ${res.status}`, {
+    userId: user.id,
+    status: res.status,
+    ok: res.ok,
+    body: json ?? text.slice(0, 2000),
   });
   if (!res.ok) {
-    await log.error('bivvo-api', `updateTenant falhou ${res.status}`, { userId: user.id, body: text.slice(0, 2000) });
+    await log.error("bivvo-api", `updateTenant falhou ${res.status}`, {
+      userId: user.id,
+      body: text.slice(0, 2000),
+    });
     throw new Error(`updateTenant ${res.status}: ${text.slice(0, 500)}`);
   }
   return json ?? { raw: text };
 }
 
-export async function provisionBivvoTenant(user: UserRow, cfg: BivvoCfg, supabase?: any) {
+export async function provisionBivvoTenant(
+  user: UserRow,
+  cfg: BivvoCfg,
+  supabase?: any,
+) {
   // Se já foi totalmente provisionado, não refaz
   if (user.bivvo_tenant_id && user.tenant_provisioned_at) {
-    console.log('[Bivvo] Tenant já provisionado:', user.id, '→', user.bivvo_tenant_id);
+    console.log(
+      "[Bivvo] Tenant já provisionado:",
+      user.id,
+      "→",
+      user.bivvo_tenant_id,
+    );
     return { skipped: true, tenantId: user.bivvo_tenant_id };
   }
 
-  const asaasToken = Deno.env.get('BIVVO_ASAAS_TOKEN');
-  if (!asaasToken) throw new Error('BIVVO_ASAAS_TOKEN não configurado');
-  if (!user.asaas_customer_id) throw new Error('Cliente sem asaas_customer_id');
+  const asaasToken = Deno.env.get("BIVVO_ASAAS_TOKEN");
+  if (!asaasToken) throw new Error("BIVVO_ASAAS_TOKEN não configurado");
+  if (!user.asaas_customer_id) throw new Error("Cliente sem asaas_customer_id");
 
   // Sempre recomputa contexto (limites/usuários) — necessário para o update também
   const limits = computeChannelLimits(cfg);
   const maxUsers = computeUsers(cfg);
   const maxConnections = computeMaxConnections(cfg);
 
-  let tenantId = user.bivvo_tenant_id || '';
+  let tenantId = user.bivvo_tenant_id || "";
   let storeResponse: any = null;
 
   // ── Fase 1: Store (só se ainda não temos tenant_id) ──
@@ -312,79 +436,103 @@ export async function provisionBivvoTenant(user: UserRow, cfg: BivvoCfg, supabas
 
     // Persiste tenant_id IMEDIATAMENTE para não perder caso o update falhe
     if (supabase && tenantId) {
-      await supabase.from('users')
+      await supabase
+        .from("users")
         .update({ bivvo_tenant_id: tenantId })
-        .eq('id', user.id);
-      console.log('[Bivvo] tenant_id salvo:', tenantId);
+        .eq("id", user.id);
+      console.log("[Bivvo] tenant_id salvo:", tenantId);
     }
 
     // Pequena espera para a Bivvo consolidar o tenant antes do update
     await new Promise((r) => setTimeout(r, 1500));
   } else {
-    console.log('[Bivvo] Tenant já existia (retomando update):', tenantId);
+    console.log("[Bivvo] Tenant já existia (retomando update):", tenantId);
   }
 
   // ── Fase 2: Update (sempre referenciando pelo tenant id) ──
   const userForUpdate: UserRow = { ...user, bivvo_tenant_id: tenantId };
-  const updateResponse = await callUpdateTenant(userForUpdate, cfg, { maxUsers, maxConnections, limits }, supabase);
+  const updateResponse = await callUpdateTenant(
+    userForUpdate,
+    cfg,
+    { maxUsers, maxConnections, limits },
+    supabase,
+  );
 
   return { skipped: false, tenantId, storeResponse, updateResponse };
 }
 
 export async function runProvisionAndPersist(supabase: any, userId: string) {
   const { data: user } = await supabase
-    .from('users')
-    .select('id, name, email, cpf, company_name, person_type, asaas_customer_id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at')
-    .eq('id', userId)
+    .from("users")
+    .select(
+      "id, name, email, cpf, company_name, person_type, asaas_customer_id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at",
+    )
+    .eq("id", userId)
     .maybeSingle();
-  if (!user) throw new Error('Usuário não encontrado: ' + userId);
+  if (!user) throw new Error("Usuário não encontrado: " + userId);
   if (!user.bivvo_config) {
-    console.warn('[Bivvo] User sem bivvo_config, pulando provisionamento:', userId);
-    return { skipped: true, reason: 'no_config' };
+    console.warn(
+      "[Bivvo] User sem bivvo_config, pulando provisionamento:",
+      userId,
+    );
+    return { skipped: true, reason: "no_config" };
   }
   try {
     const res = await provisionBivvoTenant(user, user.bivvo_config, supabase);
     const nowIso = new Date().toISOString();
-    await supabase.from('users').update({
-      bivvo_tenant_id: res.tenantId || user.bivvo_tenant_id,
-      tenant_provisioned_at: nowIso,
-      tenant_provision_error: null,
-      bivvo_config_synced_bivvo: user.bivvo_config,
-      bivvo_config_synced_bivvo_at: nowIso,
-    }).eq('id', userId);
+    await supabase
+      .from("users")
+      .update({
+        bivvo_tenant_id: res.tenantId || user.bivvo_tenant_id,
+        tenant_provisioned_at: nowIso,
+        tenant_provision_error: null,
+        bivvo_config_synced_bivvo: user.bivvo_config,
+        bivvo_config_synced_bivvo_at: nowIso,
+      })
+      .eq("id", userId);
     // Log
     try {
-      await supabase.from('bivvo_config_change_logs').insert({
+      await supabase.from("bivvo_config_change_logs").insert({
         user_id: userId,
-        action: 'sync_bivvo',
+        action: "sync_bivvo",
         config_after: user.bivvo_config,
         bivvo_relevant_changed: true,
         asaas_value_changed: false,
-        notes: `Provisionamento tenant ${res.tenantId || user.bivvo_tenant_id || ''}`.trim(),
+        notes:
+          `Provisionamento tenant ${res.tenantId || user.bivvo_tenant_id || ""}`.trim(),
       });
-    } catch (e) { console.error('[Bivvo] log sync_bivvo falhou:', e); }
+    } catch (e) {
+      console.error("[Bivvo] log sync_bivvo falhou:", e);
+    }
     return res;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[Bivvo] Erro provisionando tenant:', err);
-    await log.error('bivvo-api', `runProvisionAndPersist erro: ${msg}`, { userId });
-    await supabase.from('users').update({
-      tenant_provision_error: msg.slice(0, 1000),
-    }).eq('id', userId);
+    console.error("[Bivvo] Erro provisionando tenant:", err);
+    await log.error("bivvo-api", `runProvisionAndPersist erro: ${msg}`, {
+      userId,
+    });
+    await supabase
+      .from("users")
+      .update({
+        tenant_provision_error: msg.slice(0, 1000),
+      })
+      .eq("id", userId);
     return { skipped: false, error: msg };
   }
 }
 
 export async function runUpdateAndPersist(supabase: any, userId: string) {
   const { data: user } = await supabase
-    .from('users')
-    .select('id, name, email, cpf, company_name, person_type, asaas_customer_id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at')
-    .eq('id', userId)
+    .from("users")
+    .select(
+      "id, name, email, cpf, company_name, person_type, asaas_customer_id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at",
+    )
+    .eq("id", userId)
     .maybeSingle();
-  if (!user) throw new Error('Usuário não encontrado: ' + userId);
+  if (!user) throw new Error("Usuário não encontrado: " + userId);
   if (!user.bivvo_config) {
-    console.warn('[Bivvo] User sem bivvo_config, pulando atualização:', userId);
-    return { skipped: true, reason: 'no_config' };
+    console.warn("[Bivvo] User sem bivvo_config, pulando atualização:", userId);
+    return { skipped: true, reason: "no_config" };
   }
 
   const cfg = user.bivvo_config as BivvoCfg;
@@ -393,44 +541,65 @@ export async function runUpdateAndPersist(supabase: any, userId: string) {
   const maxConnections = computeMaxConnections(cfg);
 
   try {
-    await log.info('bivvo-api', `runUpdateAndPersist → ${user.id}`, { userId });
-    const updateResponse = await callUpdateTenant(user, cfg, { maxUsers, maxConnections, limits }, supabase);
+    await log.info("bivvo-api", `runUpdateAndPersist → ${user.id}`, { userId });
+    const updateResponse = await callUpdateTenant(
+      user,
+      cfg,
+      { maxUsers, maxConnections, limits },
+      supabase,
+    );
     const nowIso = new Date().toISOString();
-    await supabase.from('users').update({
-      tenant_provisioned_at: nowIso,
-      tenant_provision_error: null,
-      bivvo_config_synced_bivvo: cfg,
-      bivvo_config_synced_bivvo_at: nowIso,
-    }).eq('id', userId);
+    await supabase
+      .from("users")
+      .update({
+        tenant_provisioned_at: nowIso,
+        tenant_provision_error: null,
+        bivvo_config_synced_bivvo: cfg,
+        bivvo_config_synced_bivvo_at: nowIso,
+      })
+      .eq("id", userId);
     try {
-      await supabase.from('bivvo_config_change_logs').insert({
+      await supabase.from("bivvo_config_change_logs").insert({
         user_id: userId,
-        action: 'sync_bivvo',
+        action: "sync_bivvo",
         config_after: cfg,
         bivvo_relevant_changed: true,
         asaas_value_changed: false,
-        notes: `Atualização tenant ${user.bivvo_tenant_id || ''}`.trim(),
+        notes: `Atualização tenant ${user.bivvo_tenant_id || ""}`.trim(),
       });
-    } catch (e) { console.error('[Bivvo] log sync_bivvo falhou:', e); }
-    return { skipped: false, tenantId: user.bivvo_tenant_id || null, updateResponse };
+    } catch (e) {
+      console.error("[Bivvo] log sync_bivvo falhou:", e);
+    }
+    return {
+      skipped: false,
+      tenantId: user.bivvo_tenant_id || null,
+      updateResponse,
+    };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[Bivvo] Erro atualizando tenant:', err);
-    await log.error('bivvo-api', `runUpdateAndPersist erro: ${msg}`, { userId });
-    await supabase.from('users').update({
-      tenant_provision_error: msg.slice(0, 1000),
-    }).eq('id', userId);
+    console.error("[Bivvo] Erro atualizando tenant:", err);
+    await log.error("bivvo-api", `runUpdateAndPersist erro: ${msg}`, {
+      userId,
+    });
+    await supabase
+      .from("users")
+      .update({
+        tenant_provision_error: msg.slice(0, 1000),
+      })
+      .eq("id", userId);
     return { skipped: false, error: msg };
   }
 }
 
 export async function runInactivateAndPersist(supabase: any, userId: string) {
   const { data: user } = await supabase
-    .from('users')
-    .select('id, name, email, cpf, company_name, person_type, asaas_customer_id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at')
-    .eq('id', userId)
+    .from("users")
+    .select(
+      "id, name, email, cpf, company_name, person_type, asaas_customer_id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at",
+    )
+    .eq("id", userId)
     .maybeSingle();
-  if (!user) throw new Error('Usuário não encontrado: ' + userId);
+  if (!user) throw new Error("Usuário não encontrado: " + userId);
 
   const cfg = (user.bivvo_config as BivvoCfg) || {};
   const limits = computeChannelLimits(cfg);
@@ -438,20 +607,39 @@ export async function runInactivateAndPersist(supabase: any, userId: string) {
   const maxConnections = computeMaxConnections(cfg);
 
   try {
-    await log.info('bivvo-api', `runInactivateAndPersist → ${user.id}`, { userId });
-    const updateResponse = await callUpdateTenant(user, cfg, { maxUsers, maxConnections, limits, status: 'inactive' }, supabase);
-    await supabase.from('users').update({
-      status: 'inativo',
-      tenant_provision_error: null,
-    }).eq('id', userId);
-    return { skipped: false, tenantId: user.bivvo_tenant_id || null, updateResponse };
+    await log.info("bivvo-api", `runInactivateAndPersist → ${user.id}`, {
+      userId,
+    });
+    const updateResponse = await callUpdateTenant(
+      user,
+      cfg,
+      { maxUsers, maxConnections, limits, status: "inactive" },
+      supabase,
+    );
+    await supabase
+      .from("users")
+      .update({
+        status: "inativo",
+        tenant_provision_error: null,
+      })
+      .eq("id", userId);
+    return {
+      skipped: false,
+      tenantId: user.bivvo_tenant_id || null,
+      updateResponse,
+    };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[Bivvo] Erro inativando tenant:', err);
-    await log.error('bivvo-api', `runInactivateAndPersist erro: ${msg}`, { userId });
-    await supabase.from('users').update({
-      tenant_provision_error: msg.slice(0, 1000),
-    }).eq('id', userId);
+    console.error("[Bivvo] Erro inativando tenant:", err);
+    await log.error("bivvo-api", `runInactivateAndPersist erro: ${msg}`, {
+      userId,
+    });
+    await supabase
+      .from("users")
+      .update({
+        tenant_provision_error: msg.slice(0, 1000),
+      })
+      .eq("id", userId);
     return { skipped: false, error: msg };
   }
 }
