@@ -224,7 +224,7 @@ async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_
         // Recarrega o registro completo do banco
         const { data: fresh } = await supabase
           .from('users')
-          .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status, bivvo_status, bivvo_status_checked_at')
+          .select('id, name, email, whatsapp, cpf, asaas_customer_id, bivvo_tenant_id, status, bivvo_status, bivvo_status_checked_at')
           .eq('asaas_customer_id', u.asaas_customer_id).maybeSingle();
         userMap.set(u.asaas_customer_id, fresh || u);
       } catch (e) {
