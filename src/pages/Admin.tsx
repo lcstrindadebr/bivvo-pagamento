@@ -26,7 +26,7 @@ import { useSaveSetting } from '@/hooks/useSaveSetting';
 
 import bivvoLogo from '@/assets/bivvo-logo.png';
 import { formatCurrency } from '@/lib/validators';
-import { CANAIS_DEF } from '@/lib/bivvo-calc';
+import { CANAIS_DEF, quoteBivvo, normalizeBivvoConfig, configsEqual, safeRecurring, fmtBRL } from '@/lib/bivvo-calc';
 
 interface Plan {
   id: string;
