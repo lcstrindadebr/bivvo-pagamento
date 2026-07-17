@@ -163,6 +163,127 @@ const Admin = () => {
     }
   };
 
+  const beginEditConfig = () => {
+    const base = contractedConfig || {};
+    setConfigForm({
+      plan: String(base.plan || (plans[0]?.slug ?? 'standard')),
+      users: Number(base.users) || 1,
+      channels: { ...(base.channels || {}) },
+      telefonia: !!base.telefonia,
+      disparo: !!base.disparo,
+      protagonista: !!base.protagonista,
+    });
+    setIsEditingConfig(true);
+  };
+
+  const handleSaveConfig = async () => {
+    if (!tenantInfo?.id) {
+      toast({ title: 'Cliente não encontrado', variant: 'destructive' });
+      return;
+    }
+    setSavingConfig(true);
+    try {
+      const payload = {
+        plan: configForm.plan,
+        users: Number(configForm.users) || 1,
+        channels: Object.fromEntries(Object.entries(configForm.channels).filter(([, v]) => Number(v) > 0).map(([k, v]) => [k, Number(v)])),
+        telefonia: !!configForm.telefonia,
+        disparo: !!configForm.disparo,
+        protagonista: !!configForm.protagonista,
+      };
+      const res: any = await adminPost('save-bivvo-config', { userId: tenantInfo.id, config: payload });
+      setContractedConfig(payload);
+      setIsEditingConfig(false);
+      const flags: string[] = [];
+      if (res?.needsBivvoUpdate) flags.push('Bivvo');
+      if (res?.needsAsaasUpdate) flags.push('Asaas');
+      toast({
+        title: 'Configuração salva',
+        description: flags.length
+          ? `Pendente sincronizar: ${flags.join(' + ')}`
+          : 'Sem alterações que exijam sincronização.',
+      });
+      await reloadTenantInfo();
+      await loadConfigLogs();
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e?.message || 'Falha ao salvar configuração.', variant: 'destructive' });
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleSyncAsaas = async () => {
+    if (!tenantInfo?.id || !selectedSub?.id) return;
+    if (!confirm('Atualizar o valor recorrente desta assinatura no Asaas com base na configuração atual?')) return;
+    setSyncingAsaas(true);
+    try {
+      const res: any = await adminPost('update-subscription-value', {
+        userId: tenantInfo.id,
+        subscriptionId: selectedSub.id,
+      });
+      toast({
+        title: 'Valor Asaas atualizado',
+        description: `De ${fmtBRL(Number(res?.previousValue) || 0)} para ${fmtBRL(Number(res?.newValue) || 0)}`,
+      });
+      await reloadTenantInfo();
+      await loadConfigLogs();
+    } catch (e: any) {
+      toast({ title: 'Erro ao sincronizar Asaas', description: e?.message || 'Falha', variant: 'destructive' });
+    } finally {
+      setSyncingAsaas(false);
+    }
+  };
+
+  const handleRollbackConfig = async () => {
+    if (!tenantInfo?.id) return;
+    if (!confirm('Restaurar a configuração anterior? Isso substitui a atual.')) return;
+    try {
+      await adminPost('rollback-bivvo-config', { userId: tenantInfo.id });
+      toast({ title: 'Configuração restaurada', description: 'Reveja e sincronize se necessário.' });
+      await reloadTenantInfo();
+      await loadConfigLogs();
+    } catch (e: any) {
+      toast({ title: 'Erro ao restaurar', description: e?.message || 'Falha', variant: 'destructive' });
+    }
+  };
+
+  const reloadTenantInfo = async () => {
+    if (!tenantInfo?.id && !selectedSub?.customer) return;
+    const q = supabase.from('users')
+      .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name, bivvo_config_synced_bivvo, bivvo_config_synced_asaas_value, bivvo_config_previous');
+    const { data } = tenantInfo?.id
+      ? await q.eq('id', tenantInfo.id).maybeSingle()
+      : await q.eq('asaas_customer_id', selectedSub!.customer).maybeSingle();
+    if (data) {
+      setTenantInfo(data as any);
+      setContractedConfig(data.bivvo_config || null);
+    }
+  };
+
+  const loadConfigLogs = async () => {
+    if (!tenantInfo?.id) return;
+    try {
+      const res: any = await adminFetch(`list-config-logs&userId=${tenantInfo.id}`);
+      setConfigLogs(res?.data || []);
+    } catch (e) {
+      console.error('loadConfigLogs', e);
+    }
+  };
+
+  // Derivados: precisa sincronizar Bivvo/Asaas?
+  const needsBivvoSync = (() => {
+    if (!contractedConfig) return false;
+    if (!tenantInfo?.bivvo_config_synced_bivvo) return true;
+    return !configsEqual(contractedConfig, tenantInfo.bivvo_config_synced_bivvo);
+  })();
+  const currentRecurring = safeRecurring(contractedConfig);
+  const syncedAsaasValue = tenantInfo?.bivvo_config_synced_asaas_value != null ? Number(tenantInfo.bivvo_config_synced_asaas_value) : null;
+  const needsAsaasSync = (() => {
+    if (!contractedConfig || currentRecurring == null) return false;
+    if (syncedAsaasValue == null) return false; // sem baseline não força; primeiro pgto define
+    return Math.abs(currentRecurring - syncedAsaasValue) > 0.005;
+  })();
+
   // Contato do cliente (Asaas + local)
   const [contactForm, setContactForm] = useState({
     name: '', email: '', mobilePhone: '', cpfCnpj: '',
