@@ -1144,7 +1144,7 @@ serve(async (req) => {
     if (action === 'refresh-all-bivvo-statuses' && req.method === 'POST') {
       const { data: usersWithTenant, error } = await supabase
         .from('users')
-        .select('id, name, email, asaas_customer_id, tenant_bivvo, bivvo_status, bivvo_status_checked_at')
+        .select('id, name, email, asaas_customer_id, bivvo_tenant_id, bivvo_status, bivvo_status_checked_at')
         .not('asaas_customer_id', 'is', null);
       if (error) throw error;
 
