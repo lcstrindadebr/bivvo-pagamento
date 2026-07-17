@@ -441,17 +441,40 @@ const Admin = () => {
   const handleSaveTenant = async () => {
     if (!selectedSub) return;
     setSavingTenant(true);
+    const trimmed = tenantBivvo.trim();
     try {
       await adminPost('update-user-tenant', {
         asaasCustomerId: selectedSub.customer,
-        tenantBivvo: tenantBivvo.trim(),
+        tenantBivvo: trimmed,
       });
       toast({ title: 'Salvo', description: 'Tenant Bivvo atualizado.' });
       // reflete no card selecionado + lista
-      setSelectedSub(prev => prev ? { ...prev, tenantBivvo: tenantBivvo.trim() } : prev);
-      setSubscriptions(prev => prev.map(s => s.customer === selectedSub.customer ? { ...s, tenantBivvo: tenantBivvo.trim() } : s));
+      setSelectedSub(prev => prev ? { ...prev, tenantBivvo: trimmed, bivvoStatus: trimmed ? 'Verificando...' : 'Inserir ID' } : prev);
+      setSubscriptions(prev => prev.map(s => s.customer === selectedSub.customer
+        ? { ...s, tenantBivvo: trimmed, bivvoStatus: trimmed ? 'Verificando...' : 'Inserir ID' }
+        : s));
       setIsEditingTenant(false);
       setConfirmTenantOpen(false);
+
+      // Dispara consulta imediata ao Bivvo para refletir o status na hora
+      if (trimmed) {
+        try {
+          const resp = await adminPost('check-bivvo-tenant', { tenantId: trimmed });
+          let liveStatus = 'Não possui Tenant';
+          if (resp?.ok && resp?.exists) {
+            let tenant: any = resp.tenant?.tenant ?? resp.tenant?.data?.tenant ?? resp.tenant?.data ?? resp.tenant;
+            if (Array.isArray(tenant)) tenant = tenant[0];
+            const st = String(tenant?.status ?? '').toLowerCase().trim();
+            if (st === 'active') liveStatus = 'active';
+            else if (st === 'inactive') liveStatus = 'inactive';
+            else if (tenant && (tenant.id || tenant.name)) liveStatus = st || 'inactive';
+          }
+          setSelectedSub(prev => prev ? { ...prev, bivvoStatus: liveStatus } : prev);
+          setSubscriptions(prev => prev.map(s => s.customer === selectedSub.customer ? { ...s, bivvoStatus: liveStatus } : s));
+        } catch (e) {
+          console.warn('Falha ao consultar status Bivvo após salvar:', e);
+        }
+      }
     } catch (err) {
       toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao salvar tenant', variant: 'destructive' });
     } finally {

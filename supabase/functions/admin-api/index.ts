@@ -82,7 +82,7 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
     };
 
     // No tenant assigned → status "Inserir ID"
-    if (!u.tenant_bivvo || String(u.tenant_bivvo).trim() === '') {
+    if (!u.bivvo_tenant_id || String(u.bivvo_tenant_id).trim() === '') {
       await persist('Inserir ID');
       return;
     }
@@ -93,7 +93,7 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
       return;
     }
 
-    const parsedId = Number(String(u.tenant_bivvo).trim());
+    const parsedId = Number(String(u.bivvo_tenant_id).trim());
     if (!Number.isFinite(parsedId)) {
       await persist('ID inválido');
       return;
@@ -139,10 +139,10 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
 async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_URL: string, ASAAS_API_KEY: string) {
   if (customerIds.length === 0) return new Map();
 
-  // 1. Try local DB first (rico: pega tenant_bivvo + contatos já salvos)
+  // 1. Try local DB first (rico: pega bivvo_tenant_id + contatos já salvos)
   const { data: localUsers } = await supabase
     .from('users')
-    .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status, bivvo_status, bivvo_status_checked_at')
+    .select('id, name, email, whatsapp, cpf, asaas_customer_id, bivvo_tenant_id, status, bivvo_status, bivvo_status_checked_at')
     .in('asaas_customer_id', customerIds);
 
   const userMap = new Map(localUsers?.map((u: any) => [u.asaas_customer_id, u]) || []);
@@ -224,7 +224,7 @@ async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_
         // Recarrega o registro completo do banco
         const { data: fresh } = await supabase
           .from('users')
-          .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status, bivvo_status, bivvo_status_checked_at')
+          .select('id, name, email, whatsapp, cpf, asaas_customer_id, bivvo_tenant_id, status, bivvo_status, bivvo_status_checked_at')
           .eq('asaas_customer_id', u.asaas_customer_id).maybeSingle();
         userMap.set(u.asaas_customer_id, fresh || u);
       } catch (e) {
@@ -311,8 +311,8 @@ serve(async (req) => {
             customerEmail: userData?.email || '',
             customerWhatsapp: userData?.whatsapp || '',
             customerCpf: userData?.cpf || '',
-            tenantBivvo: userData?.tenant_bivvo || '',
-            bivvoStatus: userData?.bivvo_status || (userData?.tenant_bivvo ? 'Não possui Tenant' : 'Inserir ID'),
+            tenantBivvo: userData?.bivvo_tenant_id || '',
+            bivvoStatus: userData?.bivvo_status || (userData?.bivvo_tenant_id ? 'Não possui Tenant' : 'Inserir ID'),
             localUserId: userData?.id || null,
             paymentStatus: isOverdue ? 'inadimplente' : 'adimplente',
           };
@@ -1076,14 +1076,20 @@ serve(async (req) => {
 
       if (existing) {
         const { error } = await supabase.from('users')
-          .update({ tenant_bivvo: tenantBivvo || null, bivvo_status: null, bivvo_status_checked_at: null })
+          .update({
+            bivvo_tenant_id: tenantBivvo || null,
+            bivvo_status: null,
+            bivvo_status_checked_at: null,
+            tenant_provisioned_at: null,
+            tenant_provision_error: null,
+          })
           .eq('id', existing.id);
         if (error) throw error;
       
       } else {
         const { error } = await supabase.from('users').insert({
           asaas_customer_id: asaasCustomerId,
-          tenant_bivvo: tenantBivvo || null,
+          bivvo_tenant_id: tenantBivvo || null,
           name: 'Cliente Asaas',
           email: `${asaasCustomerId}@asaas.local`,
           status: 'active',
@@ -1138,7 +1144,7 @@ serve(async (req) => {
     if (action === 'refresh-all-bivvo-statuses' && req.method === 'POST') {
       const { data: usersWithTenant, error } = await supabase
         .from('users')
-        .select('id, name, email, asaas_customer_id, tenant_bivvo, bivvo_status, bivvo_status_checked_at')
+        .select('id, name, email, asaas_customer_id, bivvo_tenant_id, bivvo_status, bivvo_status_checked_at')
         .not('asaas_customer_id', 'is', null);
       if (error) throw error;
 
