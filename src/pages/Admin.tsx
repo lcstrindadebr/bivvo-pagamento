@@ -475,7 +475,7 @@ const Admin = () => {
       });
       // Recarrega tenantInfo
       const { data: refreshed } = await supabase.from('users')
-        .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name')
+        .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name, bivvo_config_synced_bivvo, bivvo_config_synced_asaas_value, bivvo_config_previous')
         .eq('id', tenantInfo.id)
         .maybeSingle();
       if (refreshed) {
@@ -504,7 +504,7 @@ const Admin = () => {
       if (data?.result?.error) throw new Error(data.result.error);
       toast({ title: 'Conta inativada', description: 'A conta Bivvo foi marcada como inativa via API.' });
       const { data: refreshed } = await supabase.from('users')
-        .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name')
+        .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name, bivvo_config_synced_bivvo, bivvo_config_synced_asaas_value, bivvo_config_previous')
         .eq('id', tenantInfo.id)
         .maybeSingle();
       if (refreshed) setTenantInfo(refreshed);
