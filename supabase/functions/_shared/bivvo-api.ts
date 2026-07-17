@@ -118,6 +118,48 @@ function redactSensitive(value: unknown): unknown {
   return out;
 }
 
+function normalizeTenantResponse(raw: any): any {
+  const tenant = raw?.tenant ?? raw?.data?.tenant ?? raw?.data ?? raw;
+  return Array.isArray(tenant) ? tenant[0] : tenant;
+}
+
+function extractApiError(body: unknown): string {
+  if (typeof body === "string") return body;
+  if (body && typeof body === "object") {
+    const obj = body as Record<string, unknown>;
+    return String(obj.error || obj.message || JSON.stringify(obj));
+  }
+  return String(body ?? "Erro desconhecido");
+}
+
+async function postBivvoJson(
+  endpoint: string,
+  authHeader: string,
+  payload: Record<string, unknown>,
+) {
+  const res = await fetch(`${BIVVO_API_URL}/${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: authHeader,
+    },
+    body: JSON.stringify(payload),
+  });
+  const text = await res.text();
+  let body: any = null;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = text;
+  }
+  return { res, text, body };
+}
+
+function isTicketProtocolError(body: unknown) {
+  return extractApiError(body).includes("ERR_NO_TICKET_PROTOCOL_FOUND");
+}
+
 function computeUsers(cfg: BivvoCfg): number {
   const planUsers: Record<string, number> = { standard: 3, silver: 6, pro: 12 };
   const base = planUsers[cfg.plan || ""] || 0;
@@ -286,62 +328,60 @@ async function callUpdateTenant(
       ? tenantIdNum
       : tenantIdRaw;
   const auth = await getBivvoAuth(supabase);
-  const showRes = await fetch(`${BIVVO_API_URL}/tenantApiShowTenant`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: auth.header,
-    },
-    body: JSON.stringify({ id: tenantIdField }),
+  const show = await postBivvoJson("tenantApiShowTenant", auth.header, {
+    id: tenantIdField,
   });
-  const showText = await showRes.text();
-  let showJson: any = null;
-  try {
-    showJson = JSON.parse(showText);
-  } catch {
-    /* keep text */
-  }
   await log.info("bivvo-api", `showTenant response ${showRes.status}`, {
     userId: user.id,
     tenantIdRaw,
     tenantIdType: typeof tenantIdField,
-    status: showRes.status,
-    ok: showRes.ok,
-    body: redactSensitive(showJson ?? showText.slice(0, 2000)),
+    status: show.res.status,
+    ok: show.res.ok,
+    body: redactSensitive(show.body ?? show.text.slice(0, 2000)),
   });
-  if (!showRes.ok) {
+  if (!show.res.ok) {
     await log.error("bivvo-api", `showTenant falhou ${showRes.status}`, {
       userId: user.id,
       tenantIdRaw,
-      body: showText.slice(0, 2000),
+      body: show.text.slice(0, 2000),
     });
-    throw new Error(`showTenant ${showRes.status}: ${showText.slice(0, 500)}`);
+    throw new Error(`showTenant ${show.res.status}: ${show.text.slice(0, 500)}`);
   }
 
-  const tenant =
-    showJson?.tenant ?? showJson?.data?.tenant ?? showJson?.data ?? showJson;
+  const tenant = normalizeTenantResponse(show.body);
   const remoteIdentity = onlyDigits(tenant?.identity);
   const localIdentity = onlyDigits(user.cpf);
   const identity = remoteIdentity || localIdentity;
-  if (!identity) {
+  if (!identity && ctx.status !== "inactive") {
     throw new Error(
       "Identidade CPF/CNPJ do tenant Bivvo não encontrada para atualização.",
     );
   }
 
-  const updatePayload: Record<string, unknown> = {
-    identity,
+  const basePayload: Record<string, unknown> = {
+    id: tenantIdField,
     status: ctx.status || "active",
+  };
+  if (identity) basePayload.identity = identity;
+
+  const fullUpdatePayload: Record<string, unknown> = {
+    ...basePayload,
     maxUsers: ctx.maxUsers,
     maxConnections: ctx.maxConnections,
-    supportChatEnabled: "enabled",
     paymentGateway: "asaas",
     menuVisibility: buildMenuVisibility(cfg),
     allowedChannels: DEFAULT_ALLOWED_CHANNELS,
     channelConnectionLimits: ctx.limits,
     oauthEnabled: false,
   };
+
+  const safeUpdatePayload: Record<string, unknown> = {
+    ...basePayload,
+    maxUsers: ctx.maxUsers,
+    maxConnections: ctx.maxConnections,
+  };
+
+  const updatePayload = ctx.status === "inactive" ? basePayload : fullUpdatePayload;
 
   console.log(
     "[Bivvo] updateTenant → id:",
@@ -362,33 +402,40 @@ async function callUpdateTenant(
     remoteIdentityFound: Boolean(remoteIdentity),
     payload: redactSensitive(updatePayload),
   });
-  const res = await fetch(`${BIVVO_API_URL}/tenantApiUpdateTenant`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: auth.header,
-    },
-    body: JSON.stringify(updatePayload),
-  });
-  const text = await res.text();
+  let update = await postBivvoJson(
+    "tenantApiUpdateTenant",
+    auth.header,
+    updatePayload,
+  );
+
+  if (!update.res.ok && isTicketProtocolError(update.body) && ctx.status !== "inactive") {
+    await log.info("bivvo-api", "updateTenant retry com payload mínimo", {
+      userId: user.id,
+      status: update.res.status,
+      body: redactSensitive(update.body),
+      payload: redactSensitive(safeUpdatePayload),
+    });
+    update = await postBivvoJson(
+      "tenantApiUpdateTenant",
+      auth.header,
+      safeUpdatePayload,
+    );
+  }
+
+  const res = update.res;
+  const text = update.text;
+  const json = update.body;
   console.log(
     "[Bivvo] updateTenant status:",
     res.status,
     "body:",
     text.slice(0, 800),
   );
-  let json: any = null;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    /* keep text */
-  }
   await log.info("bivvo-api", `updateTenant response ${res.status}`, {
     userId: user.id,
     status: res.status,
     ok: res.ok,
-    body: json ?? text.slice(0, 2000),
+    body: redactSensitive(json ?? text.slice(0, 2000)),
   });
   if (!res.ok) {
     await log.error("bivvo-api", `updateTenant falhou ${res.status}`, {
