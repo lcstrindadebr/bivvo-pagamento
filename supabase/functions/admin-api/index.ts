@@ -82,7 +82,7 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
     };
 
     // No tenant assigned → status "Inserir ID"
-    if (!u.tenant_bivvo || String(u.tenant_bivvo).trim() === '') {
+    if (!u.bivvo_tenant_id || String(u.bivvo_tenant_id).trim() === '') {
       await persist('Inserir ID');
       return;
     }
@@ -93,7 +93,7 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
       return;
     }
 
-    const parsedId = Number(String(u.tenant_bivvo).trim());
+    const parsedId = Number(String(u.bivvo_tenant_id).trim());
     if (!Number.isFinite(parsedId)) {
       await persist('ID inválido');
       return;
