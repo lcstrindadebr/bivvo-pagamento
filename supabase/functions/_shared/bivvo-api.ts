@@ -118,48 +118,6 @@ function redactSensitive(value: unknown): unknown {
   return out;
 }
 
-function normalizeTenantResponse(raw: any): any {
-  const tenant = raw?.tenant ?? raw?.data?.tenant ?? raw?.data ?? raw;
-  return Array.isArray(tenant) ? tenant[0] : tenant;
-}
-
-function extractApiError(body: unknown): string {
-  if (typeof body === "string") return body;
-  if (body && typeof body === "object") {
-    const obj = body as Record<string, unknown>;
-    return String(obj.error || obj.message || JSON.stringify(obj));
-  }
-  return String(body ?? "Erro desconhecido");
-}
-
-async function postBivvoJson(
-  endpoint: string,
-  authHeader: string,
-  payload: Record<string, unknown>,
-) {
-  const res = await fetch(`${BIVVO_API_URL}/${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: authHeader,
-    },
-    body: JSON.stringify(payload),
-  });
-  const text = await res.text();
-  let body: any = null;
-  try {
-    body = JSON.parse(text);
-  } catch {
-    body = text;
-  }
-  return { res, text, body };
-}
-
-function isTicketProtocolError(body: unknown) {
-  return extractApiError(body).includes("ERR_NO_TICKET_PROTOCOL_FOUND");
-}
-
 function computeUsers(cfg: BivvoCfg): number {
   const planUsers: Record<string, number> = { standard: 3, silver: 6, pro: 12 };
   const base = planUsers[cfg.plan || ""] || 0;
