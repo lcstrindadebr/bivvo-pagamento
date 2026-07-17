@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { computeConfigDiff, normalizeBivvoConfig, quoteBivvo } from "../_shared/bivvo-logic.ts";
+
 
 
 function slugify(str: string): string {
@@ -889,6 +891,177 @@ serve(async (req) => {
       await logAction(supabase, user, 'restore-customer', 'users', asaasCustomerId, null, result);
 
       return new Response(JSON.stringify({ ok: true, asaas: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── BIVVO CONFIG: editar, sincronizar Asaas, rollback, listar histórico ─────
+    if (action === 'save-bivvo-config' && req.method === 'POST') {
+      const body = await req.json();
+      const { userId, config, notes } = body;
+      if (!userId) throw new Error('userId é obrigatório');
+      if (!config || typeof config !== 'object') throw new Error('config é obrigatório');
+
+      const { data: current, error: fetchErr } = await supabase
+        .from('users')
+        .select('id, name, email, bivvo_config, bivvo_config_synced_bivvo, bivvo_config_synced_asaas_value')
+        .eq('id', userId).maybeSingle();
+      if (fetchErr) throw fetchErr;
+      if (!current) throw new Error('Cliente não encontrado');
+
+      const before = current.bivvo_config || null;
+      const after = normalizeBivvoConfig(config);
+      if (!after) throw new Error('Config inválida após normalização');
+
+      const diff = computeConfigDiff(before, after);
+      const nowIso = new Date().toISOString();
+
+      const { error: upErr } = await supabase.from('users').update({
+        bivvo_config: after,
+        bivvo_config_previous: before,
+        bivvo_config_updated_at: nowIso,
+      }).eq('id', userId);
+      if (upErr) throw upErr;
+
+      // Log
+      await supabase.from('bivvo_config_change_logs').insert({
+        user_id: userId,
+        changed_by: user.id,
+        changed_by_email: user.email || null,
+        changed_by_name: (user.user_metadata as any)?.name || user.email || null,
+        action: 'edit',
+        config_before: before,
+        config_after: after,
+        bivvo_relevant_changed: diff.bivvoRelevantChanged,
+        asaas_value_changed: diff.asaasValueChanged,
+        changed_fields: diff.changedFields,
+        asaas_value_before: diff.previousRecurringValue,
+        asaas_value_after: diff.newRecurringValue,
+        notes: notes || null,
+      });
+
+      // Recalcula flags "precisa sincronizar" baseado no que já foi sincronizado (não só before→after)
+      const syncedBivvo = current.bivvo_config_synced_bivvo || null;
+      const bivvoSyncDiff = computeConfigDiff(syncedBivvo, after);
+      const syncedAsaasValue = current.bivvo_config_synced_asaas_value != null ? Number(current.bivvo_config_synced_asaas_value) : null;
+      const newRec = diff.newRecurringValue;
+      const needsAsaasUpdate = syncedAsaasValue == null
+        ? true
+        : (newRec != null && Math.abs(newRec - syncedAsaasValue) > 0.005);
+
+      return new Response(JSON.stringify({
+        ok: true,
+        diff,
+        needsBivvoUpdate: bivvoSyncDiff.bivvoRelevantChanged || !syncedBivvo,
+        needsAsaasUpdate,
+        newRecurringValue: newRec,
+        syncedAsaasValue,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'update-subscription-value' && req.method === 'POST') {
+      const body = await req.json();
+      const { userId, subscriptionId } = body;
+      if (!userId) throw new Error('userId é obrigatório');
+      if (!subscriptionId) throw new Error('subscriptionId é obrigatório');
+
+      const { data: current } = await supabase
+        .from('users').select('id, bivvo_config, bivvo_config_synced_asaas_value')
+        .eq('id', userId).maybeSingle();
+      if (!current) throw new Error('Cliente não encontrado');
+      if (!current.bivvo_config) throw new Error('Cliente sem bivvo_config');
+
+      const quote = quoteBivvo(current.bivvo_config as any);
+      const newValue = Math.round(quote.totalRec * 100) / 100;
+      const prevValue = current.bivvo_config_synced_asaas_value != null ? Number(current.bivvo_config_synced_asaas_value) : null;
+
+      const putRes = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}`, {
+        method: 'PUT',
+        headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: newValue, updatePendingPayments: true }),
+      });
+      const asaasJson = await putRes.json();
+      if (!putRes.ok) {
+        throw new Error(asaasJson?.errors?.[0]?.description || `Asaas Error ${putRes.status}`);
+      }
+      const returnedValue = Number(asaasJson?.value);
+      if (Number.isFinite(returnedValue) && Math.abs(returnedValue - newValue) > 0.01) {
+        throw new Error(`Divergência no valor Asaas: enviado ${newValue}, retornado ${returnedValue}`);
+      }
+
+      await supabase.from('users').update({
+        bivvo_config_synced_asaas_value: newValue,
+        bivvo_config_synced_asaas_at: new Date().toISOString(),
+      }).eq('id', userId);
+
+      await supabase.from('bivvo_config_change_logs').insert({
+        user_id: userId,
+        changed_by: user.id,
+        changed_by_email: user.email || null,
+        changed_by_name: (user.user_metadata as any)?.name || user.email || null,
+        action: 'sync_asaas',
+        asaas_value_before: prevValue,
+        asaas_value_after: newValue,
+        asaas_value_changed: true,
+        bivvo_relevant_changed: false,
+        notes: `Assinatura ${subscriptionId}`,
+      });
+
+      return new Response(JSON.stringify({ ok: true, newValue, previousValue: prevValue, asaas: asaasJson }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'rollback-bivvo-config' && req.method === 'POST') {
+      const body = await req.json();
+      const { userId } = body;
+      if (!userId) throw new Error('userId é obrigatório');
+      const { data: current } = await supabase
+        .from('users').select('id, bivvo_config, bivvo_config_previous').eq('id', userId).maybeSingle();
+      if (!current) throw new Error('Cliente não encontrado');
+      if (!current.bivvo_config_previous) throw new Error('Não há configuração anterior para restaurar');
+
+      const before = current.bivvo_config;
+      const after = current.bivvo_config_previous;
+      const diff = computeConfigDiff(before, after);
+
+      await supabase.from('users').update({
+        bivvo_config: after,
+        bivvo_config_previous: before,
+        bivvo_config_updated_at: new Date().toISOString(),
+      }).eq('id', userId);
+
+      await supabase.from('bivvo_config_change_logs').insert({
+        user_id: userId,
+        changed_by: user.id,
+        changed_by_email: user.email || null,
+        changed_by_name: (user.user_metadata as any)?.name || user.email || null,
+        action: 'rollback',
+        config_before: before,
+        config_after: after,
+        bivvo_relevant_changed: diff.bivvoRelevantChanged,
+        asaas_value_changed: diff.asaasValueChanged,
+        changed_fields: diff.changedFields,
+        asaas_value_before: diff.previousRecurringValue,
+        asaas_value_after: diff.newRecurringValue,
+      });
+
+      return new Response(JSON.stringify({ ok: true, diff }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'list-config-logs') {
+      const userId = url.searchParams.get('userId');
+      if (!userId) throw new Error('userId é obrigatório');
+      const { data, error } = await supabase
+        .from('bivvo_config_change_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return new Response(JSON.stringify({ data }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

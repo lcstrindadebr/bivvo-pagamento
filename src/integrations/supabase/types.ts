@@ -346,6 +346,68 @@ export type Database = {
         }
         Relationships: []
       }
+      bivvo_config_change_logs: {
+        Row: {
+          action: string
+          asaas_value_after: number | null
+          asaas_value_before: number | null
+          asaas_value_changed: boolean
+          bivvo_relevant_changed: boolean
+          changed_by: string | null
+          changed_by_email: string | null
+          changed_by_name: string | null
+          changed_fields: string[] | null
+          config_after: Json | null
+          config_before: Json | null
+          created_at: string
+          id: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          asaas_value_after?: number | null
+          asaas_value_before?: number | null
+          asaas_value_changed?: boolean
+          bivvo_relevant_changed?: boolean
+          changed_by?: string | null
+          changed_by_email?: string | null
+          changed_by_name?: string | null
+          changed_fields?: string[] | null
+          config_after?: Json | null
+          config_before?: Json | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          asaas_value_after?: number | null
+          asaas_value_before?: number | null
+          asaas_value_changed?: boolean
+          bivvo_relevant_changed?: boolean
+          changed_by?: string | null
+          changed_by_email?: string | null
+          changed_by_name?: string | null
+          changed_fields?: string[] | null
+          config_after?: Json | null
+          config_before?: Json | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bivvo_config_change_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           active: boolean
@@ -890,6 +952,12 @@ export type Database = {
           bairro: string | null
           billing_name: string | null
           bivvo_config: Json | null
+          bivvo_config_previous: Json | null
+          bivvo_config_synced_asaas_at: string | null
+          bivvo_config_synced_asaas_value: number | null
+          bivvo_config_synced_bivvo: Json | null
+          bivvo_config_synced_bivvo_at: string | null
+          bivvo_config_updated_at: string | null
           bivvo_status: string | null
           bivvo_status_checked_at: string | null
           bivvo_tenant_id: string | null
@@ -922,6 +990,12 @@ export type Database = {
           bairro?: string | null
           billing_name?: string | null
           bivvo_config?: Json | null
+          bivvo_config_previous?: Json | null
+          bivvo_config_synced_asaas_at?: string | null
+          bivvo_config_synced_asaas_value?: number | null
+          bivvo_config_synced_bivvo?: Json | null
+          bivvo_config_synced_bivvo_at?: string | null
+          bivvo_config_updated_at?: string | null
           bivvo_status?: string | null
           bivvo_status_checked_at?: string | null
           bivvo_tenant_id?: string | null
@@ -954,6 +1028,12 @@ export type Database = {
           bairro?: string | null
           billing_name?: string | null
           bivvo_config?: Json | null
+          bivvo_config_previous?: Json | null
+          bivvo_config_synced_asaas_at?: string | null
+          bivvo_config_synced_asaas_value?: number | null
+          bivvo_config_synced_bivvo?: Json | null
+          bivvo_config_synced_bivvo_at?: string | null
+          bivvo_config_updated_at?: string | null
           bivvo_status?: string | null
           bivvo_status_checked_at?: string | null
           bivvo_tenant_id?: string | null
