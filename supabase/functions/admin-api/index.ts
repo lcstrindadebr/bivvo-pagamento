@@ -139,10 +139,10 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
 async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_URL: string, ASAAS_API_KEY: string) {
   if (customerIds.length === 0) return new Map();
 
-  // 1. Try local DB first (rico: pega tenant_bivvo + contatos já salvos)
+  // 1. Try local DB first (rico: pega bivvo_tenant_id + contatos já salvos)
   const { data: localUsers } = await supabase
     .from('users')
-    .select('id, name, email, whatsapp, cpf, asaas_customer_id, tenant_bivvo, status, bivvo_status, bivvo_status_checked_at')
+    .select('id, name, email, whatsapp, cpf, asaas_customer_id, bivvo_tenant_id, status, bivvo_status, bivvo_status_checked_at')
     .in('asaas_customer_id', customerIds);
 
   const userMap = new Map(localUsers?.map((u: any) => [u.asaas_customer_id, u]) || []);
