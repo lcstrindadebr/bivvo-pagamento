@@ -424,7 +424,7 @@ const Admin = () => {
           }
           if (data?.id) {
             try {
-              const res: any = await adminFetch(`list-config-logs&userId=${data.id}`);
+              const res: any = await adminFetch('list-config-logs', { userId: data.id });
               setConfigLogs(res?.data || []);
             } catch (e) { console.error(e); }
           } else {
