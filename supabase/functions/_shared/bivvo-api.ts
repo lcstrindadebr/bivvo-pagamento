@@ -164,7 +164,7 @@ async function callUpdateTenant(
         oauthEnabled: false,
       };
 
-  console.log('[Bivvo] updateTenant → id:', tenantIdField, 'menu:', updatePayload.menuVisibility, 'limits:', ctx.limits);
+  console.log('[Bivvo] updateTenant → id:', tenantIdField, 'status:', updatePayload.status, 'payload keys:', Object.keys(updatePayload));
   await log.info('bivvo-api', `updateTenant → id:${tenantIdField}`, {
     userId: user.id, payload: updatePayload,
   });
