@@ -220,7 +220,6 @@ async function callUpdateTenant(
     maxUsers: ctx.maxUsers,
     maxConnections: ctx.maxConnections,
     paymentGateway: 'asaas',
-    supportChatEnabled: 'enabled',
     menuVisibility: buildMenuVisibility(cfg),
     allowedChannels: DEFAULT_ALLOWED_CHANNELS,
     channelConnectionLimits: ctx.limits,
