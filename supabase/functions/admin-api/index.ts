@@ -1076,14 +1076,20 @@ serve(async (req) => {
 
       if (existing) {
         const { error } = await supabase.from('users')
-          .update({ tenant_bivvo: tenantBivvo || null, bivvo_status: null, bivvo_status_checked_at: null })
+          .update({
+            bivvo_tenant_id: tenantBivvo || null,
+            bivvo_status: null,
+            bivvo_status_checked_at: null,
+            tenant_provisioned_at: null,
+            tenant_provision_error: null,
+          })
           .eq('id', existing.id);
         if (error) throw error;
       
       } else {
         const { error } = await supabase.from('users').insert({
           asaas_customer_id: asaasCustomerId,
-          tenant_bivvo: tenantBivvo || null,
+          bivvo_tenant_id: tenantBivvo || null,
           name: 'Cliente Asaas',
           email: `${asaasCustomerId}@asaas.local`,
           status: 'active',
