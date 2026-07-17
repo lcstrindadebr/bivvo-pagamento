@@ -403,9 +403,6 @@ export async function runInactivateAndPersist(supabase: any, userId: string) {
     .eq('id', userId)
     .maybeSingle();
   if (!user) throw new Error('Usuário não encontrado: ' + userId);
-  if (!user.cpf) {
-    return { skipped: true, reason: 'no_cpf' };
-  }
 
   const cfg = (user.bivvo_config as BivvoCfg) || {};
   const limits = computeChannelLimits(cfg);
