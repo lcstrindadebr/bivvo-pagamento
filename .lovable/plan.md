@@ -1,68 +1,55 @@
+# Plano: melhorias em Setup Bivvo (Detalhes da Assinatura)
 
-# Plano: renomear "Configuração Contratada" para "Setup Bivvo" e mover o campo Tenant Bivvo para dentro dele
+Escopo puramente frontend, em `src/pages/Admin.tsx`. Nenhuma mudança em edge functions, banco ou `new_deploy/`.
 
-## Análise da sugestão
+## 1. Salvar Tenant Bivvo com confirmação + modo edição via caneta
 
-Faz sentido. Hoje o admin vê dois cards separados em Detalhes da Assinatura:
-- **Configuração Contratada** — plano, usuários, canais, telefonia, disparo, protagonista, com botões condicionais de sync Bivvo/Asaas e histórico.
-- **Tenant Bivvo** — ID do tenant + botões Provisionar/Atualizar/Inativar via API.
+**Hoje:** o input do Tenant Bivvo é editável enquanto `bivvo_tenant_id` estiver vazio. Ao preencher e clicar "Salvar Tenant", o valor é gravado direto (`handleSaveTenant`). Depois, o input fica travado (`readOnly`/`disabled`) e sem botão.
 
-Os dois tratam do mesmo domínio (a conta Bivvo do cliente): um define **o que foi contratado**, o outro **o vínculo com o tenant real na Bivvo**. Unificá-los em um único card "Setup Bivvo" reduz ruído visual, deixa clara a relação (config → tenant), e o admin passa a ver o ID do tenant no mesmo lugar em que edita a config e dispara o sync.
+**Depois:**
 
-Nenhuma mudança de lógica de backend é necessária — só reorganização de UI.
+- **Estado local novo:** `isEditingTenant` (boolean). Inicia `false`.
+- **Quando NÃO há `bivvo_tenant_id` salvo:** input editável + botão "Salvar Tenant" (fluxo atual), mas o clique em Salvar agora abre um `AlertDialog` de confirmação:
+  > "Confirmar vínculo do Tenant ID `<valor>` a este cliente? Depois de salvo, o ID só poderá ser alterado clicando no ícone de edição."
+  Ao confirmar → chama `handleSaveTenant`. Ao cancelar → fecha o diálogo, nada acontece.
+- **Quando JÁ há `bivvo_tenant_id` salvo e `isEditingTenant === false`:** input em modo read-only mostrando o ID atual, com um pequeno **ícone de caneta** (`Pencil` do lucide) ao lado. Clique na caneta → `setIsEditingTenant(true)` (input volta a ser editável, aparece botão "Salvar Tenant" + botão "Cancelar" que reverte `tenantBivvo` para o valor original e fecha edição).
+- **Ao salvar em modo edição:** mesmo `AlertDialog` de confirmação (texto ajustado para "alteração do Tenant ID de `<antigo>` para `<novo>`"). Confirmar → `handleSaveTenant` + `setIsEditingTenant(false)`.
+- Remover a atual regra `apiLocked = !!tenantInfo?.bivvo_tenant_id` que bloqueia edição de forma irreversível — o lock passa a ser controlado por `isEditingTenant`.
+- Texto de ajuda abaixo do campo continua, adaptado ao estado (visualização vs. edição).
 
-## Escopo
+Nenhuma mudança em `handleSaveTenant` em si (continua fazendo `update` direto no `users` via supabase client, como hoje).
 
-Puramente frontend, em `src/pages/Admin.tsx`, no painel de Detalhes da Assinatura.
+## 2. "Ações do Tenant" habilitadas condicionalmente
 
-### 1. Renomear o card
+**Hoje:** o botão "Provisionar/Atualizar Tenant via API Bivvo" (`handleProvisionTenant`) fica sempre habilitado (só desabilita durante loading). O botão "Inativar Conta Bivvo" aparece apenas quando há tenant provisionado e assinatura ativa, e fica embaixo, em bloco separado.
 
-- Título "Configuração Contratada" → **"Setup Bivvo"**.
-- Ícone mantém o `Package`.
-- Subtítulo curto opcional: "Configuração contratada + vínculo com o tenant na Bivvo".
+**Depois:**
 
-### 2. Mover o bloco Tenant Bivvo para dentro do card Setup Bivvo
+- **Cálculo de disponibilidade** (memo local):
+  - `hasTenantId = !!tenantInfo?.bivvo_tenant_id`
+  - `hasBivvoConfigDrift` — reutiliza o mesmo indicador que hoje decide se "Atualizar Tenant Bivvo" (sync após edição de config) aparece: `!isBivvoConfigEqual(bivvoConfig, tenantInfo?.bivvo_config_synced_bivvo)`. Já existe no arquivo.
+  - `tenantExistsOnBivvo` — vem de `selectedSub.bivvoStatus` (a listagem já checa a API Bivvo e classifica como "Não possui Tenant" / status válidos). Considerar "não existe no Bivvo" quando `bivvoStatus === 'Não possui Tenant'` ou quando não há `tenant_provisioned_at`.
+  - `canProvisionOrUpdate = !tenantExistsOnBivvo || hasBivvoConfigDrift`
+- **Botão "Provisionar/Atualizar Tenant via API"**:
+  - `disabled` quando `!canProvisionOrUpdate` (além do loading atual).
+  - Tooltip explicando o motivo do disable: "Tenant já existe no Bivvo e está sincronizado — nada a fazer."
+  - Rótulo dinâmico: "Provisionar Tenant" quando não existe no Bivvo; "Atualizar Tenant no Bivvo" quando existe mas há drift.
+- **Botão "Inativar Conta Bivvo"**:
+  - Passa a ficar **ao lado** de "Provisionar/Atualizar" (mesmo `<div className="flex gap-2">`), não mais em bloco separado abaixo.
+  - Mantém a condição atual de visibilidade (só quando `isBivvoActive && hasTenantId`).
+  - Mantém `handleInactivateTenant` inalterado.
+- Se ambos os botões ficarem indisponíveis (sem drift + tenant existe + assinatura já inativa), a seção "Ações do Tenant" mostra apenas uma linha de texto: "Nenhuma ação pendente — tenant sincronizado."
 
-Ordem interna sugerida (de cima pra baixo):
+## Fora do escopo
 
-```text
-[ Setup Bivvo ]
- ├─ Tenant Bivvo (ID + Salvar)                ← movido para o topo
- │   • Status atual (badge)
- │   • ID travado quando provisionado via API
- ├─ Configuração contratada (visualização/edição)
- │   • Plano, usuários, canais, telefonia, disparo, protagonista
- │   • Botões condicionais: Atualizar Tenant Bivvo / Atualizar Valor Asaas
- ├─ Ações do tenant
- │   • Provisionar/Atualizar Tenant via API Bivvo
- │   • Inativar Conta Bivvo (quando aplicável)
- └─ Histórico de Alterações (com filtro "Só mudanças de plano")
-```
+- Não mexer em `handleSaveTenant`, `handleProvisionTenant`, `handleInactivateTenant`.
+- Não alterar edge functions, migrations, RLS.
+- Não redesenhar o card Setup Bivvo — só a sub-seção Tenant Bivvo e a sub-seção Ações do Tenant.
 
-Motivo da ordem: o ID do tenant é o "identificador raiz" — ver primeiro. Depois a config que alimenta esse tenant. Depois as ações que empurram config → tenant. Por fim o histórico.
+## Arquivo afetado
 
-### 3. Remover o card duplicado
-
-O card antigo `TENANT BIVVO` (linhas ~1605-1695) deixa de existir como card separado — vira uma seção interna do Setup Bivvo com o mesmo conteúdo (input, botão Salvar, status, provisionar, inativar). Nenhum handler muda: `handleSaveTenant`, `handleProvisionTenant`, `handleInactivateTenant` continuam iguais.
-
-### 4. Ajustes visuais menores
-
-- Separadores sutis (`border-t` + `pt-3`) entre as sub-seções internas para não virar um bloco monolítico.
-- Manter o mesmo tom de fundo (`bg-accent/5`) do card atual de Configuração Contratada; o Tenant Bivvo herda esse fundo.
-- Botão "Atualizar Tenant Bivvo" (sync após edição de config) fica logo abaixo da config; botão "Provisionar/Atualizar Tenant via API Bivvo" (ação genérica) fica no bloco de ações — deixar rótulos distintos pra não confundir:
-  - Sync pós-edição: **"Sincronizar configuração no tenant"**
-  - Ação manual bruta: **"Provisionar/Atualizar tenant via API"**
-
-### 5. Fora do escopo
-
-- Nenhuma mudança em edge functions, banco, RLS ou lógica de sync.
-- Sem mexer em `new_deploy/`.
-- Histórico e botões condicionais continuam com o mesmo comportamento atual.
-
-## Arquivos afetados
-
-- `src/pages/Admin.tsx` — única edição.
+- `src/pages/Admin.tsx` (única edição).
 
 ## Riscos
 
-Baixos. É reorganização de JSX. Único cuidado: garantir que `tenantInfo`/`tenantBivvo`/`selectedSub` continuam no mesmo escopo quando o bloco é movido — já estão no mesmo componente, então é apenas recorte e colagem.
+Baixos. Adiciona um estado local (`isEditingTenant`), um `AlertDialog` (componente shadcn já usado no projeto) e refina `disabled`/layout dos botões existentes. Nenhuma mudança de fluxo backend.
