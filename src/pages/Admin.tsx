@@ -450,6 +450,8 @@ const Admin = () => {
       // reflete no card selecionado + lista
       setSelectedSub(prev => prev ? { ...prev, tenantBivvo: tenantBivvo.trim() } : prev);
       setSubscriptions(prev => prev.map(s => s.customer === selectedSub.customer ? { ...s, tenantBivvo: tenantBivvo.trim() } : s));
+      setIsEditingTenant(false);
+      setConfirmTenantOpen(false);
     } catch (err) {
       toast({ title: 'Erro', description: err instanceof Error ? err.message : 'Falha ao salvar tenant', variant: 'destructive' });
     } finally {
