@@ -43,10 +43,7 @@ export function IntegrationsTab({ settings, loading }: Props) {
     (async () => {
       setBivvoLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke('admin-api?action=get-bivvo-token', {
-          method: 'GET',
-        });
-        if (error) throw error;
+        const data = await adminFetch('get-bivvo-token');
         setBivvoToken((data as any)?.value || '');
       } catch (err) {
         console.error('load bivvo token', err);
