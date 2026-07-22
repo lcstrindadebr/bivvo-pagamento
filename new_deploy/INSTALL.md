@@ -43,14 +43,15 @@ O instalador deixa a aplicação no ar, mas o **backend (Supabase)** precisa ser
 
 ### 1️⃣ Criar / atualizar as tabelas do banco
 - No painel do Supabase, abra **SQL Editor → New Query**
-- **Instalação nova:** cole em ordem `new_deploy/database_schema.sql` → `migrations/003_new_features.sql` → `migrations/004_security_and_settings.sql` → `migrations/005_task_enhancements.sql` → `migrations/006_finance_metrics.sql` → `migrations/007_bivvo_tenant_and_logs.sql`
-- **Atualização de uma instância já existente:** rode apenas as migrations novas em ordem (`003` → `004` → `005` → `006` → `007`). Todas são idempotentes.
+- **Instalação nova:** cole em ordem `new_deploy/database_schema.sql` → `migrations/003_new_features.sql` → `migrations/004_security_and_settings.sql` → `migrations/005_task_enhancements.sql` → `migrations/006_finance_metrics.sql` → `migrations/007_bivvo_tenant_and_logs.sql` → `migrations/008_missing_admin_and_finance.sql`
+- **Atualização de uma instância já existente:** rode apenas as migrations novas em ordem (`003` → `004` → `005` → `006` → `007` → `008`). Todas são idempotentes.
 - Clique em **Run** após cada uma.
 
 > 💡 `004_security_and_settings.sql` traz delegação de tarefas por admin, whitelist pública de settings e endurecimento de RLS.
 > 💡 `005_task_enhancements.sql` adiciona ao Kanban: **log automático da data de conclusão** (`completed_at`), **subtarefas** (checklist dentro da tarefa) e o marcador **"Aguardando ação de terceiro"** visível nos cards.
 > 💡 `006_finance_metrics.sql` cria índices em `expenses(date)` e `expenses(category)` para acelerar os cards do dashboard: **Despesas do Mês Vigente**, **Total Despesas (Mês)** e o novo **Cobranças em Atraso** (que substituiu o antigo "Total Cobranças").
 > 💡 `007_bivvo_tenant_and_logs.sql` adiciona os campos de **Setup Bivvo** (`bivvo_config`, `bivvo_tenant_id`), suporte a **PF/PJ** (`person_type`, `company_name`, `cpf`), controle de **inadimplência** (`overdue_since`, `inactivated_at`), a tabela **`system_logs`** (aba Logs em Configurações) e a tabela **`audit_logs`** (trilha de alterações do Setup Bivvo). Também liga o toggle **`checkout_coupon_enabled`** que controla a exibição do campo de cupom no checkout.
+> 💡 `008_missing_admin_and_finance.sql` completa o schema com **`admin_secrets`**, **`bivvo_config_change_logs`** (histórico do Setup Bivvo com diff/rollback), **`finance_daily_snapshots`** + **`finance_events`** e a função **`apply_finance_event()`** usadas pelo Dashboard Financeiro.
 
 ### 2️⃣ Cadastrar os Secrets (Asaas)
 Vá em **Edge Functions → Secrets** e adicione:
