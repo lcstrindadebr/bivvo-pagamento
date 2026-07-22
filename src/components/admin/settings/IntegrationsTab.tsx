@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plug, Save, Loader2, Copy, Check, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useSaveSetting } from '@/hooks/useSaveSetting';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useAdmin } from '@/hooks/useAdmin';
 
 interface Props {
   settings: Record<string, string>;
@@ -16,6 +16,7 @@ interface Props {
 
 export function IntegrationsTab({ settings, loading }: Props) {
   const { save, saving } = useSaveSetting();
+  const { adminFetch, adminPost } = useAdmin();
   const { toast } = useToast();
   const [form, setForm] = useState({ ga_id: '', meta_pixel_id: '' });
   const [dirty, setDirty] = useState(false);
@@ -42,10 +43,7 @@ export function IntegrationsTab({ settings, loading }: Props) {
     (async () => {
       setBivvoLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke('admin-api?action=get-bivvo-token', {
-          method: 'GET',
-        });
-        if (error) throw error;
+        const data = await adminFetch('get-bivvo-token');
         setBivvoToken((data as any)?.value || '');
       } catch (err) {
         console.error('load bivvo token', err);
@@ -69,12 +67,7 @@ export function IntegrationsTab({ settings, loading }: Props) {
   const saveBivvo = async () => {
     setBivvoSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('admin-api?action=save-bivvo-token', {
-        method: 'POST',
-        body: { value: bivvoToken.trim() },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      await adminPost('save-bivvo-token', { value: bivvoToken.trim() });
       toast({ title: 'Salvo', description: 'Token da API Bivvo atualizado.' });
       setBivvoDirty(false);
     } catch (err) {
