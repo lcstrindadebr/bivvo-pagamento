@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plug, Save, Loader2, Copy, Check, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useSaveSetting } from '@/hooks/useSaveSetting';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useAdmin } from '@/hooks/useAdmin';
 
 interface Props {
   settings: Record<string, string>;
