@@ -43,13 +43,14 @@ O instalador deixa a aplicação no ar, mas o **backend (Supabase)** precisa ser
 
 ### 1️⃣ Criar / atualizar as tabelas do banco
 - No painel do Supabase, abra **SQL Editor → New Query**
-- **Instalação nova:** cole em ordem `new_deploy/database_schema.sql` → `migrations/003_new_features.sql` → `migrations/004_security_and_settings.sql` → `migrations/005_task_enhancements.sql` → `migrations/006_finance_metrics.sql`
-- **Atualização de uma instância já existente:** rode apenas as migrations novas em ordem (`003` → `004` → `005` → `006`). Todas são idempotentes.
+- **Instalação nova:** cole em ordem `new_deploy/database_schema.sql` → `migrations/003_new_features.sql` → `migrations/004_security_and_settings.sql` → `migrations/005_task_enhancements.sql` → `migrations/006_finance_metrics.sql` → `migrations/007_bivvo_tenant_and_logs.sql`
+- **Atualização de uma instância já existente:** rode apenas as migrations novas em ordem (`003` → `004` → `005` → `006` → `007`). Todas são idempotentes.
 - Clique em **Run** após cada uma.
 
 > 💡 `004_security_and_settings.sql` traz delegação de tarefas por admin, whitelist pública de settings e endurecimento de RLS.
 > 💡 `005_task_enhancements.sql` adiciona ao Kanban: **log automático da data de conclusão** (`completed_at`), **subtarefas** (checklist dentro da tarefa) e o marcador **"Aguardando ação de terceiro"** visível nos cards.
 > 💡 `006_finance_metrics.sql` cria índices em `expenses(date)` e `expenses(category)` para acelerar os cards do dashboard: **Despesas do Mês Vigente**, **Total Despesas (Mês)** e o novo **Cobranças em Atraso** (que substituiu o antigo "Total Cobranças").
+> 💡 `007_bivvo_tenant_and_logs.sql` adiciona os campos de **Setup Bivvo** (`bivvo_config`, `bivvo_tenant_id`), suporte a **PF/PJ** (`person_type`, `company_name`, `cpf`), controle de **inadimplência** (`overdue_since`, `inactivated_at`), a tabela **`system_logs`** (aba Logs em Configurações) e a tabela **`audit_logs`** (trilha de alterações do Setup Bivvo). Também liga o toggle **`checkout_coupon_enabled`** que controla a exibição do campo de cupom no checkout.
 
 ### 2️⃣ Cadastrar os Secrets (Asaas)
 Vá em **Edge Functions → Secrets** e adicione:
@@ -61,7 +62,7 @@ Vá em **Edge Functions → Secrets** e adicione:
 | `ASAAS_WEBHOOK_SECRET` | Um token/senha que você inventar (anote para o passo 4) |
 
 ### 3️⃣ Publicar as Edge Functions manualmente
-As funções agora são **autossuficientes** (não dependem de arquivos externos), o que permite copiar e colar diretamente no painel do Supabase.
+As funções são **autossuficientes** (o código de `_shared` já vem inline em cada `index.ts`), o que permite copiar e colar diretamente no painel do Supabase.
 
 Para cada função:
 1. No Supabase, vá em **Edge Functions → Create a new function**
@@ -70,7 +71,12 @@ Para cada função:
 4. **Copie TODO o conteúdo** e cole no editor do Supabase.
 5. Clique em **Deploy** ou **Save**.
 
-Repita para: `asaas-webhook`, `process-payment`, `create-subscription`, `check-payment-status`, `admin-api`, `affiliate-api`.
+Repita para todas as funções da pasta `new_deploy/functions/`:
+`asaas-webhook`, `process-payment`, `create-subscription`, `check-payment-status`, `admin-api`, `affiliate-api`, `validate-coupon`, `provision-bivvo-tenant`, `auto-inactivate-overdue`.
+
+> 💡 `provision-bivvo-tenant` cria/atualiza o tenant na API da Bivvo (rotas `tenantApiStoreTenant` / `tenantApiUpdateTenant`).
+> 💡 `auto-inactivate-overdue` roda diariamente (agende em **Database → Cron Jobs** no Supabase) e inativa na Bivvo qualquer cliente com 5+ dias de inadimplência.
+> 💡 `validate-coupon` valida cupons no checkout (inclui suporte a 100% de desconto na primeira mensalidade).
 
 ### 4️⃣ Configurar o Webhook no Asaas
 - Painel do Asaas → **Integrações → Webhooks**

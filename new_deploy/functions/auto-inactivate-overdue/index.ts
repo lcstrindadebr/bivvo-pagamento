@@ -1,5 +1,5 @@
 // ============================================================
-// process-payment — autossuficiente (bundle de _shared inline)
+// auto-inactivate-overdue — autossuficiente (bundle de _shared inline)
 // Gerado automaticamente. Cole no editor de Edge Functions do Supabase.
 // ============================================================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -10,179 +10,6 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, asaas-access-token',
 };
-
-
-// ==================== _shared/bivvo-logic.ts ====================
-const PLANS = {
-  standard: { name: 'STANDARD', users: 3, promo: 169.90, full: 197.90 },
-  silver:   { name: 'SILVER',   users: 6, promo: 287.90, full: 389.90 },
-  pro:      { name: 'PRO',      users: 12, promo: 429.90, full: 527.90 },
-} as const;
-
-const EXTRA_USER_PRICE = 35;
-const TELEFONIA_PRICE = 100;
-
-const CANAIS_DEF = [
-  { id: 'waof',   label: 'WhatsApp API Oficial',     included: 1, unit: 100, emoji: '📱' },
-  { id: 'wano',   label: 'WhatsApp API não oficial', included: 1, unit: 50,  emoji: '💬' },
-  { id: 'ig',     label: 'Instagram',                included: 1, unit: 50,  emoji: '📸' },
-  { id: 'fb',     label: 'Facebook',                 included: 1, unit: 50,  emoji: '📘' },
-  { id: 'email',  label: 'E-mail',                   included: 1, unit: 50,  emoji: '✉️'  },
-  { id: 'olx',    label: 'OLX',                      included: 0, unit: 100, emoji: '🏷️' },
-  { id: 'tiktok', label: 'TikTok',                   included: 0, unit: 100, emoji: '🎵' },
-  { id: 'ml',     label: 'Mercado Livre',            included: 0, unit: 100, emoji: '🛒' },
-  { id: 'li',     label: 'LinkedIn',                 included: 0, unit: 100, emoji: '💼' },
-  { id: 'yt',     label: 'YouTube',                  included: 0, unit: 100, emoji: '▶️'  },
-  { id: 'woo',    label: 'WooCommerce',              included: 0, unit: 100, emoji: '🛍️' },
-] as const;
-
-function round2(n: number) { return Math.round(n * 100) / 100; }
-
-function quoteBivvo(cfg: any) {
-  const plan = PLANS[cfg.plan as keyof typeof PLANS];
-  if (!plan) throw new Error('Plano inválido');
-  const users = Math.max(1, Math.floor(cfg.users || plan.users));
-  const extraUsers = Math.max(0, users - plan.users);
-  const extraCost = extraUsers * EXTRA_USER_PRICE;
-  const basePromo = plan.promo + extraCost;
-  const baseFull = plan.full + extraCost;
-  const base1m = basePromo;
-  const baseRec = cfg.protagonista ? base1m : baseFull;
-  const discountPercent = Math.min(30, Math.max(0, cfg.channelsDiscount || 0));
-  const discountFactor = 1 - (discountPercent / 100);
-  let channelsTotal = 0;
-  const channelLines: any[] = [];
-  const cfgChannels = cfg.channels || {};
-  for (const c of CANAIS_DEF) {
-    const qty = Math.max(0, Math.floor(cfgChannels[c.id] || 0));
-    const extra = Math.max(0, qty - c.included);
-    if (extra > 0) {
-      const amount = round2(extra * c.unit * discountFactor);
-      channelsTotal += amount;
-      channelLines.push({ id: c.id, label: c.label, emoji: c.emoji, qty: extra, amount });
-    }
-  }
-  const telCost = cfg.telefonia ? TELEFONIA_PRICE : 0;
-  const total1m = round2(base1m + channelsTotal + telCost);
-  const totalRec = round2(baseRec + channelsTotal + telCost);
-  const planLabel = extraUsers > 0 ? `Plano Personalizado (${plan.name} + ${extraUsers}u)` : `Plano ${plan.name} (${plan.users}u)`;
-  
-  return {
-    planSlug: cfg.plan,
-    planLabel,
-    users,
-    extraUsers,
-    base1m,
-    baseRec,
-    channelsTotal,
-    channelsDiscountPercent: discountPercent,
-    telCost,
-    total1m,
-    totalRec,
-    protagonista: cfg.protagonista,
-    channelLines
-  };
-}
-
-// ─────────────────────────────────────────────
-// Diff canônico entre duas bivvo_config
-// Fonte única da verdade para "precisa sincronizar Bivvo/Asaas"
-// ─────────────────────────────────────────────
-interface BivvoConfigDiff {
-  bivvoRelevantChanged: boolean;
-  asaasValueChanged: boolean;
-  changedFields: string[];
-  previousRecurringValue: number | null;
-  newRecurringValue: number | null;
-}
-
-const BIVVO_RELEVANT_KEYS = ['plan', 'users', 'telefonia', 'disparo', 'protagonista'];
-
-function normalizeBivvoConfig(cfg: any): any {
-  if (!cfg || typeof cfg !== 'object') return null;
-  const channels: Record<string, number> = {};
-  const src = cfg.channels || {};
-  for (const c of CANAIS_DEF) {
-    const q = Math.max(0, Math.floor(Number(src[c.id]) || 0));
-    if (q > 0) channels[c.id] = q;
-  }
-  return {
-    plan: String(cfg.plan || 'standard'),
-    users: Math.max(1, Math.floor(Number(cfg.users) || 0)),
-    channels,
-    telefonia: !!cfg.telefonia,
-    disparo: !!cfg.disparo,
-    protagonista: !!cfg.protagonista,
-  };
-}
-
-function computeConfigDiff(before: any, after: any): BivvoConfigDiff {
-  const a = normalizeBivvoConfig(before);
-  const b = normalizeBivvoConfig(after);
-  const changed: string[] = [];
-
-  if (!a && b) {
-    // primeira configuração
-    return {
-      bivvoRelevantChanged: true,
-      asaasValueChanged: true,
-      changedFields: ['*'],
-      previousRecurringValue: null,
-      newRecurringValue: safeQuoteRec(b),
-    };
-  }
-  if (a && !b) {
-    return {
-      bivvoRelevantChanged: true,
-      asaasValueChanged: true,
-      changedFields: ['*'],
-      previousRecurringValue: safeQuoteRec(a),
-      newRecurringValue: null,
-    };
-  }
-  if (!a && !b) {
-    return { bivvoRelevantChanged: false, asaasValueChanged: false, changedFields: [], previousRecurringValue: null, newRecurringValue: null };
-  }
-
-  for (const k of BIVVO_RELEVANT_KEYS) {
-    if ((a as any)[k] !== (b as any)[k]) changed.push(k);
-  }
-  // Canais
-  const allChKeys = new Set([...Object.keys(a.channels), ...Object.keys(b.channels)]);
-  for (const k of allChKeys) {
-    if ((a.channels[k] || 0) !== (b.channels[k] || 0)) changed.push(`channels.${k}`);
-  }
-
-  const prevRec = safeQuoteRec(a);
-  const newRec = safeQuoteRec(b);
-  const asaasValueChanged = Math.abs((prevRec || 0) - (newRec || 0)) > 0.005;
-
-  return {
-    bivvoRelevantChanged: changed.length > 0,
-    asaasValueChanged,
-    changedFields: changed,
-    previousRecurringValue: prevRec,
-    newRecurringValue: newRec,
-  };
-}
-
-function safeQuoteRec(cfg: any): number | null {
-  try { return quoteBivvo(cfg).totalRec; } catch { return null; }
-}
-
-
-// ==================== _shared/asaas.ts ====================
-async function asaasFetch(url: string, options: RequestInit) {
-  const response = await fetch(url, options);
-  const contentType = response.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.errors?.[0]?.description || `Asaas Error ${response.status}`);
-    return data;
-  }
-  if (!response.ok) throw new Error(`Asaas HTTP Error ${response.status}`);
-  return await response.text();
-}
 
 
 // ==================== _shared/bivvo-api.ts ====================
@@ -1057,388 +884,49 @@ const log = {
 };
 
 
-// ==================== _shared/coupon.ts ====================
-// Shared coupon logic for payment edge functions
-interface AppliedCoupon {
-  id: string;
-  code: string;
-  discount_percent: number;
-}
-
-async function validateAndLoadCoupon(
-  supabase: any,
-  code: string | undefined | null,
-): Promise<AppliedCoupon | null> {
-  if (!code) return null;
-  const clean = String(code).trim().toUpperCase();
-  if (!clean) return null;
-
-  // Check if coupon field is enabled globally
-  const { data: setting } = await supabase
-    .from("settings")
-    .select("value")
-    .eq("key", "checkout_coupon_enabled")
-    .maybeSingle();
-  const enabled = (setting?.value ?? "true") !== "false";
-  if (!enabled) throw new Error("Cupons desabilitados.");
-
-  const { data: coupon, error } = await supabase
-    .from("coupons")
-    .select("id, code, discount_percent, max_uses, current_uses, valid_from, valid_until, active")
-    .eq("code", clean)
-    .maybeSingle();
-  if (error) throw error;
-  if (!coupon) throw new Error("Cupom inválido.");
-  if (!coupon.active) throw new Error("Cupom inativo.");
-  const now = Date.now();
-  if (coupon.valid_from && new Date(coupon.valid_from).getTime() > now) {
-    throw new Error("Cupom ainda não é válido.");
-  }
-  if (coupon.valid_until && new Date(coupon.valid_until).getTime() < now) {
-    throw new Error("Cupom expirado.");
-  }
-  if (coupon.max_uses != null && coupon.current_uses >= coupon.max_uses) {
-    throw new Error("Cupom esgotado.");
-  }
-  return {
-    id: coupon.id,
-    code: coupon.code,
-    discount_percent: Number(coupon.discount_percent),
-  };
-}
-
-async function incrementCouponUse(supabase: any, couponId: string) {
-  try {
-    // Fetch current value and increment
-    const { data } = await supabase
-      .from("coupons")
-      .select("current_uses")
-      .eq("id", couponId)
-      .maybeSingle();
-    await supabase
-      .from("coupons")
-      .update({ current_uses: (data?.current_uses ?? 0) + 1 })
-      .eq("id", couponId);
-  } catch (e) {
-    console.error("Falha ao incrementar uso do cupom:", e);
-  }
-}
-
-
+// Inativa automaticamente contas Bivvo com 5+ dias de inadimplência.
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 5);
+
   try {
-    const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY');
-    const ASAAS_BASE_URL = Deno.env.get('ASAAS_BASE_URL');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, email, overdue_since, status, bivvo_tenant_id')
+      .eq('status', 'overdue')
+      .lte('overdue_since', cutoff.toISOString())
+      .not('bivvo_tenant_id', 'is', null);
 
-    if (!ASAAS_API_KEY || !ASAAS_BASE_URL || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('Configuração incompleta no servidor (Secrets).');
-    }
+    if (error) throw error;
 
-    const body = await req.json();
-    const { plan, customerData, cardData, bivvoConfig, affiliateSlug, trackingId, couponCode } = body;
-    
-    // Get remote IP from headers (Supabase adds this)
-    const remoteIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    await log.info('auto-inactivate-overdue', `Encontrados ${users?.length || 0} usuários para inativar`, { cutoff: cutoff.toISOString() });
 
-    // 1. Database Client
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // 2. Resolve Price
-    let amount: number, recurringAmount: number, planLabel: string;
-    if (bivvoConfig) {
-      const q = quoteBivvo(bivvoConfig);
-      amount = q.total1m;
-      recurringAmount = q.totalRec;
-      planLabel = `Plano ${q.planLabel}`;
-    } else {
-      const { data: pData } = await supabase.from('plans').select('price, name').eq('slug', plan).eq('active', true).single();
-      if (!pData) throw new Error('Plano não encontrado.');
-      amount = recurringAmount = Number(pData.price);
-      planLabel = `Plano ${pData.name}`;
-    }
-
-    // 2.1 Validate coupon (if provided) and apply discount to first month
-    const appliedCoupon = await validateAndLoadCoupon(supabase, couponCode);
-    const originalAmount = amount;
-    if (appliedCoupon) {
-      amount = round2(amount * (1 - appliedCoupon.discount_percent / 100));
-      if (amount < 0) amount = 0;
-    }
-    const isFreeCoupon = !!appliedCoupon && appliedCoupon.discount_percent >= 100;
-
-    // 3. User Management
-    const cleanCpf = customerData.cpf.replace(/\D/g, '');
-    const cleanPhone = customerData.whatsapp.replace(/\D/g, '');
-    const cleanCep = customerData.cep.replace(/\D/g, '');
-    const cleanCard = isFreeCoupon ? '' : (cardData?.number || '').replace(/\s/g, '');
-
-    const { data: user, error: uErr } = await supabase.from('users').upsert({
-      email: customerData.email.toLowerCase().trim(),
-      name: customerData.name.trim(),
-      person_type: customerData.personType || null,
-      company_name: customerData.personType === 'JURIDICA' ? (customerData.companyName || '').trim() : null,
-      whatsapp: cleanPhone,
-      cpf: cleanCpf,
-      billing_name: customerData.billingName.trim(),
-      cep: cleanCep,
-      endereco: customerData.endereco.trim(),
-      numero: customerData.numero.trim(),
-      complemento: customerData.complemento?.trim() || '',
-      bairro: customerData.bairro.trim(),
-      cidade: customerData.cidade.trim(),
-      estado: customerData.estado.toUpperCase(),
-      bivvo_config: bivvoConfig || null,
-    }, { onConflict: 'email' }).select('id, asaas_customer_id').single();
-    if (uErr) throw uErr;
-
-    // (free-coupon path handled AFTER Asaas customer + subscription creation
-    // so the recurring subscription is set up and starts charging from month 2)
-
-
-
-
-    // 4. Asaas Customer - validate existing, recreate if removed
-    let asaasCustomerId = user.asaas_customer_id;
-    if (asaasCustomerId) {
+    const results: any[] = [];
+    for (const u of users || []) {
       try {
-        const existing = await asaasFetch(`${ASAAS_BASE_URL}/customers/${asaasCustomerId}`, {
-          headers: { 'access_token': ASAAS_API_KEY },
-        });
-        if (existing?.deleted === true) {
-          console.log('Cliente Asaas removido, será recriado:', asaasCustomerId);
-          asaasCustomerId = null;
-        }
+        const r = await runInactivateAndPersist(supabase, u.id);
+        results.push({ userId: u.id, email: u.email, ok: !r.error, result: r });
       } catch (e) {
-        console.log('Cliente Asaas inválido, será recriado:', asaasCustomerId, e.message);
-        asaasCustomerId = null;
+        const msg = e instanceof Error ? e.message : String(e);
+        await log.error('auto-inactivate-overdue', `Erro ao inativar ${u.id}: ${msg}`, { userId: u.id });
+        results.push({ userId: u.id, email: u.email, ok: false, error: msg });
       }
     }
 
-    if (!asaasCustomerId) {
-      const cRes = await asaasFetch(`${ASAAS_BASE_URL}/customers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'access_token': ASAAS_API_KEY },
-        body: JSON.stringify({
-          name: customerData.name.trim(),
-          company: customerData.personType === 'JURIDICA' ? (customerData.companyName || '').trim() : undefined,
-          cpfCnpj: cleanCpf,
-          email: customerData.email.toLowerCase().trim(),
-          mobilePhone: cleanPhone,
-          postalCode: cleanCep,
-          address: customerData.endereco.trim(),
-          addressNumber: customerData.numero.trim(),
-          externalReference: user.id,
-          notificationDisabled: true,
-        }),
-      });
-      asaasCustomerId = cRes.id;
-      await supabase.from('users').update({ asaas_customer_id: asaasCustomerId }).eq('id', user.id);
-    }
-
-    // ===== 100% coupon: primeiro mês grátis; assinatura recorrente cria mesmo assim =====
-    if (isFreeCoupon) {
-      const nextDueFree = new Date();
-      nextDueFree.setDate(nextDueFree.getDate() + 30);
-      console.log('[Cupom 100%] Criando assinatura CC com 1º mês grátis');
-      const sRes = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'access_token': ASAAS_API_KEY },
-        body: JSON.stringify({
-          customer: asaasCustomerId,
-          billingType: 'CREDIT_CARD',
-          value: recurringAmount,
-          nextDueDate: nextDueFree.toISOString().split('T')[0],
-          cycle: 'MONTHLY',
-          description: `Assinatura ${planLabel} (1º mês grátis - cupom ${appliedCoupon!.code})`,
-          externalReference: `${user.id}_${plan}`,
-          creditCard: {
-            holderName: cardData.holderName.trim(),
-            number: cleanCard,
-            expiryMonth: cardData.expiryMonth,
-            expiryYear: cardData.expiryYear.length === 2 ? `20${cardData.expiryYear}` : cardData.expiryYear,
-            ccv: cardData.ccv,
-          },
-          creditCardHolderInfo: {
-            name: customerData.billingName.trim(),
-            email: customerData.email.toLowerCase().trim(),
-            cpfCnpj: cleanCpf,
-            postalCode: cleanCep,
-            addressNumber: customerData.numero.trim(),
-            address: customerData.endereco.trim(),
-            phone: cleanPhone,
-          },
-          remoteIp,
-        }),
-      });
-
-      const { data: dbPayment } = await supabase.from('payments').insert({
-        user_id: user.id,
-        plan,
-        amount: 0,
-        status: 'approved',
-        paid_at: new Date().toISOString(),
-        asaas_subscription_id: sRes.id,
-        bivvo_config: bivvoConfig || null,
-      }).select('id').single();
-
-      const expDate = new Date();
-      expDate.setMonth(expDate.getMonth() + 1);
-      expDate.setDate(expDate.getDate() + 3);
-      await supabase.from('users').update({
-        status: 'ativo',
-        plano_ativo: plan,
-        data_expiracao: expDate.toISOString(),
-        asaas_subscription_id: sRes.id,
-      }).eq('id', user.id);
-
-      await incrementCouponUse(supabase, appliedCoupon!.id);
-      try { await runProvisionAndPersist(supabase, user.id); }
-      catch (e) { console.error('Falha provisionamento (cupom 100%):', e); }
-
-      return new Response(JSON.stringify({
-        success: true,
-        paymentId: dbPayment?.id,
-        subscriptionId: sRes.id,
-        status: 'approved',
-        userId: user.id,
-        freeCoupon: true,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    // 5. Create Credit Card Subscription
-
-    const nextDueDate = new Date();
-    nextDueDate.setDate(nextDueDate.getDate() + 1);
-
-    const sRes = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'access_token': ASAAS_API_KEY },
-      body: JSON.stringify({
-        customer: asaasCustomerId,
-        billingType: 'CREDIT_CARD',
-        value: recurringAmount,
-        nextDueDate: nextDueDate.toISOString().split('T')[0],
-        cycle: 'MONTHLY',
-        description: `Assinatura ${planLabel}`,
-        externalReference: `${user.id}_${plan}`,
-        creditCard: {
-          holderName: cardData.holderName.trim(),
-          number: cleanCard,
-          expiryMonth: cardData.expiryMonth,
-          expiryYear: cardData.expiryYear.length === 2 ? `20${cardData.expiryYear}` : cardData.expiryYear,
-          ccv: cardData.ccv,
-        },
-        creditCardHolderInfo: {
-          name: customerData.billingName.trim(),
-          email: customerData.email.toLowerCase().trim(),
-          cpfCnpj: cleanCpf,
-          postalCode: cleanCep,
-          addressNumber: customerData.numero.trim(),
-          address: customerData.endereco.trim(),
-          phone: cleanPhone,
-        },
-        discount: amount < recurringAmount ? { value: round2(recurringAmount - amount), type: 'FIXED', dueDateLimitDays: 0 } : undefined,
-        remoteIp,
-      }),
-    });
-
-    // 6. Fetch First Payment status
-    let firstPayment: any = null;
-    for (let i = 0; i < 5; i++) {
-      const pRes = await asaasFetch(`${ASAAS_BASE_URL}/subscriptions/${sRes.id}/payments`, {
-        headers: { 'access_token': ASAAS_API_KEY },
-      });
-      if (pRes.data?.length > 0) {
-        firstPayment = pRes.data[0];
-        break;
-      }
-      await new Promise(r => setTimeout(r, 1500));
-    }
-    if (!firstPayment) throw new Error('Cobrança não localizada no Asaas.');
-
-    const isApproved = ['CONFIRMED', 'RECEIVED'].includes(firstPayment.status);
-
-    // 7. DB Payment & User Status
-    const { data: dbPayment } = await supabase.from('payments').insert({
-      user_id: user.id,
-      plan,
-      amount,
-      status: isApproved ? 'approved' : 'pending',
-      asaas_payment_id: firstPayment.id,
-      asaas_subscription_id: sRes.id,
-      bivvo_config: bivvoConfig || null,
-    }).select('id').single();
-
-    if (isApproved) {
-      const expDate = new Date();
-      expDate.setMonth(expDate.getMonth() + 1);
-      expDate.setDate(expDate.getDate() + 3); // 3 days grace period
-
-      await supabase.from('users').update({
-        status: 'ativo',
-        plano_ativo: plan,
-        data_expiracao: expDate.toISOString(),
-        asaas_subscription_id: sRes.id,
-      }).eq('id', user.id);
-
-      // Provisiona tenant Bivvo (não falha o pagamento se der erro)
-      try {
-        await runProvisionAndPersist(supabase, user.id);
-      } catch (e) {
-        console.error('Falha ao provisionar tenant Bivvo:', e);
-      }
-    }
-
-    if (appliedCoupon) {
-      await incrementCouponUse(supabase, appliedCoupon.id);
-    }
-
-
-    // 8. Affiliate tracking (Simplified for portability)
-    if (affiliateSlug && dbPayment) {
-      const { data: aff } = await supabase.from('affiliates').select('id, commission_percent').eq('slug', affiliateSlug).eq('status', 'active').maybeSingle();
-      if (aff) {
-        const { data: sale } = await supabase.from('affiliate_sales').insert({
-          affiliate_id: aff.id,
-          payment_id: dbPayment.id,
-          user_id: user.id,
-          plan_slug: plan,
-          plan_label: planLabel,
-          config: bivvoConfig || {},
-          amount_first: amount,
-          amount_recurring: recurringAmount,
-          commission_percent: aff.commission_percent,
-          status: isApproved ? 'paid' : 'pending',
-          tracking_id: trackingId,
-          asaas_payment_id: firstPayment.id,
-          asaas_subscription_id: sRes.id,
-        }).select('id').single();
-        if (sale) {
-          await supabase.from('affiliate_commissions').insert({
-            affiliate_id: aff.id,
-            sale_id: sale.id,
-            sale_amount: amount,
-            commission_percent: aff.commission_percent,
-            commission_amount: round2((amount * aff.commission_percent) / 100),
-            kind: 'first',
-            status: isApproved ? 'approved' : 'pending',
-          });
-        }
-      }
-    }
-
-    return new Response(JSON.stringify({ success: true, paymentId: dbPayment?.id, asaasId: sRes.id, status: isApproved ? 'approved' : 'pending', userId: user.id }), {
+    return new Response(JSON.stringify({ success: true, processed: results.length, results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-
   } catch (err) {
-    console.error('Process Payment Error:', err);
-    return new Response(JSON.stringify({ success: false, error: err.message }), {
-      status: 400,
+    console.error('auto-inactivate-overdue error:', err);
+    return new Response(JSON.stringify({ success: false, error: err instanceof Error ? err.message : String(err) }), {
+      status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
