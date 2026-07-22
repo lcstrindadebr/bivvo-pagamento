@@ -68,18 +68,21 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
       return;
     }
 
-    const persist = async (newStatus: string) => {
-      const { error: upErr } = await supabase.from('users').update({
+    const persist = async (newStatus: string, extra: Record<string, any> = {}) => {
+      const payload: Record<string, any> = {
         bivvo_status: newStatus,
         bivvo_status_checked_at: new Date().toISOString(),
-      }).eq('id', u.id);
+        ...extra,
+      };
+      const { error: upErr } = await supabase.from('users').update(payload).eq('id', u.id);
       if (upErr) {
         console.error(`[Bivvo] falha ao atualizar users.id=${u.id}:`, upErr.message);
       } else {
-        console.log(`[Bivvo] persist user=${u.id} status=${newStatus}`);
+        console.log(`[Bivvo] persist user=${u.id} status=${newStatus}`, Object.keys(extra));
       }
       u.bivvo_status = newStatus;
     };
+
 
     // No tenant assigned → status "Inserir ID"
     if (!u.bivvo_tenant_id || String(u.bivvo_tenant_id).trim() === '') {
