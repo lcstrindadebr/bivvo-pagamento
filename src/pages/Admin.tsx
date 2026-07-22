@@ -1387,7 +1387,7 @@ const Admin = () => {
                 })()}
                 {selectedSub && (
                   <>
-                  <div className="space-y-5 py-4 px-5 overflow-y-auto" style={{ maxHeight: 'calc(92vh - 180px)' }}>
+                  <div className="space-y-5 py-4 px-5 overflow-y-auto flex-1 min-h-0">
 
 
                     {/* SETUP BIVVO (Configuração Contratada + Tenant Bivvo) */}
