@@ -303,6 +303,37 @@ async function fetchRemoteTenant(
   }
 }
 
+async function resolveIdentity(
+  user: UserRow,
+  auth: { header: string },
+  tenantIdField: number | string,
+  supabase?: any,
+): Promise<string> {
+  let identity = onlyDigits(user.cpf);
+  if (identity) return identity;
+
+  // Cliente legado: busca identity via showTenant e persiste em users.cpf
+  const remote = await fetchRemoteTenant(tenantIdField, auth, user.id);
+  identity = onlyDigits(remote?.identity ?? remote?.cpf ?? remote?.cnpj);
+  if (identity && supabase) {
+    try {
+      await supabase.from("users").update({ cpf: identity }).eq("id", user.id);
+      await log.info("bivvo-api", `hidratado cpf legado via showTenant`, {
+        userId: user.id,
+        tenantId: String(tenantIdField),
+      });
+    } catch (e) {
+      console.warn("[Bivvo] falha ao persistir cpf hidratado:", e);
+    }
+  }
+  if (!identity) {
+    throw new Error(
+      "Identidade CPF/CNPJ do tenant Bivvo não encontrada para atualização.",
+    );
+  }
+  return identity;
+}
+
 async function callUpdateTenant(
   user: UserRow,
   cfg: BivvoCfg,
@@ -329,47 +360,41 @@ async function callUpdateTenant(
       : tenantIdRaw;
   const auth = await getBivvoAuth(supabase);
 
-  // Sempre busca o tenant remoto para mesclar campos obrigatórios (ex.: ticketProtocol)
-  const remote = await fetchRemoteTenant(tenantIdField, auth, user.id);
+  const identity = await resolveIdentity(user, auth, tenantIdField, supabase);
+  const status = ctx.status || "active";
+  const isInactivation = status === "inactive";
 
-  let identity = onlyDigits(user.cpf)
-    ?? onlyDigits(remote?.identity ?? remote?.cpf ?? remote?.cnpj);
-
-  if (!identity) {
-    throw new Error(
-      "Identidade CPF/CNPJ do tenant Bivvo não encontrada para atualização.",
-    );
-  }
-
-  // Merge: preserva TODOS os campos do tenant remoto e sobrescreve apenas o que estamos alterando.
+  // Payload conforme spec oficial do tenantApiUpdateTenant:
+  // - identifica o tenant por `identity` (CPF/CNPJ)
+  // - payload enxuto, apenas campos que estamos alterando
   const updatePayload: Record<string, unknown> = {
-    ...(remote || {}),
-    id: tenantIdField,
     identity,
-    status: ctx.status || remote?.status || "active",
-    maxUsers: ctx.maxUsers,
-    maxConnections: ctx.maxConnections,
+    status,
   };
 
-
-
+  if (!isInactivation) {
+    updatePayload.menuVisibility = buildMenuVisibility(cfg);
+    updatePayload.allowedChannels = DEFAULT_ALLOWED_CHANNELS;
+    updatePayload.channelConnectionLimits = ctx.limits;
+    updatePayload.maxUsers = ctx.maxUsers;
+    updatePayload.maxConnections = ctx.maxConnections;
+  }
 
   console.log(
-    "[Bivvo] updateTenant → id:",
-    tenantIdField,
+    "[Bivvo] updateTenant → identity:",
+    identity,
     "status:",
-    updatePayload.status,
-    "payload keys:",
+    status,
+    "keys:",
     Object.keys(updatePayload),
   );
-  await log.info("bivvo-api", `updateTenant → id:${tenantIdField}`, {
+  await log.info("bivvo-api", `updateTenant → identity:${identity} status:${status}`, {
     userId: user.id,
     endpoint: `${BIVVO_API_URL}/tenantApiUpdateTenant`,
     authSource: auth.source,
     tokenLength: auth.tokenLength,
     hadBearerPrefix: auth.hadBearerPrefix,
     tenantIdRaw,
-    tenantIdType: typeof tenantIdField,
     payload: redactSensitive(updatePayload),
   });
   const res = await fetch(`${BIVVO_API_URL}/tenantApiUpdateTenant`, {
