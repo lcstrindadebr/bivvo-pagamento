@@ -1391,6 +1391,53 @@ const Admin = () => {
 
 
                     {/* SETUP BIVVO (Configuração Contratada + Tenant Bivvo) */}
+                    {!tenantInfo && (
+                      <div className="border rounded-lg p-4 bg-amber-500/5 space-y-3">
+                        <div>
+                          <h3 className="text-sm font-bold flex items-center gap-2">
+                            <Package className="h-3 w-3" /> Setup Bivvo
+                          </h3>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Cliente sem registro local. Informe o Tenant Bivvo para criar o vínculo.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-[10px] uppercase text-muted-foreground">Tenant Bivvo</p>
+                          <div className="flex gap-2">
+                            <Input
+                              value={tenantBivvo}
+                              onChange={(e) => setTenantBivvo(e.target.value)}
+                              placeholder="ID do tenant (ex: 1)"
+                              className="h-8 text-sm flex-1"
+                            />
+                            <Button size="sm" onClick={() => setConfirmTenantOpen(true)} disabled={savingTenant || !tenantBivvo.trim()}>
+                              {savingTenant ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                              <span className="ml-2">Salvar Tenant</span>
+                            </Button>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            Ao salvar, um registro local será criado e vinculado a este cliente Asaas.
+                          </p>
+                          <AlertDialog open={confirmTenantOpen} onOpenChange={setConfirmTenantOpen}>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar Tenant Bivvo</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Vincular o Tenant ID <strong className="font-mono">{tenantBivvo.trim()}</strong> a este cliente Asaas?
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel disabled={savingTenant}>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={(e) => { e.preventDefault(); handleSaveTenant(); }} disabled={savingTenant}>
+                                  {savingTenant && <Loader2 className="h-3 w-3 animate-spin mr-2" />}
+                                  Confirmar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    )}
                     {tenantInfo && (
                       <div className="border rounded-lg p-4 bg-primary/5 space-y-4">
                         <div className="flex items-center justify-between">
