@@ -1406,7 +1406,12 @@ const Admin = () => {
 
 
                     {/* SETUP BIVVO (Configuração Contratada + Tenant Bivvo) */}
-                    {!tenantInfo && (
+                    {tenantLoading && (
+                      <div className="border rounded-lg p-4 bg-muted/20 flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Carregando Setup Bivvo…
+                      </div>
+                    )}
+                    {!tenantLoading && !tenantInfo && (
                       <div className="border rounded-lg p-4 bg-amber-500/5 space-y-3">
                         <div>
                           <h3 className="text-sm font-bold flex items-center gap-2">
