@@ -1724,29 +1724,32 @@ const Admin = () => {
                             const tenantExistsOnBivvo = isProvisioned && bivvoStatusRaw !== '' && bivvoStatusRaw !== 'Não possui Tenant';
                             const canProvisionOrUpdate = !tenantExistsOnBivvo || needsBivvoSync;
                             const canInactivate = isBivvoActive && hasTenantId;
-                            const nothingToDo = !canProvisionOrUpdate && !canInactivate;
-                            const provisionLabel = !tenantExistsOnBivvo ? 'Provisionar tenant via API Bivvo' : 'Atualizar tenant no Bivvo';
-                            const provisionTitle = !canProvisionOrUpdate
-                              ? 'Tenant já existe no Bivvo e está sincronizado — nada a fazer.'
-                              : (!tenantExistsOnBivvo ? 'Cria o tenant na API Bivvo com base na configuração contratada.' : 'Envia a configuração atual para o tenant existente no Bivvo.');
+                            const showProvisionButton = !hasTenantId;
+                            const showUpdateButton = hasTenantId && canProvisionOrUpdate;
+                            const provisionLabel = showProvisionButton ? 'Provisionar tenant via API Bivvo' : 'Atualizar tenant no Bivvo';
+                            const provisionTitle = showProvisionButton
+                              ? 'Cria o tenant na API Bivvo com base na configuração contratada.'
+                              : 'Envia a configuração atual para o tenant existente no Bivvo.';
                             return (
                               <>
                                 <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="flex-1 h-8 text-xs"
-                                    onClick={handleProvisionTenant}
-                                    disabled={provisioningTenant || !tenantInfo?.id || !canProvisionOrUpdate}
-                                    title={provisionTitle}
-                                  >
-                                    {provisioningTenant ? (
-                                      <Loader2 className="h-3 w-3 animate-spin mr-2" />
-                                    ) : (
-                                      <RefreshCw className="h-3 w-3 mr-2" />
-                                    )}
-                                    {provisionLabel}
-                                  </Button>
+                                  {(showProvisionButton || showUpdateButton) && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="flex-1 h-8 text-xs"
+                                      onClick={handleProvisionTenant}
+                                      disabled={provisioningTenant || !tenantInfo?.id}
+                                      title={provisionTitle}
+                                    >
+                                      {provisioningTenant ? (
+                                        <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                      ) : (
+                                        <RefreshCw className="h-3 w-3 mr-2" />
+                                      )}
+                                      {provisionLabel}
+                                    </Button>
+                                  )}
                                   {canInactivate && (
                                     <Button
                                       size="sm"
@@ -1765,7 +1768,7 @@ const Admin = () => {
                                     </Button>
                                   )}
                                 </div>
-                                {nothingToDo ? (
+                                {!showProvisionButton && !showUpdateButton && !canInactivate ? (
                                   <p className="text-[10px] text-muted-foreground">Nenhuma ação pendente — tenant sincronizado.</p>
                                 ) : (
                                   <p className="text-[10px] text-muted-foreground">{provisionTitle}</p>
