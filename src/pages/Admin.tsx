@@ -127,6 +127,7 @@ const Admin = () => {
   const [refreshingBivvo, setRefreshingBivvo] = useState(false);
   const [contractedConfig, setContractedConfig] = useState<any>(null);
   const [tenantInfo, setTenantInfo] = useState<{ id?: string | null; bivvo_tenant_id?: string | null; tenant_provisioned_at?: string | null; tenant_provision_error?: string | null; person_type?: string | null; company_name?: string | null; bivvo_config_synced_bivvo?: any; bivvo_config_synced_asaas_value?: number | null; bivvo_config_previous?: any } | null>(null);
+  const [tenantLoading, setTenantLoading] = useState(false);
   const [provisioningTenant, setProvisioningTenant] = useState(false);
   const [isEditingConfig, setIsEditingConfig] = useState(false);
   const [configForm, setConfigForm] = useState<{ plan: string; users: number; channels: Record<string, number>; telefonia: boolean; disparo: boolean; protagonista: boolean }>({ plan: 'standard', users: 3, channels: {}, telefonia: false, disparo: false, protagonista: false });
