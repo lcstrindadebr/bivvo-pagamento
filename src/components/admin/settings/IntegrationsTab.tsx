@@ -16,6 +16,7 @@ interface Props {
 
 export function IntegrationsTab({ settings, loading }: Props) {
   const { save, saving } = useSaveSetting();
+  const { adminFetch, adminPost } = useAdmin();
   const { toast } = useToast();
   const [form, setForm] = useState({ ga_id: '', meta_pixel_id: '' });
   const [dirty, setDirty] = useState(false);
