@@ -260,6 +260,27 @@ serve(async (req) => {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
 
+    if (action === 'get-bivvo-token') {
+      const { data } = await supabase
+        .from('admin_secrets').select('value').eq('key', 'bivvo_api_token').maybeSingle();
+      return new Response(JSON.stringify({ value: (data as any)?.value || '' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'save-bivvo-token' && req.method === 'POST') {
+      const body = await req.json().catch(() => ({}));
+      const value = String(body?.value ?? '').trim();
+      const { error } = await supabase
+        .from('admin_secrets')
+        .upsert({ key: 'bivvo_api_token', value }, { onConflict: 'key' });
+      if (error) throw new Error(error.message);
+      await logAction(supabase, user, 'save-bivvo-token', 'admin_secrets', 'bivvo_api_token');
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (action === 'list-subscriptions') {
       const offset = url.searchParams.get('offset') || '0';
       const limit = url.searchParams.get('limit') || '20';
