@@ -1318,7 +1318,7 @@ const Admin = () => {
                   return (
                 <>
                   {/* HEADER STICKY */}
-                  <div className="border-b bg-card px-5 pt-5 pb-4 space-y-3">
+                  <div className="border-b bg-card px-5 pt-5 pb-4 space-y-3 shrink-0">
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div className="min-w-0 flex-1">
                         <h2 className="text-base font-semibold truncate">{selectedSub.customerName}</h2>
