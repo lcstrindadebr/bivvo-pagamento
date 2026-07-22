@@ -261,6 +261,43 @@ async function callStoreTenant(
   return { tenantId, response: json, maxUsers, maxConnections, limits };
 }
 
+async function fetchRemoteTenant(
+  tenantIdField: number | string,
+  auth: { header: string },
+  userId?: string,
+) {
+  try {
+    const res = await fetch(`${BIVVO_API_URL}/tenantApiShowTenant`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: auth.header,
+      },
+      body: JSON.stringify({ id: tenantIdField }),
+    });
+    const text = await res.text();
+    let json: any = null;
+    try { json = JSON.parse(text); } catch { /* ignore */ }
+    const tenantData = Array.isArray(json?.tenant)
+      ? json.tenant[0]
+      : (json?.tenant ?? json?.data?.tenant ?? json?.data ?? json);
+    await log.info("bivvo-api", `showTenant lookup id:${tenantIdField}`, {
+      userId,
+      status: res.status,
+      found: Boolean(tenantData),
+      keys: tenantData && typeof tenantData === "object" ? Object.keys(tenantData) : [],
+    });
+    return tenantData && typeof tenantData === "object" ? tenantData : null;
+  } catch (e) {
+    await log.error("bivvo-api", `showTenant lookup falhou`, {
+      userId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return null;
+  }
+}
+
 async function callUpdateTenant(
   user: UserRow,
   cfg: BivvoCfg,
@@ -286,40 +323,12 @@ async function callUpdateTenant(
       ? tenantIdNum
       : tenantIdRaw;
   const auth = await getBivvoAuth(supabase);
-  let identity = onlyDigits(user.cpf);
 
-  // Se não temos CPF/CNPJ local, tenta buscar via showTenant (necessário p/ update)
-  if (!identity) {
-    try {
-      const showRes = await fetch(`${BIVVO_API_URL}/tenantApiShowTenant`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: auth.header,
-        },
-        body: JSON.stringify({ id: tenantIdField }),
-      });
-      const showText = await showRes.text();
-      let showJson: any = null;
-      try { showJson = JSON.parse(showText); } catch { /* ignore */ }
-      const tenantData = Array.isArray(showJson?.tenant)
-        ? showJson.tenant[0]
-        : (showJson?.tenant ?? showJson?.data?.tenant ?? showJson?.data ?? showJson);
-      const remoteIdentity = onlyDigits(tenantData?.identity ?? tenantData?.cpf ?? tenantData?.cnpj);
-      if (remoteIdentity) identity = remoteIdentity;
-      await log.info("bivvo-api", `showTenant lookup id:${tenantIdField}`, {
-        userId: user.id,
-        status: showRes.status,
-        found: Boolean(remoteIdentity),
-      });
-    } catch (e) {
-      await log.error("bivvo-api", `showTenant lookup falhou`, {
-        userId: user.id,
-        error: e instanceof Error ? e.message : String(e),
-      });
-    }
-  }
+  // Sempre busca o tenant remoto para mesclar campos obrigatórios (ex.: ticketProtocol)
+  const remote = await fetchRemoteTenant(tenantIdField, auth, user.id);
+
+  let identity = onlyDigits(user.cpf)
+    ?? onlyDigits(remote?.identity ?? remote?.cpf ?? remote?.cnpj);
 
   if (!identity) {
     throw new Error(
@@ -327,14 +336,17 @@ async function callUpdateTenant(
     );
   }
 
-  // Payload sempre inclui id + identity. Bivvo exige campos completos mesmo para inactivate.
+  // Merge: preserva TODOS os campos do tenant remoto e sobrescreve apenas o que estamos alterando.
   const updatePayload: Record<string, unknown> = {
+    ...(remote || {}),
     id: tenantIdField,
     identity,
-    status: ctx.status || "active",
+    status: ctx.status || remote?.status || "active",
     maxUsers: ctx.maxUsers,
     maxConnections: ctx.maxConnections,
   };
+
+
 
 
   console.log(
