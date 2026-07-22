@@ -1300,7 +1300,7 @@ const Admin = () => {
 
             {/* SUBSCRIPTION DETAILS DIALOG */}
             <Dialog open={subDetailsDialog} onOpenChange={setSubDetailsDialog}>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-full max-h-[92vh] p-0 gap-0 overflow-hidden">
                 <DialogHeader>
                   <DialogTitle>Detalhes da Assinatura</DialogTitle>
                   <DialogDescription>Informações detalhadas do cliente e configuração contratada.</DialogDescription>
