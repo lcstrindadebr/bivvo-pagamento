@@ -41,14 +41,18 @@ export function IntegrationsTab({ settings, loading }: Props) {
   useEffect(() => {
     (async () => {
       setBivvoLoading(true);
-      const { data } = await supabase
-        .from('admin_secrets')
-        .select('value')
-        .eq('key', 'bivvo_api_token')
-        .maybeSingle();
-      setBivvoToken((data as any)?.value || '');
-      setBivvoDirty(false);
-      setBivvoLoading(false);
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-api?action=get-bivvo-token', {
+          method: 'GET',
+        });
+        if (error) throw error;
+        setBivvoToken((data as any)?.value || '');
+      } catch (err) {
+        console.error('load bivvo token', err);
+      } finally {
+        setBivvoDirty(false);
+        setBivvoLoading(false);
+      }
     })();
   }, []);
 
@@ -65,10 +69,12 @@ export function IntegrationsTab({ settings, loading }: Props) {
   const saveBivvo = async () => {
     setBivvoSaving(true);
     try {
-      const { error } = await supabase
-        .from('admin_secrets')
-        .upsert({ key: 'bivvo_api_token', value: bivvoToken.trim() }, { onConflict: 'key' });
+      const { data, error } = await supabase.functions.invoke('admin-api?action=save-bivvo-token', {
+        method: 'POST',
+        body: { value: bivvoToken.trim() },
+      });
       if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
       toast({ title: 'Salvo', description: 'Token da API Bivvo atualizado.' });
       setBivvoDirty(false);
     } catch (err) {
