@@ -67,12 +67,7 @@ export function IntegrationsTab({ settings, loading }: Props) {
   const saveBivvo = async () => {
     setBivvoSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('admin-api?action=save-bivvo-token', {
-        method: 'POST',
-        body: { value: bivvoToken.trim() },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      await adminPost('save-bivvo-token', { value: bivvoToken.trim() });
       toast({ title: 'Salvo', description: 'Token da API Bivvo atualizado.' });
       setBivvoDirty(false);
     } catch (err) {
