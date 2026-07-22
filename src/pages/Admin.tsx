@@ -2002,20 +2002,26 @@ const Admin = () => {
                         </Table>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="flex justify-end gap-2 pt-2 flex-wrap">
-                      <Button variant="destructive" size="sm" onClick={handleDeleteCustomer} disabled={customerActionLoading}>
-                        <Trash2 className="h-3 w-3 mr-2" /> Excluir Cliente
+                  {/* FOOTER STICKY */}
+                  <div className="border-t bg-card px-5 py-3 flex justify-between items-center gap-2 flex-wrap">
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={handleDeleteCustomer} disabled={customerActionLoading}>
+                        <Trash2 className="h-3 w-3 mr-2" /> Excluir
                       </Button>
-                      <Button variant="outline" size="sm" onClick={handleRestoreCustomer} disabled={customerActionLoading}>
-                        <CheckCircle2 className="h-3 w-3 mr-2" /> Restaurar Cliente
+                      <Button variant="ghost" size="sm" onClick={handleRestoreCustomer} disabled={customerActionLoading}>
+                        <CheckCircle2 className="h-3 w-3 mr-2" /> Restaurar
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setSubDetailsDialog(false)}>Fechar</Button>
+                    </div>
+                    <div className="flex gap-2">
                       <Button size="sm" variant="secondary" onClick={() => window.open(`https://app.asaas.com/subscription/show/${selectedSub.id}`, '_blank')}>
                         <ExternalLink className="h-3 w-3 mr-2" /> Ver no Asaas
                       </Button>
+                      <Button variant="outline" size="sm" onClick={() => setSubDetailsDialog(false)}>Fechar</Button>
                     </div>
                   </div>
+
 
                 )}
               </DialogContent>
