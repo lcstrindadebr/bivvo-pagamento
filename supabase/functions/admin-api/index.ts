@@ -118,8 +118,9 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
       console.log(`[Bivvo] resp user=${u.id} tenant=${parsedId} http=${res.status} body=`, typeof raw === 'string' ? raw.slice(0,500) : JSON.stringify(raw).slice(0,500));
 
       let newStatus = 'Não possui Tenant';
+      const extra: Record<string, any> = {};
       if (res.ok && typeof raw === 'object' && raw !== null) {
-        // A API Bivvo devolve { tenant: [ { id, status, name, ... } ] }
+        // A API Bivvo devolve { tenant: [ { id, status, name, identity, ... } ] }
         let tenant: any = (raw as any).tenant ?? (raw as any).data?.tenant ?? (raw as any).data ?? raw;
         if (Array.isArray(tenant)) tenant = tenant[0];
         const st = String(tenant?.status ?? '').toLowerCase().trim();
@@ -127,11 +128,18 @@ async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
         else if (st === 'inactive') newStatus = 'inactive';
         else if (tenant && (tenant.id || tenant.name)) newStatus = st || 'inactive';
         else newStatus = 'Não possui Tenant';
+
+        // Hidrata CPF/CNPJ do tenant remoto quando não existir localmente (clientes legados)
+        const remoteIdentity = String(tenant?.identity ?? tenant?.cpfCnpj ?? '').replace(/\D/g, '');
+        if (remoteIdentity && !String(u.cpf ?? '').replace(/\D/g, '')) {
+          extra.cpf = remoteIdentity;
+        }
       } else if (res.status >= 500) {
         newStatus = 'Erro API';
       }
 
-      await persist(newStatus);
+      await persist(newStatus, extra);
+
     } catch (e) {
       console.error('[Bivvo] check failed user', u.id, 'tenant', parsedId, e);
       await persist('Erro API');
