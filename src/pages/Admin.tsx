@@ -1301,93 +1301,93 @@ const Admin = () => {
             {/* SUBSCRIPTION DETAILS DIALOG */}
             <Dialog open={subDetailsDialog} onOpenChange={setSubDetailsDialog}>
               <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-full max-h-[92vh] p-0 gap-0 overflow-hidden">
-                <DialogHeader>
+                <DialogHeader className="sr-only">
                   <DialogTitle>Detalhes da Assinatura</DialogTitle>
-                  <DialogDescription>Informações detalhadas do cliente e configuração contratada.</DialogDescription>
+                  <DialogDescription>Informações detalhadas do cliente, setup Bivvo e cobranças.</DialogDescription>
                 </DialogHeader>
-                {selectedSub && (
-                  <div className="space-y-6 py-4 max-h-[80vh] overflow-y-auto px-1">
-                    <div className="grid grid-cols-2 gap-8">
-                      <div className="space-y-3">
-                        <h3 className="text-sm font-semibold border-b pb-1">Dados do Cliente</h3>
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">{selectedSub.customerName}</p>
-                          <p className="text-xs text-muted-foreground">{selectedSub.customerEmail}</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs text-muted-foreground font-mono">ID Asaas Cliente: {selectedSub.customer}</p>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-5 w-5 p-0" 
-                              onClick={() => {
-                                navigator.clipboard.writeText(selectedSub.customer);
-                                toast({ title: "Copiado", description: "ID do cliente copiado!" });
-                              }}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs text-muted-foreground font-mono">ID Assinatura: {selectedSub.id}</p>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-5 w-5 p-0" 
-                              onClick={() => {
-                                navigator.clipboard.writeText(selectedSub.id);
-                                toast({ title: "Copiado", description: "ID da assinatura copiado!" });
-                              }}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
+                {selectedSub && (() => {
+                  const overdueList = (selectedSubPayments || []).filter((p: any) => String(p.status).toUpperCase() === 'OVERDUE' && p.dueDate);
+                  const oldestOverdue = overdueList.length
+                    ? overdueList.map((p: any) => new Date(p.dueDate + 'T00:00:00')).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0]
+                    : null;
+                  const overdueDays = oldestOverdue ? Math.max(0, Math.floor((Date.now() - oldestOverdue.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                  const isAdimplente = overdueList.length === 0;
+                  const bivvoStatusRaw = String(selectedSub?.bivvoStatus || '');
+                  const bivvoStatusLc = bivvoStatusRaw.toLowerCase();
+                  const hasBivvoTenant = !!tenantInfo?.bivvo_tenant_id;
+                  return (
+                <>
+                  {/* HEADER STICKY */}
+                  <div className="border-b bg-card px-5 pt-5 pb-4 space-y-3">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-base font-semibold truncate">{selectedSub.customerName}</h2>
+                        <p className="text-xs text-muted-foreground truncate">{selectedSub.customerEmail}</p>
                       </div>
-                      <div className="space-y-3">
-                        <h3 className="text-sm font-semibold border-b pb-1">Status Atual Asaas</h3>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">Valor:</span>
-                            <span className="font-bold text-accent">{formatCurrency(selectedSub.value)}</span>
-                          </div>
-                          <div className="flex justify-between text-xs pt-1">
-                            <span className="text-muted-foreground">Status:</span>
-                            <Badge variant="outline" className={`text-[9px] h-4 ${statusColor(selectedSub.status)}`}>{selectedSub.status}</Badge>
-                          </div>
-                          {(() => {
-                            const overdueList = (selectedSubPayments || []).filter((p: any) => String(p.status).toUpperCase() === 'OVERDUE' && p.dueDate);
-                            if (overdueList.length === 0) {
-                              return (
-                                <div className="flex justify-between text-xs pt-1">
-                                  <span className="text-muted-foreground">Pagamento:</span>
-                                  <Badge variant="outline" className="text-[9px] h-4 bg-green-500/10 text-green-600 border-green-500/30">Adimplente</Badge>
-                                </div>
-                              );
-                            }
-                            const oldest = overdueList
-                              .map((p: any) => new Date(p.dueDate + 'T00:00:00'))
-                              .sort((a: Date, b: Date) => a.getTime() - b.getTime())[0];
-                            const days = Math.max(0, Math.floor((Date.now() - oldest.getTime()) / (1000 * 60 * 60 * 24)));
-                            return (
-                              <>
-                                <div className="flex justify-between text-xs pt-1">
-                                  <span className="text-muted-foreground">Pagamento:</span>
-                                  <Badge variant="outline" className="text-[9px] h-4 bg-red-500/10 text-red-600 border-red-500/30">Inadimplente</Badge>
-                                </div>
-                                <div className="flex justify-between text-xs pt-1">
-                                  <span className="text-muted-foreground">Dias em atraso:</span>
-                                  <span className="font-bold text-red-600">{days} {days === 1 ? 'dia' : 'dias'}</span>
-                                </div>
-                                <div className="flex justify-between text-xs">
-                                  <span className="text-muted-foreground">Faturas em atraso:</span>
-                                  <span className="font-medium">{overdueList.length}</span>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
+                      <div className="text-right">
+                        <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Recorrente</p>
+                        <p className="text-lg font-bold text-accent leading-none">{formatCurrency(selectedSub.value)}</p>
                       </div>
                     </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {isAdimplente ? (
+                        <Badge variant="outline" className="text-[11px] h-6 px-2 bg-green-500/10 text-green-600 border-green-500/30 gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Adimplente
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[11px] h-6 px-2 bg-red-500/10 text-red-600 border-red-500/30 gap-1">
+                          <Info className="h-3 w-3" /> Inadimplente · {overdueDays}d · {overdueList.length} fatura{overdueList.length > 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className={`text-[11px] h-6 px-2 ${statusColor(selectedSub.status)}`}>
+                        Asaas: {selectedSub.status}
+                      </Badge>
+                      {hasBivvoTenant ? (
+                        <Badge variant="outline" className={`text-[11px] h-6 px-2 ${bivvoStatusLc === 'active' || bivvoStatusLc === 'ativo' ? 'bg-blue-500/10 text-blue-600 border-blue-500/30' : 'bg-muted text-muted-foreground'}`}>
+                          Bivvo: {bivvoStatusRaw || 'não consultado'} · #{tenantInfo?.bivvo_tenant_id}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[11px] h-6 px-2 bg-amber-500/10 text-amber-700 border-amber-500/30">
+                          Sem tenant Bivvo
+                        </Badge>
+                      )}
+                      {tenantInfo?.person_type && (
+                        <Badge variant="outline" className="text-[11px] h-6 px-2">
+                          {tenantInfo.person_type === 'JURIDICA' ? 'PJ' : 'PF'}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <details className="group">
+                      <summary className="text-[11px] text-muted-foreground cursor-pointer hover:text-foreground select-none inline-flex items-center gap-1">
+                        <span className="group-open:hidden">▸</span><span className="hidden group-open:inline">▾</span>
+                        Identificadores técnicos
+                      </summary>
+                      <div className="mt-2 space-y-1 pl-3 border-l-2 border-muted">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-muted-foreground font-mono">Cliente: {selectedSub.customer}</span>
+                          <Button variant="ghost" size="sm" className="h-5 w-5 p-0" aria-label="Copiar ID do cliente"
+                            onClick={() => { navigator.clipboard.writeText(selectedSub.customer); toast({ title: "Copiado", description: "ID do cliente copiado!" }); }}>
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-muted-foreground font-mono">Assinatura: {selectedSub.id}</span>
+                          <Button variant="ghost" size="sm" className="h-5 w-5 p-0" aria-label="Copiar ID da assinatura"
+                            onClick={() => { navigator.clipboard.writeText(selectedSub.id); toast({ title: "Copiado", description: "ID da assinatura copiado!" }); }}>
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                </>
+                  );
+                })()}
+                {selectedSub && (
+                  <div className="space-y-5 py-4 px-5 overflow-y-auto" style={{ maxHeight: 'calc(92vh - 180px)' }}>
+
 
                     {/* SETUP BIVVO (Configuração Contratada + Tenant Bivvo) */}
                     {tenantInfo && (
