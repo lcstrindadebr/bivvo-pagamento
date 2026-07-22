@@ -205,26 +205,21 @@ async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_
         continue;
       }
       try {
-        // 1) Tenta atualizar por asaas_customer_id
+        // 1) Se já existe por asaas_customer_id, NÃO sobrescreve contato — apenas usa o que está local
         const { data: byAsaas } = await supabase
           .from('users').select('id').eq('asaas_customer_id', u.asaas_customer_id).maybeSingle();
 
-        if (byAsaas) {
-          await supabase.from('users').update({
-            name: u.name, email: u.email, whatsapp: u.whatsapp, cpf: u.cpf,
-          }).eq('id', byAsaas.id);
-        } else {
-          // 2) Tenta pelo email (upgrade do registro existente)
+        if (!byAsaas) {
+          // 2) Tenta pelo email (upgrade do registro existente): só vincula o asaas_customer_id, sem tocar contato
           const { data: byEmail } = await supabase
             .from('users').select('id').eq('email', u.email).maybeSingle();
 
           if (byEmail) {
             await supabase.from('users').update({
               asaas_customer_id: u.asaas_customer_id,
-              name: u.name, whatsapp: u.whatsapp, cpf: u.cpf,
             }).eq('id', byEmail.id);
           } else {
-            // 3) Cria novo (sem duplicar)
+            // 3) Cria novo (sem duplicar) — preenche contato apenas na criação
             await supabase.from('users').insert({
               name: u.name, email: u.email, whatsapp: u.whatsapp, cpf: u.cpf,
               asaas_customer_id: u.asaas_customer_id, status: 'active',
