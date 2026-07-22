@@ -180,6 +180,10 @@ async function callStoreTenant(
 
   const isPJ = (user.person_type || "").toUpperCase() === "JURIDICA";
   const tenantName = isPJ && user.company_name ? user.company_name : user.name;
+  const identity = onlyDigits(user.cpf);
+  if (!identity) {
+    throw new Error("CPF/CNPJ do cliente ausente — não é possível criar tenant na Bivvo.");
+  }
 
   const storePayload = {
     status: "active",
@@ -188,6 +192,7 @@ async function callStoreTenant(
     maxConnections,
     acceptTerms: true,
     email: user.email,
+    identity,
     password: "@Bivvo123456",
     userName: user.name,
     profile: "admin",
