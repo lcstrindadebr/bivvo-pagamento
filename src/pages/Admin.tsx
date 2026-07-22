@@ -2006,7 +2006,7 @@ const Admin = () => {
                   </div>
 
                   {/* FOOTER STICKY */}
-                  <div className="border-t bg-card px-5 py-3 flex justify-between items-center gap-2 flex-wrap">
+                  <div className="border-t bg-card px-5 py-3 flex justify-between items-center gap-2 flex-wrap flex-shrink-0">
                     <div className="flex gap-2">
                       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={handleDeleteCustomer} disabled={customerActionLoading}>
                         <Trash2 className="h-3 w-3 mr-2" /> Excluir
