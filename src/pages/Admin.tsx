@@ -127,6 +127,7 @@ const Admin = () => {
   const [refreshingBivvo, setRefreshingBivvo] = useState(false);
   const [contractedConfig, setContractedConfig] = useState<any>(null);
   const [tenantInfo, setTenantInfo] = useState<{ id?: string | null; bivvo_tenant_id?: string | null; tenant_provisioned_at?: string | null; tenant_provision_error?: string | null; person_type?: string | null; company_name?: string | null; bivvo_config_synced_bivvo?: any; bivvo_config_synced_asaas_value?: number | null; bivvo_config_previous?: any } | null>(null);
+  const [tenantLoading, setTenantLoading] = useState(false);
   const [provisioningTenant, setProvisioningTenant] = useState(false);
   const [isEditingConfig, setIsEditingConfig] = useState(false);
   const [configForm, setConfigForm] = useState<{ plan: string; users: number; channels: Record<string, number>; telefonia: boolean; disparo: boolean; protagonista: boolean }>({ plan: 'standard', users: 3, channels: {}, telefonia: false, disparo: false, protagonista: false });
@@ -393,6 +394,12 @@ const Admin = () => {
 
   useEffect(() => {
     if (selectedSub) {
+      // Reset imediato para evitar race condition entre trocas de cliente
+      setTenantInfo(null);
+      setContractedConfig(null);
+      setConfigLogs([]);
+      setTenantLoading(true);
+
       setEditFormData({
         value: String(selectedSub.value),
         status: selectedSub.status,
@@ -410,14 +417,20 @@ const Admin = () => {
         postalCode: '', address: '', addressNumber: '', complement: '', province: '',
       });
       loadSubPayments(selectedSub.id);
-      // Load contracted Bivvo config from users table
+
+      const targetCustomer = selectedSub.customer;
       supabase.from('users')
         .select('id, bivvo_config, bivvo_tenant_id, tenant_provisioned_at, tenant_provision_error, person_type, company_name, bivvo_config_synced_bivvo, bivvo_config_synced_asaas_value, bivvo_config_previous')
-        .eq('asaas_customer_id', selectedSub.customer)
+        .eq('asaas_customer_id', targetCustomer)
         .maybeSingle()
-        .then(async ({ data }) => {
+        .then(async ({ data, error }) => {
+          // Ignora se o usuário já trocou de cliente
+          if (!selectedSub || selectedSub.customer !== targetCustomer) return;
+          if (error) {
+            console.error('Erro ao carregar tenant info:', error);
+          }
           setContractedConfig(data?.bivvo_config || null);
-          setTenantInfo(data as any || null);
+          setTenantInfo((data as any) || null);
           setIsEditingConfig(false);
           if (data?.bivvo_tenant_id) {
             setTenantBivvo(String(data.bivvo_tenant_id));
@@ -430,11 +443,13 @@ const Admin = () => {
           } else {
             setConfigLogs([]);
           }
+          setTenantLoading(false);
         });
     } else {
       setSelectedSubPayments([]);
       setContractedConfig(null);
       setTenantInfo(null);
+      setTenantLoading(false);
     }
   }, [selectedSub]);
 
@@ -1391,7 +1406,12 @@ const Admin = () => {
 
 
                     {/* SETUP BIVVO (Configuração Contratada + Tenant Bivvo) */}
-                    {!tenantInfo && (
+                    {tenantLoading && (
+                      <div className="border rounded-lg p-4 bg-muted/20 flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Carregando Setup Bivvo…
+                      </div>
+                    )}
+                    {!tenantLoading && !tenantInfo && (
                       <div className="border rounded-lg p-4 bg-amber-500/5 space-y-3">
                         <div>
                           <h3 className="text-sm font-bold flex items-center gap-2">
