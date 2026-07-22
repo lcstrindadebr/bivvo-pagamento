@@ -275,33 +275,50 @@ update_supabase_auto() {
         echo -e "${YELLOW}Encontre em: Dashboard → Project Settings → Database → Database password.${NC}"
         echo ""
 
-        # Pede o project ref (host) — pode aceitar apenas o ref (ex: bcijktxnuzsatvhammpl) ou o host completo
+        # Pede o project ref (host). Aceita: ref puro (bcijkt...), host completo
+        # (db.<ref>.supabase.co) ou a connection string inteira colada.
         local DB_HOST=""
-        read -r -p "🌐 Project ref ou host do banco (ex: bcijktxnuzsatvhammpl ou db.bcijktxnuzsatvhammpl.supabase.co): " DB_HOST_RAW
+        read -r -p "🌐 Project ref ou host do banco (ex: bcijktxnuzsatvhammpl): " DB_HOST_RAW
         DB_HOST=$(printf '%s' "$DB_HOST_RAW" | tr -d '[:space:]')
         if [ -z "$DB_HOST" ]; then
             echo -e "${RED}❌ Project ref/host é obrigatório.${NC}"
             continue
         fi
+
+        # Se coloou a connection string inteira, extrai apenas o host
+        if [[ "$DB_HOST" =~ ^postgres(ql)?:// ]]; then
+            DB_HOST=$(printf '%s' "$DB_HOST" | sed -E 's#^postgres(ql)?://([^@/]+@)?([^:/?]+).*#\3#')
+        fi
+        # Se veio algo como "senha@db.xxx.supabase.co", pega só depois do @
+        if [[ "$DB_HOST" == *"@"* ]]; then
+            DB_HOST="${DB_HOST##*@}"
+        fi
+        # Remove porta/rota residual
+        DB_HOST="${DB_HOST%%:*}"
+        DB_HOST="${DB_HOST%%/*}"
         # Se veio só o ref, monta o host completo
         if [[ "$DB_HOST" != *.* ]]; then
             DB_HOST="db.${DB_HOST}.supabase.co"
         fi
 
-        # Pede a senha (silenciosa)
-        local DB_PASS=""
-        read -r -s -p "🔐 Senha do banco (postgres): " DB_PASS
-        echo ""
-        if [ -z "$DB_PASS" ]; then
-            echo -e "${RED}❌ Senha não pode ser vazia.${NC}"
-            continue
-        fi
+        echo -e "${BLUE}→ Host do banco: ${DB_HOST}${NC}"
 
-        # URL-encode simples da senha (caracteres comuns)
+        # Pede a senha (silenciosa) — modelo:
+        # postgresql://postgres:[SUA-SENHA]@db.<ref>.supabase.co:5432/postgres
+        local DB_PASS=""
+        while [ -z "$DB_PASS" ]; do
+            read -r -s -p "🔐 Senha do banco Postgres (Dashboard → Database → Password): " DB_PASS
+            echo ""
+            if [ -z "$DB_PASS" ]; then
+                echo -e "${RED}❌ Senha não pode ser vazia.${NC}"
+            fi
+        done
+
+        # URL-encode da senha (trata @, :, /, #, ?, espaços, etc.)
         local DB_PASS_ENC
         DB_PASS_ENC=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1], safe=''))" "$DB_PASS" 2>/dev/null || printf '%s' "$DB_PASS")
 
-        DB_URL="postgresql://postgres:${DB_PASS_ENC}@${DB_HOST}:5432/postgres"
+        DB_URL="postgresql://postgres:${DB_PASS_ENC}@${DB_HOST}:5432/postgres?sslmode=require"
 
         if ! [[ "$DB_URL" =~ ^postgres(ql)?:// ]]; then
             echo -e "${RED}❌ Falha ao montar a connection string.${NC}"
