@@ -262,59 +262,67 @@ update_supabase_auto() {
     fi
 
     echo ""
-    echo -e "${YELLOW}Precisamos da senha do banco para aplicar o SQL.${NC}"
-    echo -e "${YELLOW}API key/JWT/anon key não servem para rodar migrations via psql.${NC}"
-    echo -e "${YELLOW}Se você esqueceu a senha, redefina a senha do banco e execute novamente.${NC}"
-    echo -e "${YELLOW}A URL será montada neste formato:${NC}"
-    echo -e "${YELLOW}postgresql://postgres:[YOUR-PASSWORD]@db.${SUPA_REF}.supabase.co:5432/postgres${NC}"
-    echo -e "${YELLOW}Se o seu VPS não tiver IPv6, use um host IPv4/pooler do banco quando solicitado.${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}Precisamos aplicar o SQL via psql. Isso exige a SENHA do banco.${NC}"
+    echo -e "${YELLOW}API key/JWT/anon key NÃO funcionam aqui.${NC}"
+    echo ""
+    echo -e "${YELLOW}⚠️  Se seu VPS não tem IPv6 (erro 'Network is unreachable'),${NC}"
+    echo -e "${YELLOW}    use o SESSION POOLER (IPv4) do Supabase:${NC}"
+    echo -e "${YELLOW}    Dashboard → Project Settings → Database → Connection string → Session pooler${NC}"
+    echo ""
+    echo -e "${YELLOW}Você pode:${NC}"
+    echo -e "${YELLOW}  [1] Colar a CONNECTION STRING completa (recomendado p/ pooler)${NC}"
+    echo -e "${YELLOW}      Ex.: postgresql://postgres.<ref>:<senha>@aws-0-us-east-1.pooler.supabase.com:5432/postgres${NC}"
+    echo -e "${YELLOW}  [2] Digitar apenas o project ref e o script pede a senha (usa db.<ref>.supabase.co, IPv6)${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    local DB_HOST=""
-    while [ -z "$DB_HOST" ]; do
-        read -r -p "🌐 Project ref ou host do banco [$SUPA_REF]: " DB_HOST_RAW
-        DB_HOST=$(printf '%s' "${DB_HOST_RAW:-$SUPA_REF}" | tr -d '[:space:]')
-
-        # Se colar a connection string inteira, extrai só o host.
-        if [[ "$DB_HOST" =~ ^postgres(ql)?:// ]]; then
-            DB_HOST=$(printf '%s' "$DB_HOST" | sed -E 's#^postgres(ql)?://([^@/]+@)?([^:/?]+).*#\3#')
-        fi
-        # Se vier algo como senha@db.xxx.supabase.co, mantém apenas o host real.
-        if [[ "$DB_HOST" == *"@"* ]]; then
-            DB_HOST="${DB_HOST##*@}"
-        fi
-        DB_HOST="${DB_HOST%%:*}"
-        DB_HOST="${DB_HOST%%/*}"
-
-        if [ -z "$DB_HOST" ]; then
-            echo -e "${RED}❌ Project ref/host é obrigatório.${NC}"
-            continue
-        fi
-        if [[ "$DB_HOST" != *.* ]]; then
-            DB_HOST="db.${DB_HOST}.supabase.co"
-        fi
-    done
-
-    echo -e "${BLUE}→ Host do banco: ${DB_HOST}${NC}"
-
     local ATTEMPTS=0
+    DB_URL=""
     while [ "$ATTEMPTS" -lt 3 ]; do
         ATTEMPTS=$((ATTEMPTS+1))
 
-        local DB_PASS=""
-        while [ -z "$DB_PASS" ]; do
-            read -r -s -p "🔐 Senha do banco Postgres (tentativa ${ATTEMPTS}/3): " DB_PASS
-            echo ""
-            if [ -z "$DB_PASS" ]; then
-                echo -e "${RED}❌ Senha não pode ser vazia.${NC}"
+        read -r -p "🔗 Cole a connection string OU o project ref (tentativa ${ATTEMPTS}/3): " DB_INPUT
+        DB_INPUT=$(trim_value "$DB_INPUT")
+
+        if [ -z "$DB_INPUT" ]; then
+            echo -e "${RED}❌ Entrada vazia.${NC}"
+            continue
+        fi
+
+        if [[ "$DB_INPUT" =~ ^postgres(ql)?:// ]]; then
+            # Connection string completa — usa como veio.
+            DB_URL="$DB_INPUT"
+            if [[ "$DB_URL" != *"sslmode="* ]]; then
+                if [[ "$DB_URL" == *"?"* ]]; then
+                    DB_URL="${DB_URL}&sslmode=require"
+                else
+                    DB_URL="${DB_URL}?sslmode=require"
+                fi
             fi
-        done
+        else
+            # Só ref/host — pede senha separada e monta URL direta (IPv6).
+            local DB_HOST="$DB_INPUT"
+            DB_HOST="${DB_HOST%%:*}"
+            DB_HOST="${DB_HOST%%/*}"
+            [[ "$DB_HOST" != *.* ]] && DB_HOST="db.${DB_HOST}.supabase.co"
 
-        local DB_PASS_ENC
-        DB_PASS_ENC=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1], safe=''))" "$DB_PASS" 2>/dev/null || printf '%s' "$DB_PASS")
-        DB_URL="postgresql://postgres:${DB_PASS_ENC}@${DB_HOST}:5432/postgres?sslmode=require"
+            local DB_PASS=""
+            while [ -z "$DB_PASS" ]; do
+                read -r -s -p "🔐 Senha do banco Postgres: " DB_PASS
+                echo ""
+                [ -z "$DB_PASS" ] && echo -e "${RED}❌ Senha vazia.${NC}"
+            done
 
-        echo -e "${BLUE}→ Testando conexão com o banco: ${DB_HOST}${NC}"
+            local DB_PASS_ENC
+            DB_PASS_ENC=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1], safe=''))" "$DB_PASS" 2>/dev/null || printf '%s' "$DB_PASS")
+            DB_URL="postgresql://postgres:${DB_PASS_ENC}@${DB_HOST}:5432/postgres?sslmode=require"
+        fi
+
+        local TEST_HOST
+        TEST_HOST=$(db_url_host "$DB_URL")
+        echo -e "${BLUE}→ Testando conexão com: ${TEST_HOST}${NC}"
+
         local PSQL_ERR
         PSQL_ERR=$(mktemp)
         if PGCONNECT_TIMEOUT=20 psql --dbname="$DB_URL" -v ON_ERROR_STOP=1 -c "select 1;" >/dev/null 2>"$PSQL_ERR"; then
@@ -324,40 +332,38 @@ update_supabase_auto() {
             break
         fi
 
-        if grep -qiE "Network is unreachable|No route to host|could not translate host name" "$PSQL_ERR"; then
-            cat "$PSQL_ERR"
-            rm -f "$PSQL_ERR"
-            echo -e "${RED}❌ O host do banco está inacessível a partir deste VPS. Isso não parece senha errada.${NC}"
-            echo -e "${YELLOW}Causa comum: o host db.* usa IPv6 e o VPS não tem rota IPv6.${NC}"
-            echo -e "${YELLOW}Solução: habilite IPv6 no VPS ou execute novamente informando um host IPv4/pooler do banco.${NC}"
-            echo -e "${YELLOW}API key/JWT não substituem a senha do banco para aplicar SQL.${NC}"
-            DB_URL=""
-            return 1
-        fi
+        cat "$PSQL_ERR"
 
-        if grep -qiE "password authentication failed|authentication failed|Invalid username/password" "$PSQL_ERR"; then
-            cat "$PSQL_ERR"
+        if grep -qiE "Network is unreachable|No route to host|could not translate host name|connection timed out" "$PSQL_ERR"; then
             rm -f "$PSQL_ERR"
+            echo ""
+            echo -e "${RED}❌ Host inacessível a partir deste VPS — NÃO é senha errada.${NC}"
+            echo -e "${YELLOW}Provável causa: host ${TEST_HOST} responde apenas em IPv6 e este VPS não tem IPv6.${NC}"
+            echo -e "${YELLOW}Solução: no Supabase Dashboard → Database → Connection string, copie a URL do${NC}"
+            echo -e "${YELLOW}         'Session pooler' (host aws-0-*.pooler.supabase.com, IPv4) e cole aqui.${NC}"
+            echo ""
             DB_URL=""
-            if [ "$ATTEMPTS" -lt 3 ]; then
-                echo -e "${RED}❌ Senha incorreta. Tente novamente.${NC}"
-            fi
             continue
         fi
 
-        cat "$PSQL_ERR"
-        rm -f "$PSQL_ERR"
-
-        DB_URL=""
-        if [ "$ATTEMPTS" -lt 3 ]; then
-            echo -e "${RED}❌ Não foi possível conectar. Confira host/senha e tente novamente.${NC}"
+        if grep -qiE "password authentication failed|authentication failed" "$PSQL_ERR"; then
+            rm -f "$PSQL_ERR"
+            DB_URL=""
+            echo -e "${RED}❌ Senha incorreta. Tente novamente.${NC}"
+            continue
         fi
+
+        rm -f "$PSQL_ERR"
+        DB_URL=""
+        echo -e "${RED}❌ Falha ao conectar. Verifique a string e tente novamente.${NC}"
     done
 
     if [ -z "$DB_URL" ]; then
-        echo -e "${RED}❌ Não foi possível conectar ao banco com a SUPABASE_DB_URL informada.${NC}"
-        echo -e "${YELLOW}Verifique a senha do banco e execute novamente. A URL deve seguir:${NC}"
-        echo -e "${YELLOW}postgresql://postgres:[YOUR-PASSWORD]@${DB_HOST}:5432/postgres${NC}"
+        echo -e "${RED}❌ Não foi possível conectar ao banco após 3 tentativas.${NC}"
+        echo -e "${YELLOW}Use o Session Pooler (IPv4) do Supabase Dashboard e execute novamente.${NC}"
+        return 1
+    fi
+
         return 1
     fi
 
