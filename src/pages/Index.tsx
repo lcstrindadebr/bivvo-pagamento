@@ -23,15 +23,20 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    if (aff) {
-      supabase.rpc('track_affiliate_click', {
-        p_affiliate_slug: aff,
-        p_ip: null,
-        p_ua: navigator.userAgent,
-        p_ref: document.referrer,
-        p_path: window.location.pathname,
-      }).catch((e) => console.error('Click tracking failed:', e));
-    }
+    if (!aff) return;
+    (async () => {
+      try {
+        await supabase.rpc('track_affiliate_click', {
+          p_affiliate_slug: aff,
+          p_ip: null,
+          p_ua: navigator.userAgent,
+          p_ref: document.referrer,
+          p_path: window.location.pathname,
+        });
+      } catch (e) {
+        console.error('Click tracking failed:', e);
+      }
+    })();
   }, [aff]);
 
   const handleCheckout = (config: BivvoConfig) => {
