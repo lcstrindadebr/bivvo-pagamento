@@ -1,16 +1,174 @@
 // ============================================================
-// admin-api — autossuficiente (sem imports de _shared)
-// API do painel administrativo (financeiro, afiliados, despesas, assinaturas)
+// admin-api — autossuficiente (bundle de _shared inline)
+// Gerado automaticamente. Cole no editor de Edge Functions do Supabase.
 // ============================================================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ==================== _shared/cors.ts ====================
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, asaas-access-token',
 };
 
 
+// ==================== _shared/bivvo-logic.ts ====================
+const PLANS = {
+  standard: { name: 'STANDARD', users: 3, promo: 169.90, full: 197.90 },
+  silver:   { name: 'SILVER',   users: 6, promo: 287.90, full: 389.90 },
+  pro:      { name: 'PRO',      users: 12, promo: 429.90, full: 527.90 },
+} as const;
+
+const EXTRA_USER_PRICE = 35;
+const TELEFONIA_PRICE = 100;
+
+const CANAIS_DEF = [
+  { id: 'waof',   label: 'WhatsApp API Oficial',     included: 1, unit: 100, emoji: '📱' },
+  { id: 'wano',   label: 'WhatsApp API não oficial', included: 1, unit: 50,  emoji: '💬' },
+  { id: 'ig',     label: 'Instagram',                included: 1, unit: 50,  emoji: '📸' },
+  { id: 'fb',     label: 'Facebook',                 included: 1, unit: 50,  emoji: '📘' },
+  { id: 'email',  label: 'E-mail',                   included: 1, unit: 50,  emoji: '✉️'  },
+  { id: 'olx',    label: 'OLX',                      included: 0, unit: 100, emoji: '🏷️' },
+  { id: 'tiktok', label: 'TikTok',                   included: 0, unit: 100, emoji: '🎵' },
+  { id: 'ml',     label: 'Mercado Livre',            included: 0, unit: 100, emoji: '🛒' },
+  { id: 'li',     label: 'LinkedIn',                 included: 0, unit: 100, emoji: '💼' },
+  { id: 'yt',     label: 'YouTube',                  included: 0, unit: 100, emoji: '▶️'  },
+  { id: 'woo',    label: 'WooCommerce',              included: 0, unit: 100, emoji: '🛍️' },
+] as const;
+
+function round2(n: number) { return Math.round(n * 100) / 100; }
+
+function quoteBivvo(cfg: any) {
+  const plan = PLANS[cfg.plan as keyof typeof PLANS];
+  if (!plan) throw new Error('Plano inválido');
+  const users = Math.max(1, Math.floor(cfg.users || plan.users));
+  const extraUsers = Math.max(0, users - plan.users);
+  const extraCost = extraUsers * EXTRA_USER_PRICE;
+  const basePromo = plan.promo + extraCost;
+  const baseFull = plan.full + extraCost;
+  const base1m = basePromo;
+  const baseRec = cfg.protagonista ? base1m : baseFull;
+  const discountPercent = Math.min(30, Math.max(0, cfg.channelsDiscount || 0));
+  const discountFactor = 1 - (discountPercent / 100);
+  let channelsTotal = 0;
+  const channelLines: any[] = [];
+  const cfgChannels = cfg.channels || {};
+  for (const c of CANAIS_DEF) {
+    const qty = Math.max(0, Math.floor(cfgChannels[c.id] || 0));
+    const extra = Math.max(0, qty - c.included);
+    if (extra > 0) {
+      const amount = round2(extra * c.unit * discountFactor);
+      channelsTotal += amount;
+      channelLines.push({ id: c.id, label: c.label, emoji: c.emoji, qty: extra, amount });
+    }
+  }
+  const telCost = cfg.telefonia ? TELEFONIA_PRICE : 0;
+  const total1m = round2(base1m + channelsTotal + telCost);
+  const totalRec = round2(baseRec + channelsTotal + telCost);
+  const planLabel = extraUsers > 0 ? `Plano Personalizado (${plan.name} + ${extraUsers}u)` : `Plano ${plan.name} (${plan.users}u)`;
+  
+  return {
+    planSlug: cfg.plan,
+    planLabel,
+    users,
+    extraUsers,
+    base1m,
+    baseRec,
+    channelsTotal,
+    channelsDiscountPercent: discountPercent,
+    telCost,
+    total1m,
+    totalRec,
+    protagonista: cfg.protagonista,
+    channelLines
+  };
+}
+
+// ─────────────────────────────────────────────
+// Diff canônico entre duas bivvo_config
+// Fonte única da verdade para "precisa sincronizar Bivvo/Asaas"
+// ─────────────────────────────────────────────
+interface BivvoConfigDiff {
+  bivvoRelevantChanged: boolean;
+  asaasValueChanged: boolean;
+  changedFields: string[];
+  previousRecurringValue: number | null;
+  newRecurringValue: number | null;
+}
+
+const BIVVO_RELEVANT_KEYS = ['plan', 'users', 'telefonia', 'disparo', 'protagonista'];
+
+function normalizeBivvoConfig(cfg: any): any {
+  if (!cfg || typeof cfg !== 'object') return null;
+  const channels: Record<string, number> = {};
+  const src = cfg.channels || {};
+  for (const c of CANAIS_DEF) {
+    const q = Math.max(0, Math.floor(Number(src[c.id]) || 0));
+    if (q > 0) channels[c.id] = q;
+  }
+  return {
+    plan: String(cfg.plan || 'standard'),
+    users: Math.max(1, Math.floor(Number(cfg.users) || 0)),
+    channels,
+    telefonia: !!cfg.telefonia,
+    disparo: !!cfg.disparo,
+    protagonista: !!cfg.protagonista,
+  };
+}
+
+function computeConfigDiff(before: any, after: any): BivvoConfigDiff {
+  const a = normalizeBivvoConfig(before);
+  const b = normalizeBivvoConfig(after);
+  const changed: string[] = [];
+
+  if (!a && b) {
+    // primeira configuração
+    return {
+      bivvoRelevantChanged: true,
+      asaasValueChanged: true,
+      changedFields: ['*'],
+      previousRecurringValue: null,
+      newRecurringValue: safeQuoteRec(b),
+    };
+  }
+  if (a && !b) {
+    return {
+      bivvoRelevantChanged: true,
+      asaasValueChanged: true,
+      changedFields: ['*'],
+      previousRecurringValue: safeQuoteRec(a),
+      newRecurringValue: null,
+    };
+  }
+  if (!a && !b) {
+    return { bivvoRelevantChanged: false, asaasValueChanged: false, changedFields: [], previousRecurringValue: null, newRecurringValue: null };
+  }
+
+  for (const k of BIVVO_RELEVANT_KEYS) {
+    if ((a as any)[k] !== (b as any)[k]) changed.push(k);
+  }
+  // Canais
+  const allChKeys = new Set([...Object.keys(a.channels), ...Object.keys(b.channels)]);
+  for (const k of allChKeys) {
+    if ((a.channels[k] || 0) !== (b.channels[k] || 0)) changed.push(`channels.${k}`);
+  }
+
+  const prevRec = safeQuoteRec(a);
+  const newRec = safeQuoteRec(b);
+  const asaasValueChanged = Math.abs((prevRec || 0) - (newRec || 0)) > 0.005;
+
+  return {
+    bivvoRelevantChanged: changed.length > 0,
+    asaasValueChanged,
+    changedFields: changed,
+    previousRecurringValue: prevRec,
+    newRecurringValue: newRec,
+  };
+}
+
+function safeQuoteRec(cfg: any): number | null {
+  try { return quoteBivvo(cfg).totalRec; } catch { return null; }
+}
 
 
 function slugify(str: string): string {
@@ -56,45 +214,146 @@ async function logAction(supabase: any, user: any, action: string, tableName?: s
   }
 }
 
+const BIVVO_STATUS_CACHE_MS = 5 * 60 * 1000; // 5 min
+
+async function refreshBivvoStatuses(supabase: any, userMap: Map<string, any>) {
+  // Load Bivvo API token once
+  const { data: secret } = await supabase
+    .from('admin_secrets').select('value').eq('key', 'bivvo_api_token').maybeSingle();
+  const rawToken = (secret as any)?.value?.trim();
+  const auth = rawToken
+    ? (rawToken.toLowerCase().startsWith('bearer ') ? rawToken : `Bearer ${rawToken}`)
+    : null;
+
+  const now = Date.now();
+  const entries = Array.from(userMap.entries());
+
+  await Promise.all(entries.map(async ([key, u]: [string, any]) => {
+    if (!u || !u.id) {
+      console.warn('[Bivvo] skip: user sem id', key);
+      return;
+    }
+
+    const persist = async (newStatus: string, extra: Record<string, any> = {}) => {
+      const payload: Record<string, any> = {
+        bivvo_status: newStatus,
+        bivvo_status_checked_at: new Date().toISOString(),
+        ...extra,
+      };
+      const { error: upErr } = await supabase.from('users').update(payload).eq('id', u.id);
+      if (upErr) {
+        console.error(`[Bivvo] falha ao atualizar users.id=${u.id}:`, upErr.message);
+      } else {
+        console.log(`[Bivvo] persist user=${u.id} status=${newStatus}`, Object.keys(extra));
+      }
+      u.bivvo_status = newStatus;
+    };
+
+
+    // No tenant assigned → status "Inserir ID"
+    if (!u.bivvo_tenant_id || String(u.bivvo_tenant_id).trim() === '') {
+      await persist('Inserir ID');
+      return;
+    }
+
+    if (!auth) {
+      console.warn('[Bivvo] token não configurado — pulando consulta e mantendo status');
+      await persist('Erro API');
+      return;
+    }
+
+    const parsedId = Number(String(u.bivvo_tenant_id).trim());
+    if (!Number.isFinite(parsedId)) {
+      await persist('ID inválido');
+      return;
+    }
+
+    try {
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 8000);
+      console.log(`[Bivvo] check user=${u.id} tenant_id=${parsedId}`);
+      const res = await fetch('https://adm.bivvo.com.br/tenantApiShowTenant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': auth },
+        body: JSON.stringify({ id: parsedId }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(to);
+      const ct = res.headers.get('content-type') || '';
+      const raw = ct.includes('application/json') ? await res.json() : await res.text();
+      console.log(`[Bivvo] resp user=${u.id} tenant=${parsedId} http=${res.status} body=`, typeof raw === 'string' ? raw.slice(0,500) : JSON.stringify(raw).slice(0,500));
+
+      let newStatus = 'Não possui Tenant';
+      const extra: Record<string, any> = {};
+      if (res.ok && typeof raw === 'object' && raw !== null) {
+        // A API Bivvo devolve { tenant: [ { id, status, name, identity, ... } ] }
+        let tenant: any = (raw as any).tenant ?? (raw as any).data?.tenant ?? (raw as any).data ?? raw;
+        if (Array.isArray(tenant)) tenant = tenant[0];
+        const st = String(tenant?.status ?? '').toLowerCase().trim();
+        if (st === 'active') newStatus = 'active';
+        else if (st === 'inactive') newStatus = 'inactive';
+        else if (tenant && (tenant.id || tenant.name)) newStatus = st || 'inactive';
+        else newStatus = 'Não possui Tenant';
+
+        // Hidrata CPF/CNPJ do tenant remoto quando não existir localmente (clientes legados)
+        const remoteIdentity = String(tenant?.identity ?? tenant?.cpfCnpj ?? '').replace(/\D/g, '');
+        if (remoteIdentity && !String(u.cpf ?? '').replace(/\D/g, '')) {
+          extra.cpf = remoteIdentity;
+        }
+      } else if (res.status >= 500) {
+        newStatus = 'Erro API';
+      }
+
+      await persist(newStatus, extra);
+
+    } catch (e) {
+      console.error('[Bivvo] check failed user', u.id, 'tenant', parsedId, e);
+      await persist('Erro API');
+    }
+  }));
+}
+
 async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_URL: string, ASAAS_API_KEY: string) {
   if (customerIds.length === 0) return new Map();
 
-  // 1. Try local DB first
+  // 1. Try local DB first (rico: pega bivvo_tenant_id + contatos já salvos)
   const { data: localUsers } = await supabase
     .from('users')
-    .select('name, email, asaas_customer_id')
+    .select('id, name, email, whatsapp, cpf, asaas_customer_id, bivvo_tenant_id, status, bivvo_status, bivvo_status_checked_at')
     .in('asaas_customer_id', customerIds);
 
   const userMap = new Map(localUsers?.map((u: any) => [u.asaas_customer_id, u]) || []);
   const missingIds = customerIds.filter(id => !userMap.has(id));
 
-  // 2. Fetch missing from Asaas
+  // 2. Fetch missing from Asaas e persistir em `users` (sem duplicar)
   if (missingIds.length > 0) {
     console.log(`Buscando ${missingIds.length} clientes no Asaas:`, missingIds);
     const fetched = await Promise.all(missingIds.map(async (id) => {
       try {
         const cleanId = id.trim();
         const url = `${ASAAS_BASE_URL}/customers/${cleanId}`;
-        console.log(`Chamada Asaas: ${url}`);
-        
         const res = await fetch(url, {
           method: 'GET',
-          headers: { 
+          headers: {
             'access_token': ASAAS_API_KEY,
             'Content-Type': 'application/json',
             'User-Agent': 'BivvoAdmin/1.0'
           }
         });
-        
+
         if (res.ok) {
           const c = await res.json();
-          console.log(`Cliente encontrado: ${id} -> ${c.name}`);
-          return { asaas_customer_id: id, name: c.name, email: c.email };
+          return {
+            asaas_customer_id: id,
+            name: c.name || 'Sem nome',
+            email: c.email || '',
+            whatsapp: c.mobilePhone || c.phone || '',
+            cpf: c.cpfCnpj || '',
+          };
         } else {
           const status = res.status;
           const text = await res.text();
           console.error(`Erro Asaas (Status ${status}) para ${id}: ${text}`);
-          
           if (status === 404) {
             return { asaas_customer_id: id, name: 'Cliente não encontrado', email: '' };
           }
@@ -105,9 +364,46 @@ async function enrichCustomers(supabase: any, customerIds: string[], ASAAS_BASE_
       return { asaas_customer_id: id, name: 'Erro na API Asaas', email: '' };
     }));
 
-    fetched.forEach((u: any) => {
-      userMap.set(u.asaas_customer_id, u);
-    });
+    // Persistir no banco (sem duplicidade). Se já existe email igual, apenas atualiza asaas_customer_id.
+    for (const u of fetched) {
+      if (!u.email || u.name === 'Cliente não encontrado' || u.name === 'Erro na API Asaas') {
+        userMap.set(u.asaas_customer_id, u);
+        continue;
+      }
+      try {
+        // 1) Se já existe por asaas_customer_id, NÃO sobrescreve contato — apenas usa o que está local
+        const { data: byAsaas } = await supabase
+          .from('users').select('id').eq('asaas_customer_id', u.asaas_customer_id).maybeSingle();
+
+        if (!byAsaas) {
+          // 2) Tenta pelo email (upgrade do registro existente): só vincula o asaas_customer_id, sem tocar contato
+          const { data: byEmail } = await supabase
+            .from('users').select('id').eq('email', u.email).maybeSingle();
+
+          if (byEmail) {
+            await supabase.from('users').update({
+              asaas_customer_id: u.asaas_customer_id,
+            }).eq('id', byEmail.id);
+          } else {
+            // 3) Cria novo (sem duplicar) — preenche contato apenas na criação
+            await supabase.from('users').insert({
+              name: u.name, email: u.email, whatsapp: u.whatsapp, cpf: u.cpf,
+              asaas_customer_id: u.asaas_customer_id, status: 'active',
+            });
+          }
+        }
+
+        // Recarrega o registro completo do banco
+        const { data: fresh } = await supabase
+          .from('users')
+          .select('id, name, email, whatsapp, cpf, asaas_customer_id, bivvo_tenant_id, status, bivvo_status, bivvo_status_checked_at')
+          .eq('asaas_customer_id', u.asaas_customer_id).maybeSingle();
+        userMap.set(u.asaas_customer_id, fresh || u);
+      } catch (e) {
+        console.error('Falha ao persistir cliente Asaas em users:', e);
+        userMap.set(u.asaas_customer_id, u);
+      }
+    }
   }
 
   return userMap;
@@ -152,13 +448,45 @@ serve(async (req) => {
         const customerIds = [...new Set(result.data.map((s: any) => s.customer))].filter(Boolean) as string[];
         console.log(`Enriquecendo ${customerIds.length} clientes para assinaturas`);
         const userMap = await enrichCustomers(supabase, customerIds, ASAAS_BASE_URL, ASAAS_API_KEY);
-        
+
+        // Buscar pagamentos OVERDUE para determinar adimplência por assinatura/cliente
+        const overdueSubs = new Set<string>();
+        const overdueCustomers = new Set<string>();
+        try {
+          let od_offset = 0;
+          const od_limit = 100;
+          while (true) {
+            const odRes = await fetch(`${ASAAS_BASE_URL}/payments?status=OVERDUE&limit=${od_limit}&offset=${od_offset}`, {
+              headers: { 'access_token': ASAAS_API_KEY },
+            });
+            const odJson = await odRes.json();
+            const items: any[] = odJson.data || [];
+            for (const p of items) {
+              if (p.deleted) continue;
+              if (p.subscription) overdueSubs.add(p.subscription);
+              if (p.customer) overdueCustomers.add(p.customer);
+            }
+            if (!odJson.hasMore || items.length < od_limit) break;
+            od_offset += od_limit;
+            if (od_offset > 1000) break;
+          }
+        } catch (e) {
+          console.error('[list-subscriptions] Falha ao consultar OVERDUE:', e);
+        }
+
         result.data = result.data.map((s: any) => {
-          const userData = userMap.get(s.customer);
+          const userData: any = userMap.get(s.customer);
+          const isOverdue = overdueSubs.has(s.id) || overdueCustomers.has(s.customer);
           return {
             ...s,
             customerName: userData?.name || 'Desconhecido',
             customerEmail: userData?.email || '',
+            customerWhatsapp: userData?.whatsapp || '',
+            customerCpf: userData?.cpf || '',
+            tenantBivvo: userData?.bivvo_tenant_id || '',
+            bivvoStatus: userData?.bivvo_status || (userData?.bivvo_tenant_id ? 'Não possui Tenant' : 'Inserir ID'),
+            localUserId: userData?.id || null,
+            paymentStatus: isOverdue ? 'inadimplente' : 'adimplente',
           };
         });
       }
@@ -284,6 +612,22 @@ serve(async (req) => {
 
       const overdueValue = overduePayments.reduce((a: number, p: any) => a + (Number(p.value) || 0), 0);
       const overdueCount = overduePayments.length;
+
+      // Enriquecer inadimplentes com nome/email do cliente
+      let overdueList: any[] = [];
+      if (overduePayments.length > 0) {
+        const ids = [...new Set(overduePayments.map((p: any) => p.customer))];
+        const uMap = await enrichCustomers(supabase, ids, ASAAS_BASE_URL, ASAAS_API_KEY);
+        overdueList = overduePayments.map((p: any) => ({
+          id: p.id,
+          value: p.value,
+          dueDate: p.dueDate,
+          billingType: p.billingType,
+          customer: p.customer,
+          customerName: uMap.get(p.customer)?.name || 'Desconhecido',
+          customerEmail: uMap.get(p.customer)?.email || '',
+        }));
+      }
 
       // Enriquecer somente pagamentos do período atual (economia)
       let payments = paymentsCurrent;
@@ -425,6 +769,7 @@ serve(async (req) => {
         retainedCommissions: 0,
         pendingAffiliatePayout: 0,
         payments,
+        overdueList,
         previous,
         deltas,
         previousRange: previousStart ? { start: previousStart, end: previousEnd } : null,
@@ -596,7 +941,411 @@ serve(async (req) => {
       });
     }
 
+    // ── CUSTOMER (Asaas customer + local users) ─────────────
+    if (action === 'update-customer' && req.method === 'POST') {
+      const body = await req.json();
+      const { asaasCustomerId, name, email, phone, mobilePhone, cpfCnpj,
+              address, addressNumber, complement, province, postalCode,
+              additionalEmails, observations } = body;
+      if (!asaasCustomerId) throw new Error('asaasCustomerId é obrigatório');
+
+      // Envia apenas campos preenchidos ao Asaas (evita sobrescrever com vazio)
+      const asaasPayload: Record<string, any> = {};
+      const map: Record<string, any> = {
+        name, email, phone, mobilePhone, cpfCnpj,
+        address, addressNumber, complement, province, postalCode,
+        additionalEmails, observations,
+      };
+      for (const [k, v] of Object.entries(map)) {
+        if (v !== undefined && v !== null && String(v).trim() !== '') asaasPayload[k] = v;
+      }
+
+      const asaasResp = await fetch(`${ASAAS_BASE_URL}/customers/${asaasCustomerId}`, {
+        method: 'PUT',
+        headers: {
+          'access_token': ASAAS_API_KEY,
+          'Content-Type': 'application/json',
+          'User-Agent': 'BivvoAdmin/1.0',
+        },
+        body: JSON.stringify(asaasPayload),
+      });
+      const asaasResult = await asaasResp.json();
+      if (!asaasResp.ok) {
+        console.error('Erro Asaas update-customer:', JSON.stringify(asaasResult));
+        throw new Error(asaasResult.errors?.[0]?.description || `Asaas Error ${asaasResp.status}`);
+      }
+
+      // Sincroniza local `users` sem duplicar
+      const localUpdate: Record<string, any> = {};
+      if (name) localUpdate.name = name;
+      if (email) localUpdate.email = email;
+      if (mobilePhone || phone) localUpdate.whatsapp = mobilePhone || phone;
+      if (cpfCnpj) localUpdate.cpf = cpfCnpj;
+      if (postalCode) localUpdate.cep = postalCode;
+      if (address) localUpdate.endereco = address;
+      if (addressNumber) localUpdate.numero = addressNumber;
+      if (complement) localUpdate.complemento = complement;
+      if (province) localUpdate.bairro = province;
+
+      const { data: existing } = await supabase
+        .from('users').select('id').eq('asaas_customer_id', asaasCustomerId).maybeSingle();
+
+      if (existing) {
+        await supabase.from('users').update(localUpdate).eq('id', existing.id);
+      } else {
+        // Não existe: cria (sem duplicar por email se possível)
+        const byEmail = email
+          ? (await supabase.from('users').select('id').eq('email', email).maybeSingle()).data
+          : null;
+        if (byEmail) {
+          await supabase.from('users').update({ ...localUpdate, asaas_customer_id: asaasCustomerId }).eq('id', byEmail.id);
+        } else {
+          await supabase.from('users').insert({ ...localUpdate, asaas_customer_id: asaasCustomerId, status: 'active' });
+        }
+      }
+
+      await logAction(supabase, user, 'update-customer', 'users', asaasCustomerId, null, asaasPayload);
+
+      return new Response(JSON.stringify({ ok: true, asaas: asaasResult }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── DELETE / RESTORE ASAAS CUSTOMER ─────────────────────
+    if (action === 'delete-customer' && req.method === 'POST') {
+      const { asaasCustomerId } = await req.json();
+      if (!asaasCustomerId) throw new Error('asaasCustomerId é obrigatório');
+
+      const resp = await fetch(`${ASAAS_BASE_URL}/customers/${asaasCustomerId}`, {
+        method: 'DELETE',
+        headers: { 'access_token': ASAAS_API_KEY, 'User-Agent': 'BivvoAdmin/1.0' },
+      });
+      const result = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        console.error('Erro Asaas delete-customer:', JSON.stringify(result));
+        throw new Error(result.errors?.[0]?.description || `Asaas Error ${resp.status}`);
+      }
+
+      // Delete locally: payments, subscriptions, then user
+      const { data: localUser } = await supabase.from('users')
+        .select('id').eq('asaas_customer_id', asaasCustomerId).maybeSingle();
+      if (localUser) {
+        await supabase.from('payments').delete().eq('user_id', localUser.id);
+        await supabase.from('subscriptions').delete().eq('user_id', localUser.id);
+        await supabase.from('users').delete().eq('id', localUser.id);
+      }
+
+      await logAction(supabase, user, 'delete-customer', 'users', asaasCustomerId, null, result);
+
+      return new Response(JSON.stringify({ ok: true, asaas: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'restore-customer' && req.method === 'POST') {
+      const { asaasCustomerId } = await req.json();
+      if (!asaasCustomerId) throw new Error('asaasCustomerId é obrigatório');
+
+      const resp = await fetch(`${ASAAS_BASE_URL}/customers/${asaasCustomerId}/restore`, {
+        method: 'POST',
+        headers: { 'access_token': ASAAS_API_KEY, 'accept': 'application/json', 'User-Agent': 'BivvoAdmin/1.0' },
+      });
+      const result = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        console.error('Erro Asaas restore-customer:', JSON.stringify(result));
+        throw new Error(result.errors?.[0]?.description || `Asaas Error ${resp.status}`);
+      }
+
+      await supabase.from('users')
+        .update({ status: 'active' })
+        .eq('asaas_customer_id', asaasCustomerId);
+
+      await logAction(supabase, user, 'restore-customer', 'users', asaasCustomerId, null, result);
+
+      return new Response(JSON.stringify({ ok: true, asaas: result }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── BIVVO CONFIG: editar, sincronizar Asaas, rollback, listar histórico ─────
+    if (action === 'save-bivvo-config' && req.method === 'POST') {
+      const body = await req.json();
+      const { userId, config, notes } = body;
+      if (!userId) throw new Error('userId é obrigatório');
+      if (!config || typeof config !== 'object') throw new Error('config é obrigatório');
+
+      const { data: current, error: fetchErr } = await supabase
+        .from('users')
+        .select('id, name, email, bivvo_config, bivvo_config_synced_bivvo, bivvo_config_synced_asaas_value')
+        .eq('id', userId).maybeSingle();
+      if (fetchErr) throw fetchErr;
+      if (!current) throw new Error('Cliente não encontrado');
+
+      const before = current.bivvo_config || null;
+      const after = normalizeBivvoConfig(config);
+      if (!after) throw new Error('Config inválida após normalização');
+
+      const diff = computeConfigDiff(before, after);
+      const nowIso = new Date().toISOString();
+
+      const { error: upErr } = await supabase.from('users').update({
+        bivvo_config: after,
+        bivvo_config_previous: before,
+        bivvo_config_updated_at: nowIso,
+      }).eq('id', userId);
+      if (upErr) throw upErr;
+
+      // Log
+      await supabase.from('bivvo_config_change_logs').insert({
+        user_id: userId,
+        changed_by: user.id,
+        changed_by_email: user.email || null,
+        changed_by_name: (user.user_metadata as any)?.name || user.email || null,
+        action: 'edit',
+        config_before: before,
+        config_after: after,
+        bivvo_relevant_changed: diff.bivvoRelevantChanged,
+        asaas_value_changed: diff.asaasValueChanged,
+        changed_fields: diff.changedFields,
+        asaas_value_before: diff.previousRecurringValue,
+        asaas_value_after: diff.newRecurringValue,
+        notes: notes || null,
+      });
+
+      // Recalcula flags "precisa sincronizar" baseado no que já foi sincronizado (não só before→after)
+      const syncedBivvo = current.bivvo_config_synced_bivvo || null;
+      const bivvoSyncDiff = computeConfigDiff(syncedBivvo, after);
+      const syncedAsaasValue = current.bivvo_config_synced_asaas_value != null ? Number(current.bivvo_config_synced_asaas_value) : null;
+      const newRec = diff.newRecurringValue;
+      const needsAsaasUpdate = syncedAsaasValue == null
+        ? true
+        : (newRec != null && Math.abs(newRec - syncedAsaasValue) > 0.005);
+
+      return new Response(JSON.stringify({
+        ok: true,
+        diff,
+        needsBivvoUpdate: bivvoSyncDiff.bivvoRelevantChanged || !syncedBivvo,
+        needsAsaasUpdate,
+        newRecurringValue: newRec,
+        syncedAsaasValue,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'update-subscription-value' && req.method === 'POST') {
+      const body = await req.json();
+      const { userId, subscriptionId } = body;
+      if (!userId) throw new Error('userId é obrigatório');
+      if (!subscriptionId) throw new Error('subscriptionId é obrigatório');
+
+      const { data: current } = await supabase
+        .from('users').select('id, bivvo_config, bivvo_config_synced_asaas_value')
+        .eq('id', userId).maybeSingle();
+      if (!current) throw new Error('Cliente não encontrado');
+      if (!current.bivvo_config) throw new Error('Cliente sem bivvo_config');
+
+      const quote = quoteBivvo(current.bivvo_config as any);
+      const newValue = Math.round(quote.totalRec * 100) / 100;
+      const prevValue = current.bivvo_config_synced_asaas_value != null ? Number(current.bivvo_config_synced_asaas_value) : null;
+
+      const putRes = await fetch(`${ASAAS_BASE_URL}/subscriptions/${subscriptionId}`, {
+        method: 'PUT',
+        headers: { 'access_token': ASAAS_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: newValue, updatePendingPayments: true }),
+      });
+      const asaasJson = await putRes.json();
+      if (!putRes.ok) {
+        throw new Error(asaasJson?.errors?.[0]?.description || `Asaas Error ${putRes.status}`);
+      }
+      const returnedValue = Number(asaasJson?.value);
+      if (Number.isFinite(returnedValue) && Math.abs(returnedValue - newValue) > 0.01) {
+        throw new Error(`Divergência no valor Asaas: enviado ${newValue}, retornado ${returnedValue}`);
+      }
+
+      await supabase.from('users').update({
+        bivvo_config_synced_asaas_value: newValue,
+        bivvo_config_synced_asaas_at: new Date().toISOString(),
+      }).eq('id', userId);
+
+      await supabase.from('bivvo_config_change_logs').insert({
+        user_id: userId,
+        changed_by: user.id,
+        changed_by_email: user.email || null,
+        changed_by_name: (user.user_metadata as any)?.name || user.email || null,
+        action: 'sync_asaas',
+        asaas_value_before: prevValue,
+        asaas_value_after: newValue,
+        asaas_value_changed: true,
+        bivvo_relevant_changed: false,
+        notes: `Assinatura ${subscriptionId}`,
+      });
+
+      return new Response(JSON.stringify({ ok: true, newValue, previousValue: prevValue, asaas: asaasJson }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'rollback-bivvo-config' && req.method === 'POST') {
+      const body = await req.json();
+      const { userId } = body;
+      if (!userId) throw new Error('userId é obrigatório');
+      const { data: current } = await supabase
+        .from('users').select('id, bivvo_config, bivvo_config_previous').eq('id', userId).maybeSingle();
+      if (!current) throw new Error('Cliente não encontrado');
+      if (!current.bivvo_config_previous) throw new Error('Não há configuração anterior para restaurar');
+
+      const before = current.bivvo_config;
+      const after = current.bivvo_config_previous;
+      const diff = computeConfigDiff(before, after);
+
+      await supabase.from('users').update({
+        bivvo_config: after,
+        bivvo_config_previous: before,
+        bivvo_config_updated_at: new Date().toISOString(),
+      }).eq('id', userId);
+
+      await supabase.from('bivvo_config_change_logs').insert({
+        user_id: userId,
+        changed_by: user.id,
+        changed_by_email: user.email || null,
+        changed_by_name: (user.user_metadata as any)?.name || user.email || null,
+        action: 'rollback',
+        config_before: before,
+        config_after: after,
+        bivvo_relevant_changed: diff.bivvoRelevantChanged,
+        asaas_value_changed: diff.asaasValueChanged,
+        changed_fields: diff.changedFields,
+        asaas_value_before: diff.previousRecurringValue,
+        asaas_value_after: diff.newRecurringValue,
+      });
+
+      return new Response(JSON.stringify({ ok: true, diff }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'list-config-logs') {
+      const userId = url.searchParams.get('userId');
+      if (!userId) throw new Error('userId é obrigatório');
+      const { data, error } = await supabase
+        .from('bivvo_config_change_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return new Response(JSON.stringify({ data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'update-user-tenant' && req.method === 'POST') {
+      const body = await req.json();
+      const { asaasCustomerId, tenantBivvo } = body;
+      if (!asaasCustomerId) throw new Error('asaasCustomerId é obrigatório');
+
+      const { data: existing } = await supabase
+        .from('users').select('id').eq('asaas_customer_id', asaasCustomerId).maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase.from('users')
+          .update({
+            bivvo_tenant_id: tenantBivvo || null,
+            bivvo_status: null,
+            bivvo_status_checked_at: null,
+            tenant_provisioned_at: null,
+            tenant_provision_error: null,
+          })
+          .eq('id', existing.id);
+        if (error) throw error;
+      
+      } else {
+        const { error } = await supabase.from('users').insert({
+          asaas_customer_id: asaasCustomerId,
+          bivvo_tenant_id: tenantBivvo || null,
+          name: 'Cliente Asaas',
+          email: `${asaasCustomerId}@asaas.local`,
+          status: 'active',
+        });
+        if (error) throw error;
+      }
+
+      await logAction(supabase, user, 'update-user-tenant', 'users', asaasCustomerId, null, { tenantBivvo });
+
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'check-bivvo-tenant' && req.method === 'POST') {
+      const body = await req.json();
+      const tenantId = body?.tenantId;
+      if (tenantId === undefined || tenantId === null || tenantId === '') {
+        throw new Error('tenantId é obrigatório');
+      }
+      const parsedId = typeof tenantId === 'number' ? tenantId : Number(String(tenantId).trim());
+      if (!Number.isFinite(parsedId)) throw new Error('tenantId inválido');
+
+      const { data: secret, error: secretErr } = await supabase
+        .from('admin_secrets').select('value').eq('key', 'bivvo_api_token').maybeSingle();
+      if (secretErr) throw secretErr;
+      const token = (secret as any)?.value?.trim();
+      if (!token) throw new Error('Token da API Bivvo não configurado em Configurações → Integrações');
+
+      const bivvoRes = await fetch('https://adm.bivvo.com.br/tenantApiShowTenant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': token.toLowerCase().startsWith('bearer ') ? token : `Bearer ${token}` },
+        body: JSON.stringify({ id: parsedId }),
+      });
+      const contentType = bivvoRes.headers.get('content-type') || '';
+      const raw = contentType.includes('application/json') ? await bivvoRes.json() : await bivvoRes.text();
+      console.log(`[Bivvo][manual] tenant=${parsedId} http=${bivvoRes.status} body=`, typeof raw === 'string' ? raw.slice(0,800) : JSON.stringify(raw).slice(0,800));
+
+      if (!bivvoRes.ok) {
+        return new Response(JSON.stringify({
+          ok: false, exists: false, status: bivvoRes.status,
+          error: typeof raw === 'string' ? raw : (raw?.message || raw?.error || 'Tenant não encontrado no Bivvo'),
+          raw,
+        }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      return new Response(JSON.stringify({ ok: true, exists: true, tenant: raw, raw }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'refresh-all-bivvo-statuses' && req.method === 'POST') {
+      const { data: usersWithTenant, error } = await supabase
+        .from('users')
+        .select('id, name, email, cpf, asaas_customer_id, bivvo_tenant_id, bivvo_status, bivvo_status_checked_at')
+        .not('asaas_customer_id', 'is', null);
+
+      if (error) throw error;
+
+      const map = new Map<string, any>();
+      for (const u of usersWithTenant ?? []) {
+        map.set(u.asaas_customer_id, u);
+      }
+      console.log(`[Bivvo][refresh-all] processando ${map.size} usuários`);
+      await refreshBivvoStatuses(supabase, map);
+
+      const summary = { total: map.size, active: 0, inactive: 0, none: 0, fill: 0, error: 0 };
+      for (const u of map.values()) {
+        if (u.bivvo_status === 'active') summary.active++;
+        else if (u.bivvo_status === 'inactive') summary.inactive++;
+        else if (u.bivvo_status === 'Não possui Tenant') summary.none++;
+        else if (u.bivvo_status === 'Inserir ID') summary.fill++;
+        else if (u.bivvo_status === 'Erro API') summary.error++;
+      }
+
+      await logAction(supabase, user, 'refresh-all-bivvo-statuses', 'users', null, null, summary);
+
+      return new Response(JSON.stringify({ ok: true, summary }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── AFFILIATES ──────────────────────────────────────────
+
 
     if (action === 'list-affiliates') {
       const { data, error } = await supabase
