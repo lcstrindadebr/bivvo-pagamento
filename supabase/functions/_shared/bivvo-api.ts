@@ -303,6 +303,37 @@ async function fetchRemoteTenant(
   }
 }
 
+async function fetchIdentityFromAsaas(
+  asaasCustomerId: string,
+  userId?: string,
+): Promise<string | undefined> {
+  const apiKey = Deno.env.get("ASAAS_API_KEY");
+  const baseUrl = (Deno.env.get("ASAAS_BASE_URL") || "https://api.asaas.com/v3").replace(/\/+$/, "");
+  if (!apiKey || !asaasCustomerId) return undefined;
+  try {
+    const res = await fetch(`${baseUrl}/customers/${asaasCustomerId}`, {
+      method: "GET",
+      headers: { access_token: apiKey, Accept: "application/json" },
+    });
+    const text = await res.text();
+    let json: any = null;
+    try { json = JSON.parse(text); } catch { /* ignore */ }
+    const identity = onlyDigits(json?.cpfCnpj);
+    await log.info("bivvo-api", `asaas customer lookup → ${asaasCustomerId}`, {
+      userId,
+      status: res.status,
+      found: Boolean(identity),
+    });
+    return identity;
+  } catch (e) {
+    await log.error("bivvo-api", `asaas customer lookup falhou`, {
+      userId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return undefined;
+  }
+}
+
 async function resolveIdentity(
   user: UserRow,
   auth: { header: string },
@@ -312,13 +343,19 @@ async function resolveIdentity(
   let identity = onlyDigits(user.cpf);
   if (identity) return identity;
 
-  // Cliente legado: busca identity via showTenant e persiste em users.cpf
+  // 1º fallback: showTenant na Bivvo
   const remote = await fetchRemoteTenant(tenantIdField, auth, user.id);
   identity = onlyDigits(remote?.identity ?? remote?.cpf ?? remote?.cnpj);
+
+  // 2º fallback: customer no Asaas
+  if (!identity && user.asaas_customer_id) {
+    identity = await fetchIdentityFromAsaas(user.asaas_customer_id, user.id);
+  }
+
   if (identity && supabase) {
     try {
       await supabase.from("users").update({ cpf: identity }).eq("id", user.id);
-      await log.info("bivvo-api", `hidratado cpf legado via showTenant`, {
+      await log.info("bivvo-api", `hidratado cpf legado`, {
         userId: user.id,
         tenantId: String(tenantIdField),
       });
@@ -328,7 +365,7 @@ async function resolveIdentity(
   }
   if (!identity) {
     throw new Error(
-      "Identidade CPF/CNPJ do tenant Bivvo não encontrada para atualização.",
+      "Identidade CPF/CNPJ do tenant Bivvo não encontrada (local, Bivvo e Asaas).",
     );
   }
   return identity;
