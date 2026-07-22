@@ -195,7 +195,7 @@ update_supabase_auto() {
     local DEFAULT_SUPA_REF="bcijktxnuzsatvhammpl"
     local SUPA_REF="${SUPABASE_PROJECT_REF:-$DEFAULT_SUPA_REF}"
     local SUPA_TOKEN=""
-    local DB_URL="${SUPABASE_DB_URL:-}"
+    local DB_URL=""
 
     if [ ! -d "$APP_DIR" ]; then
         echo -e "${RED}❌ $APP_DIR não encontrado. Rode a instalação primeiro.${NC}"
@@ -249,100 +249,85 @@ update_supabase_auto() {
     # Aplicação do schema + migrations no banco (via psql direto no banco)
     echo -e "${BLUE}→ Aplicando SQL (schema + migrations)...${NC}"
 
-    DB_URL=$(normalize_db_url "$DB_URL")
-
-    if [ -z "$DB_URL" ] && [ -f "$APP_DIR/.env" ]; then
-        DB_URL=$(read_env_value "SUPABASE_DB_URL" "$APP_DIR/.env")
+    if ! command -v psql >/dev/null 2>&1; then
+        echo -e "${YELLOW}psql não encontrado. Instalando postgresql-client...${NC}"
+        apt update && apt install -y postgresql-client
     fi
 
-    # Loop até obter uma URL válida (ou desistir após 3 tentativas)
-    local ATTEMPTS=0
-    while [ -z "$DB_URL" ] || ! [[ "$DB_URL" =~ ^postgres(ql)?:// ]]; do
-        ATTEMPTS=$((ATTEMPTS+1))
-        if [ "$ATTEMPTS" -gt 3 ]; then
-            echo -e "${RED}❌ SUPABASE_DB_URL inválida após várias tentativas. Abortando.${NC}"
-            return 1
+    # Sempre remove a URL antiga antes de pedir uma nova senha. Isso evita reutilizar
+    # uma connection string quebrada salva anteriormente, como postgres@senha@host.
+    if [ -f "$APP_DIR/.env" ]; then
+        sed -i.bak -E '/^[[:space:]]*(export[[:space:]]+)?SUPABASE_DB_URL=/d' "$APP_DIR/.env" 2>/dev/null || true
+        rm -f "$APP_DIR/.env.bak"
+    fi
+
+    echo ""
+    echo -e "${YELLOW}Precisamos da senha do banco para aplicar o SQL.${NC}"
+    echo -e "${YELLOW}A URL será montada neste formato:${NC}"
+    echo -e "${YELLOW}postgresql://postgres:[YOUR-PASSWORD]@db.${SUPA_REF}.supabase.co:5432/postgres${NC}"
+    echo ""
+
+    local DB_HOST=""
+    while [ -z "$DB_HOST" ]; do
+        read -r -p "🌐 Project ref ou host do banco [$SUPA_REF]: " DB_HOST_RAW
+        DB_HOST=$(printf '%s' "${DB_HOST_RAW:-$SUPA_REF}" | tr -d '[:space:]')
+
+        # Se colar a connection string inteira, extrai só o host.
+        if [[ "$DB_HOST" =~ ^postgres(ql)?:// ]]; then
+            DB_HOST=$(printf '%s' "$DB_HOST" | sed -E 's#^postgres(ql)?://([^@/]+@)?([^:/?]+).*#\3#')
         fi
-
-        # Remove qualquer linha antiga inválida do .env
-        if [ -f "$APP_DIR/.env" ]; then
-            sed -i.bak -E '/^[[:space:]]*(export[[:space:]]+)?SUPABASE_DB_URL=/d' "$APP_DIR/.env" 2>/dev/null || true
-            rm -f "$APP_DIR/.env.bak"
+        # Se vier algo como senha@db.xxx.supabase.co, mantém apenas o host real.
+        if [[ "$DB_HOST" == *"@"* ]]; then
+            DB_HOST="${DB_HOST##*@}"
         fi
+        DB_HOST="${DB_HOST%%:*}"
+        DB_HOST="${DB_HOST%%/*}"
 
-        echo ""
-        echo -e "${YELLOW}Precisamos da senha do banco Supabase para aplicar o SQL.${NC}"
-        echo -e "${YELLOW}Encontre em: Dashboard → Project Settings → Database → Database password.${NC}"
-        echo ""
-
-        # Pede o project ref (host). Aceita: ref puro (bcijkt...), host completo
-        # (db.<ref>.supabase.co) ou a connection string inteira colada.
-        local DB_HOST=""
-        read -r -p "🌐 Project ref ou host do banco (ex: bcijktxnuzsatvhammpl): " DB_HOST_RAW
-        DB_HOST=$(printf '%s' "$DB_HOST_RAW" | tr -d '[:space:]')
         if [ -z "$DB_HOST" ]; then
             echo -e "${RED}❌ Project ref/host é obrigatório.${NC}"
             continue
         fi
-
-        # Se coloou a connection string inteira, extrai apenas o host
-        if [[ "$DB_HOST" =~ ^postgres(ql)?:// ]]; then
-            DB_HOST=$(printf '%s' "$DB_HOST" | sed -E 's#^postgres(ql)?://([^@/]+@)?([^:/?]+).*#\3#')
-        fi
-        # Se veio algo como "senha@db.xxx.supabase.co", pega só depois do @
-        if [[ "$DB_HOST" == *"@"* ]]; then
-            DB_HOST="${DB_HOST##*@}"
-        fi
-        # Remove porta/rota residual
-        DB_HOST="${DB_HOST%%:*}"
-        DB_HOST="${DB_HOST%%/*}"
-        # Se veio só o ref, monta o host completo
         if [[ "$DB_HOST" != *.* ]]; then
             DB_HOST="db.${DB_HOST}.supabase.co"
         fi
+    done
 
-        echo -e "${BLUE}→ Host do banco: ${DB_HOST}${NC}"
+    echo -e "${BLUE}→ Host do banco: ${DB_HOST}${NC}"
 
-        # Pede a senha (silenciosa) — modelo:
-        # postgresql://postgres:[SUA-SENHA]@db.<ref>.supabase.co:5432/postgres
+    local ATTEMPTS=0
+    while [ "$ATTEMPTS" -lt 3 ]; do
+        ATTEMPTS=$((ATTEMPTS+1))
+
         local DB_PASS=""
         while [ -z "$DB_PASS" ]; do
-            read -r -s -p "🔐 Senha do banco Postgres (Dashboard → Database → Password): " DB_PASS
+            read -r -s -p "🔐 Senha do banco Postgres (tentativa ${ATTEMPTS}/3): " DB_PASS
             echo ""
             if [ -z "$DB_PASS" ]; then
                 echo -e "${RED}❌ Senha não pode ser vazia.${NC}"
             fi
         done
 
-        # URL-encode da senha (trata @, :, /, #, ?, espaços, etc.)
         local DB_PASS_ENC
         DB_PASS_ENC=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1], safe=''))" "$DB_PASS" 2>/dev/null || printf '%s' "$DB_PASS")
-
         DB_URL="postgresql://postgres:${DB_PASS_ENC}@${DB_HOST}:5432/postgres?sslmode=require"
 
-        if ! [[ "$DB_URL" =~ ^postgres(ql)?:// ]]; then
-            echo -e "${RED}❌ Falha ao montar a connection string.${NC}"
-            DB_URL=""
-            continue
+        echo -e "${BLUE}→ Testando conexão com o banco: ${DB_HOST}${NC}"
+        if PGCONNECT_TIMEOUT=20 psql --dbname="$DB_URL" -v ON_ERROR_STOP=1 -c "select 1;" >/dev/null; then
+            upsert_env_value "SUPABASE_DB_URL" "$DB_URL" "$APP_DIR/.env"
+            echo -e "${GREEN}✓ SUPABASE_DB_URL validada e salva em $APP_DIR/.env.${NC}"
+            break
+        fi
+
+        DB_URL=""
+        if [ "$ATTEMPTS" -lt 3 ]; then
+            echo -e "${RED}❌ Não foi possível conectar. Confira a senha e tente novamente.${NC}"
         fi
     done
 
-    # Salva no .env somente após validação
-    upsert_env_value "SUPABASE_DB_URL" "$DB_URL" "$APP_DIR/.env"
-    echo -e "${GREEN}✓ SUPABASE_DB_URL montada e salva em $APP_DIR/.env.${NC}"
-
-
-    if ! command -v psql >/dev/null 2>&1; then
-        echo -e "${YELLOW}psql não encontrado. Instalando postgresql-client...${NC}"
-        apt update && apt install -y postgresql-client
-    fi
-
-    echo -e "${BLUE}→ Testando conexão com o banco: $(db_url_host "$DB_URL")${NC}"
-
-    if ! PGCONNECT_TIMEOUT=20 psql --dbname="$DB_URL" -v ON_ERROR_STOP=1 -c "select 1;" >/dev/null; then
+    if [ -z "$DB_URL" ]; then
         echo -e "${RED}❌ Não foi possível conectar ao banco com a SUPABASE_DB_URL informada.${NC}"
-        echo -e "${YELLOW}Verifique se você colou a connection string do banco, incluindo usuário, senha, host, porta e sslmode=require.${NC}"
-        echo -e "${YELLOW}Se ela foi salva errada antes, apague a linha SUPABASE_DB_URL de $APP_DIR/.env e execute novamente.${NC}"
+        echo -e "${YELLOW}Verifique a senha do banco e execute novamente. A URL deve seguir:${NC}"
+        echo -e "${YELLOW}postgresql://postgres:[YOUR-PASSWORD]@${DB_HOST}:5432/postgres${NC}"
         return 1
     fi
 
