@@ -1300,7 +1300,7 @@ const Admin = () => {
 
             {/* SUBSCRIPTION DETAILS DIALOG */}
             <Dialog open={subDetailsDialog} onOpenChange={setSubDetailsDialog}>
-              <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-full max-h-[92vh] p-0 gap-0 overflow-hidden">
+              <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-full h-[92vh] max-h-[92vh] p-0 gap-0 overflow-hidden flex flex-col">
                 <DialogHeader className="sr-only">
                   <DialogTitle>Detalhes da Assinatura</DialogTitle>
                   <DialogDescription>Informações detalhadas do cliente, setup Bivvo e cobranças.</DialogDescription>
@@ -1318,7 +1318,7 @@ const Admin = () => {
                   return (
                 <>
                   {/* HEADER STICKY */}
-                  <div className="border-b bg-card px-5 pt-5 pb-4 space-y-3">
+                  <div className="border-b bg-card px-5 pt-5 pb-4 space-y-3 shrink-0">
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div className="min-w-0 flex-1">
                         <h2 className="text-base font-semibold truncate">{selectedSub.customerName}</h2>
@@ -1387,7 +1387,7 @@ const Admin = () => {
                 })()}
                 {selectedSub && (
                   <>
-                  <div className="space-y-5 py-4 px-5 overflow-y-auto" style={{ maxHeight: 'calc(92vh - 180px)' }}>
+                  <div className="space-y-5 py-4 px-5 overflow-y-auto flex-1 min-h-0">
 
 
                     {/* SETUP BIVVO (Configuração Contratada + Tenant Bivvo) */}
@@ -2006,7 +2006,7 @@ const Admin = () => {
                   </div>
 
                   {/* FOOTER STICKY */}
-                  <div className="border-t bg-card px-5 py-3 flex justify-between items-center gap-2 flex-wrap">
+                  <div className="border-t bg-card px-5 py-3 flex justify-between items-center gap-2 flex-wrap shrink-0">
                     <div className="flex gap-2">
                       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={handleDeleteCustomer} disabled={customerActionLoading}>
                         <Trash2 className="h-3 w-3 mr-2" /> Excluir
