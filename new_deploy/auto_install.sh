@@ -263,8 +263,11 @@ update_supabase_auto() {
 
     echo ""
     echo -e "${YELLOW}Precisamos da senha do banco para aplicar o SQL.${NC}"
+    echo -e "${YELLOW}API key/JWT/anon key não servem para rodar migrations via psql.${NC}"
+    echo -e "${YELLOW}Se você esqueceu a senha, redefina a senha do banco e execute novamente.${NC}"
     echo -e "${YELLOW}A URL será montada neste formato:${NC}"
     echo -e "${YELLOW}postgresql://postgres:[YOUR-PASSWORD]@db.${SUPA_REF}.supabase.co:5432/postgres${NC}"
+    echo -e "${YELLOW}Se o seu VPS não tiver IPv6, use um host IPv4/pooler do banco quando solicitado.${NC}"
     echo ""
 
     local DB_HOST=""
@@ -312,15 +315,42 @@ update_supabase_auto() {
         DB_URL="postgresql://postgres:${DB_PASS_ENC}@${DB_HOST}:5432/postgres?sslmode=require"
 
         echo -e "${BLUE}→ Testando conexão com o banco: ${DB_HOST}${NC}"
-        if PGCONNECT_TIMEOUT=20 psql --dbname="$DB_URL" -v ON_ERROR_STOP=1 -c "select 1;" >/dev/null; then
+        local PSQL_ERR
+        PSQL_ERR=$(mktemp)
+        if PGCONNECT_TIMEOUT=20 psql --dbname="$DB_URL" -v ON_ERROR_STOP=1 -c "select 1;" >/dev/null 2>"$PSQL_ERR"; then
+            rm -f "$PSQL_ERR"
             upsert_env_value "SUPABASE_DB_URL" "$DB_URL" "$APP_DIR/.env"
             echo -e "${GREEN}✓ SUPABASE_DB_URL validada e salva em $APP_DIR/.env.${NC}"
             break
         fi
 
+        if grep -qiE "Network is unreachable|No route to host|could not translate host name" "$PSQL_ERR"; then
+            cat "$PSQL_ERR"
+            rm -f "$PSQL_ERR"
+            echo -e "${RED}❌ O host do banco está inacessível a partir deste VPS. Isso não parece senha errada.${NC}"
+            echo -e "${YELLOW}Causa comum: o host db.* usa IPv6 e o VPS não tem rota IPv6.${NC}"
+            echo -e "${YELLOW}Solução: habilite IPv6 no VPS ou execute novamente informando um host IPv4/pooler do banco.${NC}"
+            echo -e "${YELLOW}API key/JWT não substituem a senha do banco para aplicar SQL.${NC}"
+            DB_URL=""
+            return 1
+        fi
+
+        if grep -qiE "password authentication failed|authentication failed|Invalid username/password" "$PSQL_ERR"; then
+            cat "$PSQL_ERR"
+            rm -f "$PSQL_ERR"
+            DB_URL=""
+            if [ "$ATTEMPTS" -lt 3 ]; then
+                echo -e "${RED}❌ Senha incorreta. Tente novamente.${NC}"
+            fi
+            continue
+        fi
+
+        cat "$PSQL_ERR"
+        rm -f "$PSQL_ERR"
+
         DB_URL=""
         if [ "$ATTEMPTS" -lt 3 ]; then
-            echo -e "${RED}❌ Não foi possível conectar. Confira a senha e tente novamente.${NC}"
+            echo -e "${RED}❌ Não foi possível conectar. Confira host/senha e tente novamente.${NC}"
         fi
     done
 
