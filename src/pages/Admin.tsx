@@ -1324,7 +1324,7 @@ const Admin = () => {
                         <h2 className="text-base font-semibold truncate">{selectedSub.customerName}</h2>
                         <p className="text-xs text-muted-foreground truncate">{selectedSub.customerEmail}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right pr-8">
                         <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Recorrente</p>
                         <p className="text-lg font-bold text-accent leading-none">{formatCurrency(selectedSub.value)}</p>
                       </div>
