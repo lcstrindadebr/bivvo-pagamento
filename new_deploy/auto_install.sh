@@ -364,8 +364,7 @@ update_supabase_auto() {
         return 1
     fi
 
-        return 1
-    fi
+
 
     if [ -f "new_deploy/database_schema.sql" ]; then
         echo -e "${BLUE}  → database_schema.sql${NC}"
