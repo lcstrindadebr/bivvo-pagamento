@@ -1168,11 +1168,12 @@ const Admin = () => {
                   disabled={refreshingBivvo}
                 >
                   {refreshingBivvo ? <Loader2 className="h-3 w-3 animate-spin" /> : <Package className="h-3 w-3" />}
-                  Consultar todos na Bivvo
+                  Atualizar base
                 </Button>
                 <span className="text-[10px] text-muted-foreground">
-                  Atualiza a coluna "Conta Bivvo" para todos os clientes com Tenant preenchido.
+                  Consulta a Bivvo para todos os clientes com Tenant preenchido, atualiza o status da conta e hidrata CPF/CNPJ de clientes legados.
                 </span>
+
               </div>
             </div>
 
