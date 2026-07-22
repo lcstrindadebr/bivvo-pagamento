@@ -1768,7 +1768,7 @@ const Admin = () => {
                                     </Button>
                                   )}
                                 </div>
-                                {nothingToDo ? (
+                                {!showProvisionButton && !showUpdateButton && !canInactivate ? (
                                   <p className="text-[10px] text-muted-foreground">Nenhuma ação pendente — tenant sincronizado.</p>
                                 ) : (
                                   <p className="text-[10px] text-muted-foreground">{provisionTitle}</p>
