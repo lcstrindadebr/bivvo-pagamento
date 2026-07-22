@@ -271,21 +271,40 @@ update_supabase_auto() {
         fi
 
         echo ""
-        echo -e "${YELLOW}SUPABASE_DB_URL ausente ou inválida.${NC}"
-        echo -e "${YELLOW}Cole SOMENTE a connection string do banco (não a API URL nem a anon key).${NC}"
-        echo -e "${YELLOW}Formato: postgresql://usuario:senha@host:porta/postgres?sslmode=require${NC}"
-        echo -e "${YELLOW}Encontre em: Supabase Dashboard → Project Settings → Database → Connection string (URI).${NC}"
-        read -r -p "🔐 Cole a SUPABASE_DB_URL: " DB_URL_RAW
-        DB_URL=$(normalize_db_url "$DB_URL_RAW")
+        echo -e "${YELLOW}Precisamos da senha do banco Supabase para aplicar o SQL.${NC}"
+        echo -e "${YELLOW}Encontre em: Dashboard → Project Settings → Database → Database password.${NC}"
+        echo ""
 
-        if [ -z "$DB_URL" ]; then
-            echo -e "${RED}❌ Nada foi colado. Tente novamente.${NC}"
+        # Pede o project ref (host) — pode aceitar apenas o ref (ex: bcijktxnuzsatvhammpl) ou o host completo
+        local DB_HOST=""
+        read -r -p "🌐 Project ref ou host do banco (ex: bcijktxnuzsatvhammpl ou db.bcijktxnuzsatvhammpl.supabase.co): " DB_HOST_RAW
+        DB_HOST=$(printf '%s' "$DB_HOST_RAW" | tr -d '[:space:]')
+        if [ -z "$DB_HOST" ]; then
+            echo -e "${RED}❌ Project ref/host é obrigatório.${NC}"
+            continue
+        fi
+        # Se veio só o ref, monta o host completo
+        if [[ "$DB_HOST" != *.* ]]; then
+            DB_HOST="db.${DB_HOST}.supabase.co"
+        fi
+
+        # Pede a senha (silenciosa)
+        local DB_PASS=""
+        read -r -s -p "🔐 Senha do banco (postgres): " DB_PASS
+        echo ""
+        if [ -z "$DB_PASS" ]; then
+            echo -e "${RED}❌ Senha não pode ser vazia.${NC}"
             continue
         fi
 
+        # URL-encode simples da senha (caracteres comuns)
+        local DB_PASS_ENC
+        DB_PASS_ENC=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1], safe=''))" "$DB_PASS" 2>/dev/null || printf '%s' "$DB_PASS")
+
+        DB_URL="postgresql://postgres:${DB_PASS_ENC}@${DB_HOST}:5432/postgres"
+
         if ! [[ "$DB_URL" =~ ^postgres(ql)?:// ]]; then
-            echo -e "${RED}❌ A string precisa começar com postgres:// ou postgresql://.${NC}"
-            echo -e "${YELLOW}Você colou: '$(printf '%s' "$DB_URL" | cut -c1-40)...'${NC}"
+            echo -e "${RED}❌ Falha ao montar a connection string.${NC}"
             DB_URL=""
             continue
         fi
@@ -293,7 +312,8 @@ update_supabase_auto() {
 
     # Salva no .env somente após validação
     upsert_env_value "SUPABASE_DB_URL" "$DB_URL" "$APP_DIR/.env"
-    echo -e "${GREEN}✓ SUPABASE_DB_URL válida e salva em $APP_DIR/.env.${NC}"
+    echo -e "${GREEN}✓ SUPABASE_DB_URL montada e salva em $APP_DIR/.env.${NC}"
+
 
     if ! command -v psql >/dev/null 2>&1; then
         echo -e "${YELLOW}psql não encontrado. Instalando postgresql-client...${NC}"
