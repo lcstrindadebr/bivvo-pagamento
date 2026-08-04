@@ -84,6 +84,7 @@ const Admin = () => {
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [channels, setChannels] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [subsTotal, setSubsTotal] = useState(0);
   const [loadingData, setLoadingData] = useState(false);
@@ -307,10 +308,16 @@ const Admin = () => {
     if (isAdmin) {
       loadPlans();
       loadCoupons();
+      loadChannels();
       loadSubscriptions();
       loadCustomers();
     }
   }, [isAdmin]);
+
+  const loadChannels = async () => {
+    const { data } = await supabase.from('channels').select('*').order('sort_order');
+    if (data) setChannels(data);
+  };
 
   const loadCustomers = async () => {
     setLoadingCustomers(true);
@@ -819,6 +826,80 @@ const Admin = () => {
     setPlanDialog(true);
   };
 
+  const [channelDialog, setChannelDialog] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<any>(null);
+  const [channelForm, setChannelForm] = useState<any>({
+    slug: '', label: '', unit_price: '', included: 0, 
+    emoji: '', icon_url: '', sort_order: 0, active: true
+  });
+
+  const openNewChannel = () => {
+    setEditingChannel(null);
+    setChannelForm({
+      slug: '', label: '', unit_price: '', included: 0, 
+      emoji: '', icon_url: '', sort_order: 0, active: true
+    });
+    setChannelDialog(true);
+  };
+
+  const openEditChannel = (channel: any) => {
+    setEditingChannel(channel);
+    setChannelForm({
+      slug: channel.slug,
+      label: channel.label,
+      unit_price: channel.unit_price.toString(),
+      included: channel.included || 0,
+      emoji: channel.emoji || '',
+      icon_url: channel.icon_url || '',
+      sort_order: channel.sort_order || 0,
+      active: channel.active
+    });
+    setChannelDialog(true);
+  };
+
+  const handleSaveChannel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const channelData = {
+      ...channelForm,
+      unit_price: parseFloat(channelForm.unit_price),
+      included: parseInt(channelForm.included),
+      sort_order: parseInt(channelForm.sort_order)
+    };
+
+    let error;
+    if (editingChannel) {
+      const { error: err } = await supabase.from('channels').update(channelData).eq('id', editingChannel.id);
+      error = err;
+    } else {
+      const { error: err } = await supabase.from('channels').insert(channelData);
+      error = err;
+    }
+
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Sucesso', description: editingChannel ? 'Canal atualizado!' : 'Canal criado!' });
+      setChannelDialog(false);
+      loadChannels();
+    }
+  };
+
+  const handleChannelIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const { data, error } = await supabase.storage.from('marketing').upload(`icons/${Date.now()}-${file.name}`, file);
+    if (error) {
+      toast({ title: 'Erro no upload', description: error.message, variant: 'destructive' });
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('marketing').getPublicUrl(data.path);
+    setChannelForm(prev => ({ ...prev, icon_url: publicUrl }));
+    toast({ title: 'Sucesso', description: 'Ícone enviado!' });
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/admin/login');
@@ -865,8 +946,6 @@ const Admin = () => {
             <TabsTrigger value="plans" className="gap-2"><Package className="h-4 w-4" /> Planos</TabsTrigger>
             <TabsTrigger value="coupons" className="gap-2"><Ticket className="h-4 w-4" /> Cupons</TabsTrigger>
             <TabsTrigger value="subscriptions" className="gap-2"><Users className="h-4 w-4" /> Gestão de Assinaturas</TabsTrigger>
-
-
             <TabsTrigger value="affiliates" className="gap-2"><Handshake className="h-4 w-4" /> Afiliados</TabsTrigger>
             <TabsTrigger value="expenses" className="gap-2"><Receipt className="h-4 w-4" /> Despesas</TabsTrigger>
             <TabsTrigger value="marketing" className="gap-2"><Share2 className="h-4 w-4" /> Marketing</TabsTrigger>
@@ -905,8 +984,9 @@ const Admin = () => {
 
 
           {/* PLANS TAB */}
-
           <TabsContent value="plans">
+            <div className="space-y-8">
+              <section>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Planos</h2>
               <Dialog open={planDialog} onOpenChange={setPlanDialog}>
@@ -1031,7 +1111,147 @@ const Admin = () => {
                 </TableBody>
               </Table>
             </div>
-          </TabsContent>
+          </section>
+
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Canais Adicionais</h2>
+              <Dialog open={channelDialog} onOpenChange={setChannelDialog}>
+                <DialogTrigger asChild>
+                  <Button size="sm" onClick={openNewChannel}><Plus className="h-4 w-4 mr-2" /> Novo Canal</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingChannel ? 'Editar Canal' : 'Novo Canal'}</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSaveChannel} className="space-y-4 pt-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Slug</Label>
+                        <Input 
+                          value={channelForm.slug} 
+                          onChange={e => setChannelForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().trim() }))} 
+                          required 
+                          placeholder="waof" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Nome</Label>
+                        <Input 
+                          value={channelForm.label} 
+                          onChange={e => setChannelForm(prev => ({ ...prev, label: e.target.value }))} 
+                          required 
+                          placeholder="WhatsApp API" 
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Preço Unitário</Label>
+                        <Input 
+                          value={channelForm.unit_price} 
+                          onChange={e => setChannelForm(prev => ({ ...prev, unit_price: e.target.value }))} 
+                          type="number" 
+                          step="0.01" 
+                          required 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Incluído no Plano</Label>
+                        <Input 
+                          value={channelForm.included} 
+                          onChange={e => setChannelForm(prev => ({ ...prev, included: e.target.value }))} 
+                          type="number" 
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Emoji (Opcional)</Label>
+                        <Input 
+                          value={channelForm.emoji} 
+                          onChange={e => setChannelForm(prev => ({ ...prev, emoji: e.target.value }))} 
+                          placeholder="📱" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Ordem</Label>
+                        <Input 
+                          value={channelForm.sort_order} 
+                          onChange={e => setChannelForm(prev => ({ ...prev, sort_order: e.target.value }))} 
+                          type="number" 
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>URL do Ícone (PNG/SVG)</Label>
+                      <Input 
+                        value={channelForm.icon_url} 
+                        onChange={e => setChannelForm(prev => ({ ...prev, icon_url: e.target.value }))} 
+                        placeholder="https://..." 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Ou subir novo Ícone (PNG)</Label>
+                      <Input type="file" accept="image/png" onChange={handleChannelIconUpload} />
+                    </div>
+                    <Button type="submit" className="w-full">
+                      {editingChannel ? 'Salvar Alterações' : 'Criar Canal'}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+            <div className="card-glass rounded-xl overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Ícone</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Slug</TableHead>
+                    <TableHead>Preço Unit.</TableHead>
+                    <TableHead>Ativo</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {channels.map(channel => (
+                    <TableRow key={channel.id}>
+                      <TableCell>
+                        {channel.icon_url ? (
+                          <img src={channel.icon_url} alt="" className="h-6 w-6 object-contain" />
+                        ) : (
+                          <span className="text-lg">{channel.emoji}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">{channel.label}</TableCell>
+                      <TableCell className="text-muted-foreground">{channel.slug}</TableCell>
+                      <TableCell>{formatCurrency(channel.unit_price)}</TableCell>
+                      <TableCell>
+                        <Switch checked={channel.active} onCheckedChange={async (v) => {
+                          await supabase.from('channels').update({ active: v }).eq('id', channel.id);
+                          loadChannels();
+                        }} />
+                      </TableCell>
+                      <TableCell className="text-right space-x-1">
+                        <Button variant="ghost" size="sm" onClick={() => openEditChannel(channel)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={async () => {
+                          if (confirm('Excluir este canal?')) {
+                            await supabase.from('channels').delete().eq('id', channel.id);
+                            loadChannels();
+                          }
+                        }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </section>
+        </div>
+      </TabsContent>
 
           {/* COUPONS TAB */}
           <TabsContent value="coupons">
@@ -1599,12 +1819,12 @@ const Admin = () => {
                               <div className="pt-2">
                                 <p className="text-[10px] uppercase text-muted-foreground mb-1">Canais Contratados</p>
                                 <div className="grid grid-cols-2 gap-1">
-                                  {CANAIS_DEF.map(c => {
+                                  {channels.map(c => {
                                     const qty = Number((contractedConfig.channels || {})[c.id] || 0);
                                     if (!qty) return null;
                                     return (
                                       <div key={c.id} className="flex justify-between px-2 py-1 rounded bg-background/60 border text-[11px]">
-                                        <span>{c.emoji} {c.label}</span>
+                                        <span>{c.icon_url ? <img src={c.icon_url} className="w-3 h-3 inline-block mr-1" /> : c.emoji} {c.label}</span>
                                         <strong>{qty}</strong>
                                       </div>
                                     );
@@ -1658,9 +1878,9 @@ const Admin = () => {
                             <div className="pt-1">
                               <p className="text-[10px] uppercase text-muted-foreground mb-1">Canais Contratados</p>
                               <div className="grid grid-cols-2 gap-1.5">
-                                {CANAIS_DEF.map(c => (
+                                {channels.map(c => (
                                   <div key={c.id} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-background/60 border text-[11px]">
-                                    <span className="truncate">{c.emoji} {c.label}</span>
+                                    <span className="truncate">{c.icon_url ? <img src={c.icon_url} className="w-3 h-3 inline-block mr-1" /> : c.emoji} {c.label}</span>
                                     <Input type="number" min={0} className="h-6 w-14 text-xs"
                                       value={configForm.channels[c.id] || 0}
                                       onChange={(e) => setConfigForm(f => ({ ...f, channels: { ...f.channels, [c.id]: Number(e.target.value) || 0 } }))}
@@ -1969,12 +2189,12 @@ const Admin = () => {
                             <p className="text-[10px] text-muted-foreground uppercase">Canais Contratados</p>
                             <div className="flex flex-wrap gap-2">
                               {Object.entries(internalSub.channels_config || {}).map(([key, val]: [string, any]) => {
-                                const channel = CANAIS_DEF.find(c => c.id === key);
+                                const channel = channels.find(c => c.slug === key);
                                 if (!val || val === 0) return null;
                                 return (
                                   <Badge key={key} variant="secondary" className="text-[10px] py-0.5 px-2 flex items-center gap-1">
-                                    {channel?.logo ? (
-                                      <img src={channel.logo} alt={channel.label} className="w-3 h-3 object-contain" />
+                                    {channel?.icon_url ? (
+                                      <img src={channel.icon_url} alt={channel.label} className="w-3 h-3 object-contain" />
                                     ) : (
                                       <span>{channel?.emoji || '•'}</span>
                                     )}

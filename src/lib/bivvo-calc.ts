@@ -7,24 +7,46 @@ export let PLANS: Record<string, { name: string; users: number; promo: number; f
   pro:      { name: 'PRO',      users: 12, promo: 429.90, full: 527.90 },
 };
 
+export let CANAIS_DEF: Array<{ id: string; label: string; included: number; unit: number; emoji: string; logo: string }> = [
+  { id: 'waof',   label: 'WhatsApp API Oficial',     included: 1, unit: 100, emoji: '📱', logo: 'https://cdn.simpleicons.org/whatsapp/%2325D366' },
+  { id: 'wano',   label: 'WhatsApp API não oficial', included: 1, unit: 50,  emoji: '💬', logo: 'https://cdn.simpleicons.org/whatsapp/%2325D366' },
+  { id: 'ig',     label: 'Instagram',                included: 1, unit: 50,  emoji: '📸', logo: 'https://cdn.simpleicons.org/instagram/%23E4405F' },
+  { id: 'fb',     label: 'Facebook',                 included: 1, unit: 50,  emoji: '📘', logo: 'https://cdn.simpleicons.org/facebook/%231877F2' },
+  { id: 'email',  label: 'E-mail',                   included: 1, unit: 50,  emoji: '✉️',  logo: 'https://cdn.simpleicons.org/gmail/%23EA4335' },
+];
+
 export async function loadPlansFromDB() {
   try {
-    const { data } = await supabase.from('plans').select('*').order('sort_order');
-    if (data && data.length > 0) {
+    const [plansRes, channelsRes] = await Promise.all([
+      supabase.from('plans').select('*').order('sort_order'),
+      supabase.from('channels').select('*').order('sort_order')
+    ]);
+
+    if (plansRes.data && plansRes.data.length > 0) {
       const dbPlans: any = {};
-      data.forEach(p => {
+      plansRes.data.forEach(p => {
         dbPlans[p.slug] = {
           name: p.name,
-          users: p.slug === 'standard' ? 3 : p.slug === 'silver' ? 6 : p.slug === 'pro' ? 12 : 0, // Fallback users
+          users: p.slug === 'standard' ? 3 : p.slug === 'silver' ? 6 : p.slug === 'pro' ? 12 : 0,
           promo: Number(p.price),
           full: Number(p.price_recurring || p.price)
         };
       });
-      // Try to determine users from features if possible, or keep hardcoded defaults for standard slugs
       PLANS = dbPlans;
     }
-  } catch (e) {
-    console.error('Failed to load plans from DB:', e);
+
+    if (channelsRes.data && channelsRes.data.length > 0) {
+      CANAIS_DEF = channelsRes.data.map(c => ({
+        id: c.slug,
+        label: c.label,
+        included: c.included,
+        unit: Number(c.unit_price),
+        emoji: c.emoji || '',
+        logo: c.icon_url || ''
+      }));
+    }
+} catch (e) {
+    console.error('Failed to load data from DB:', e);
   }
 }
 
@@ -32,20 +54,6 @@ export const EXTRA_USER_PRICE = 35;
 export const TELEFONIA_PRICE = 100;
 export const DISPARO_PRICE = 197;
 
-
-export const CANAIS_DEF = [
-  { id: 'waof',   label: 'WhatsApp API Oficial',     included: 1, unit: 100, emoji: '📱', logo: 'https://cdn.simpleicons.org/whatsapp/%2325D366' },
-  { id: 'wano',   label: 'WhatsApp API não oficial', included: 1, unit: 50,  emoji: '💬', logo: 'https://cdn.simpleicons.org/whatsapp/%2325D366' },
-  { id: 'ig',     label: 'Instagram',                included: 1, unit: 50,  emoji: '📸', logo: 'https://cdn.simpleicons.org/instagram/%23E4405F' },
-  { id: 'fb',     label: 'Facebook',                 included: 1, unit: 50,  emoji: '📘', logo: 'https://cdn.simpleicons.org/facebook/%231877F2' },
-  { id: 'email',  label: 'E-mail',                   included: 1, unit: 50,  emoji: '✉️',  logo: 'https://cdn.simpleicons.org/gmail/%23EA4335' },
-  { id: 'olx',    label: 'OLX',                      included: 0, unit: 100, emoji: '🏷️', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/OLX_2019.svg/512px-OLX_2019.svg.png' },
-  { id: 'tiktok', label: 'TikTok',                   included: 0, unit: 100, emoji: '🎵', logo: 'https://cdn.simpleicons.org/tiktok/%23000000' },
-  { id: 'ml',     label: 'Mercado Livre',            included: 0, unit: 100, emoji: '🛒', logo: 'https://http2.mlstatic.com/frontend-assets/ui-navigation/5.21.22/mercadolibre/logo__small.png' },
-  { id: 'li',     label: 'LinkedIn',                 included: 0, unit: 100, emoji: '💼', logo: 'https://cdn.simpleicons.org/linkedin/%230A66C2' },
-  { id: 'yt',     label: 'YouTube',                  included: 0, unit: 100, emoji: '▶️',  logo: 'https://cdn.simpleicons.org/youtube/%23FF0000' },
-  { id: 'woo',    label: 'WooCommerce',              included: 0, unit: 100, emoji: '🛍️', logo: 'https://cdn.simpleicons.org/woocommerce/%2396588A' },
-] as const;
 
 export type PlanSlug = keyof typeof PLANS;
 

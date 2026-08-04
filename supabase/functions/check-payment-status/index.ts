@@ -1,7 +1,29 @@
+// ============================================================
+// check-payment-status — autossuficiente (bundle de _shared inline)
+// Gerado automaticamente. Cole no editor de Edge Functions do Supabase.
+// ============================================================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
-import { asaasFetch } from "../_shared/asaas.ts";
+
+// ==================== _shared/cors.ts ====================
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, asaas-access-token',
+};
+
+
+// ==================== _shared/asaas.ts ====================
+async function asaasFetch(url: string, options: RequestInit) {
+  const response = await fetch(url, options);
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.errors?.[0]?.description || `Asaas Error ${response.status}`);
+    return data;
+  }
+  if (!response.ok) throw new Error(`Asaas HTTP Error ${response.status}`);
+  return await response.text();
+}
 
 
 serve(async (req) => {

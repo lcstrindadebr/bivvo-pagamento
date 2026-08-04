@@ -5,7 +5,7 @@
 # Este script faz a instalação e a manutenção do sistema Bivvo.
 #
 # COMO USAR:
-#   curl -fsSL https://raw.githubusercontent.com/lcstrindadebr/bivvo-pagamento/main/new_deploy/auto_install.sh -o install.sh
+#   curl -fsSL https://raw.githubusercontent.com/lcstrindadebr/project-lovebug-launch/main/new_deploy/auto_install.sh -o install.sh
 #   chmod +x install.sh
 #   sudo ./install.sh
 # =============================================================================
@@ -19,7 +19,16 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-REPO_URL="https://github.com/lcstrindadebr/bivvo-pagamento.git"
+REPO_URL="https://github.com/lcstrindadebr/project-lovebug-launch.git"
+# Configurações para garantir que o Git não peça senha em repositório público
+export GIT_TERMINAL_PROMPT=0
+export GCM_INTERACTIVE=never
+export GIT_ASKPASS=/bin/true
+# Usamos a configuração global temporária para o processo atual para garantir bypass total
+export GIT_CONFIG_PARAMETERS="'credential.helper='"
+git config --global credential.helper ""
+
+
 APP_DIR="/opt/bivvo-pagamento"
 WEB_DIR="/var/www/bivvo"
 
@@ -486,16 +495,33 @@ case $OPTION in
         # Atualizar Código
         echo ""
         echo -e "${BLUE}━━━━━ ATUALIZANDO CÓDIGO E SUPABASE ━━━━━${NC}"
-        cd "$APP_DIR" && git pull
+        cd "$APP_DIR"
+        
+        # Garante que a origem está correta para evitar o erro do repositório antigo
+        git remote set-url origin "$REPO_URL"
+        
+        # Em VPS de produção, o ideal é fazer o reset para o estado do repositório remoto
+        # para evitar erros de "divergent branches" ou conflitos locais acidentais.
+        echo -e "${YELLOW}Limpando alterações locais e sincronizando com o repositório remoto...${NC}"
+        git -c credential.helper= fetch origin main
+        git -c credential.helper= reset --hard origin/main
+        
         run_build
         update_supabase_auto
         exit 0
         ;;
+
+
     3)
         # Atualizar Supabase (menu individual)
+        # Sincroniza o código antes para garantir que os arquivos SQL e Functions estejam na versão mais nova
+        cd "$APP_DIR"
+        git -c credential.helper= fetch origin main
+        git -c credential.helper= reset --hard origin/main
         update_supabase_auto
         exit 0
         ;;
+
 
     4)
 
@@ -540,12 +566,20 @@ fi
 
 echo ""
 echo -e "${BLUE}━━━━━ ETAPA 4/8: Clonando repositório ━━━━━${NC}"
-if [ -d "$APP_DIR" ]; then
-    echo -e "${YELLOW}Diretório já existe, atualizando...${NC}"
-    cd "$APP_DIR" && git pull
+if [ -d "$APP_DIR/.git" ]; then
+    echo -e "${YELLOW}Diretório já existe, sincronizando com repositório remoto...${NC}"
+    cd "$APP_DIR"
+    git remote set-url origin "$REPO_URL"
+    git -c credential.helper= fetch origin main
+    git -c credential.helper= reset --hard origin/main
 else
-    git clone "$REPO_URL" "$APP_DIR"
+    # Se o diretório existe mas não é um repo git (ex: falha anterior), removemos para clonar limpo
+
+    [ -d "$APP_DIR" ] && rm -rf "$APP_DIR"
+    git -c credential.helper= clone "$REPO_URL" "$APP_DIR"
 fi
+
+
 
 echo ""
 echo -e "${BLUE}━━━━━ ETAPA 5/8: Configurando variáveis ━━━━━${NC}"

@@ -892,8 +892,13 @@ serve(async (req) => {
     const authHeader = req.headers.get('asaas-access-token');
 
     // Validação de token de segurança (configurado no Asaas)
-    if (WEBHOOK_SECRET && authHeader !== WEBHOOK_SECRET) {
-      console.error('Webhook: Token inválido');
+    if (!WEBHOOK_SECRET) {
+      console.error('Webhook: ASAAS_WEBHOOK_SECRET não configurado no servidor');
+      return new Response(JSON.stringify({ error: 'Configuração de segurança pendente' }), { status: 503 });
+    }
+
+    if (authHeader !== WEBHOOK_SECRET) {
+      console.error('Webhook: Token inválido ou ausente');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 

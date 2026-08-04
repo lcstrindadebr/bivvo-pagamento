@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -38,7 +38,7 @@ export type Database = {
       affiliate_clicks: {
         Row: {
           affiliate_id: string
-          created_at: string
+          created_at: string | null
           id: string
           ip_address: string | null
           path: string | null
@@ -47,7 +47,7 @@ export type Database = {
         }
         Insert: {
           affiliate_id: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           ip_address?: string | null
           path?: string | null
@@ -56,7 +56,7 @@ export type Database = {
         }
         Update: {
           affiliate_id?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           ip_address?: string | null
           path?: string | null
@@ -79,51 +79,51 @@ export type Database = {
           asaas_payment_id: string | null
           commission_amount: number
           commission_percent: number
-          created_at: string
+          created_at: string | null
           id: string
           is_recurring: boolean | null
           kind: string
           paid_at: string | null
           payment_proof_url: string | null
-          reference_date: string
+          reference_date: string | null
           sale_amount: number
           sale_id: string
           status: string
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           affiliate_id: string
           asaas_payment_id?: string | null
           commission_amount: number
           commission_percent: number
-          created_at?: string
+          created_at?: string | null
           id?: string
           is_recurring?: boolean | null
-          kind?: string
+          kind: string
           paid_at?: string | null
           payment_proof_url?: string | null
-          reference_date?: string
+          reference_date?: string | null
           sale_amount: number
           sale_id: string
           status?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
           affiliate_id?: string
           asaas_payment_id?: string | null
           commission_amount?: number
           commission_percent?: number
-          created_at?: string
+          created_at?: string | null
           id?: string
           is_recurring?: boolean | null
           kind?: string
           paid_at?: string | null
           payment_proof_url?: string | null
-          reference_date?: string
+          reference_date?: string | null
           sale_amount?: number
           sale_id?: string
           status?: string
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -153,14 +153,14 @@ export type Database = {
           cancellation_reason: string | null
           commission_percent: number
           config: Json
-          created_at: string
+          created_at: string | null
           id: string
           payment_id: string | null
           plan_label: string
           plan_slug: string
           status: string
           tracking_id: string | null
-          updated_at: string
+          updated_at: string | null
           user_id: string | null
         }
         Insert: {
@@ -173,14 +173,14 @@ export type Database = {
           cancellation_reason?: string | null
           commission_percent: number
           config?: Json
-          created_at?: string
+          created_at?: string | null
           id?: string
           payment_id?: string | null
           plan_label: string
           plan_slug: string
           status?: string
           tracking_id?: string | null
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
@@ -193,14 +193,14 @@ export type Database = {
           cancellation_reason?: string | null
           commission_percent?: number
           config?: Json
-          created_at?: string
+          created_at?: string | null
           id?: string
           payment_id?: string | null
           plan_label?: string
           plan_slug?: string
           status?: string
           tracking_id?: string | null
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -218,6 +218,13 @@ export type Database = {
             referencedRelation: "payments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "affiliate_sales_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       affiliates: {
@@ -227,7 +234,7 @@ export type Database = {
           bank_name: string | null
           commission_percent: number
           commission_recurring: boolean
-          created_at: string
+          created_at: string | null
           document: string | null
           email: string
           id: string
@@ -237,7 +244,7 @@ export type Database = {
           pix_key_type: string | null
           slug: string
           status: string
-          updated_at: string
+          updated_at: string | null
           user_id: string | null
           whatsapp: string | null
         }
@@ -247,7 +254,7 @@ export type Database = {
           bank_name?: string | null
           commission_percent?: number
           commission_recurring?: boolean
-          created_at?: string
+          created_at?: string | null
           document?: string | null
           email: string
           id?: string
@@ -257,7 +264,7 @@ export type Database = {
           pix_key_type?: string | null
           slug: string
           status?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string | null
           whatsapp?: string | null
         }
@@ -267,7 +274,7 @@ export type Database = {
           bank_name?: string | null
           commission_percent?: number
           commission_recurring?: boolean
-          created_at?: string
+          created_at?: string | null
           document?: string | null
           email?: string
           id?: string
@@ -277,7 +284,7 @@ export type Database = {
           pix_key_type?: string | null
           slug?: string
           status?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string | null
           whatsapp?: string | null
         }
@@ -408,42 +415,78 @@ export type Database = {
           },
         ]
       }
-      coupons: {
+      channels: {
         Row: {
-          active: boolean
-          code: string
-          created_at: string
-          current_uses: number
-          discount_percent: number
+          active: boolean | null
+          created_at: string | null
+          emoji: string | null
+          icon_url: string | null
           id: string
-          max_uses: number | null
-          updated_at: string
-          valid_from: string
-          valid_until: string | null
+          included: number
+          label: string
+          slug: string
+          sort_order: number | null
+          unit_price: number
+          updated_at: string | null
         }
         Insert: {
-          active?: boolean
-          code: string
-          created_at?: string
-          current_uses?: number
-          discount_percent: number
+          active?: boolean | null
+          created_at?: string | null
+          emoji?: string | null
+          icon_url?: string | null
           id?: string
-          max_uses?: number | null
-          updated_at?: string
-          valid_from?: string
-          valid_until?: string | null
+          included?: number
+          label: string
+          slug: string
+          sort_order?: number | null
+          unit_price?: number
+          updated_at?: string | null
         }
         Update: {
-          active?: boolean
-          code?: string
-          created_at?: string
-          current_uses?: number
-          discount_percent?: number
+          active?: boolean | null
+          created_at?: string | null
+          emoji?: string | null
+          icon_url?: string | null
           id?: string
-          max_uses?: number | null
-          updated_at?: string
-          valid_from?: string
-          valid_until?: string | null
+          included?: number
+          label?: string
+          slug?: string
+          sort_order?: number | null
+          unit_price?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      coupons: {
+        Row: {
+          active: boolean | null
+          code: string
+          created_at: string | null
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          code: string
+          created_at?: string | null
+          discount_type: string
+          discount_value: number
+          expires_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          code?: string
+          created_at?: string | null
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -619,33 +662,33 @@ export type Database = {
       }
       marketing_materials: {
         Row: {
-          created_at: string
+          created_at: string | null
           description: string | null
           id: string
           preview_url: string | null
           title: string
           type: string
-          updated_at: string
+          updated_at: string | null
           url: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           id?: string
           preview_url?: string | null
           title: string
-          type?: string
-          updated_at?: string
+          type: string
+          updated_at?: string | null
           url: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           id?: string
           preview_url?: string | null
           title?: string
           type?: string
-          updated_at?: string
+          updated_at?: string | null
           url?: string
         }
         Relationships: []
@@ -688,7 +731,6 @@ export type Database = {
           amount: number
           asaas_payment_id: string | null
           asaas_subscription_id: string | null
-          bivvo_config: Json | null
           created_at: string | null
           id: string
           paid_at: string | null
@@ -700,7 +742,6 @@ export type Database = {
           amount: number
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
-          bivvo_config?: Json | null
           created_at?: string | null
           id?: string
           paid_at?: string | null
@@ -712,7 +753,6 @@ export type Database = {
           amount?: number
           asaas_payment_id?: string | null
           asaas_subscription_id?: string | null
-          bivvo_config?: Json | null
           created_at?: string | null
           id?: string
           paid_at?: string | null
@@ -732,70 +772,76 @@ export type Database = {
       }
       plans: {
         Row: {
-          active: boolean
-          created_at: string
+          active: boolean | null
+          created_at: string | null
           description: string | null
           features: Json
-          gradient: string
-          icon: string
+          gradient: string | null
+          icon: string | null
           id: string
           name: string
-          popular: boolean
+          popular: boolean | null
           price: number
-          price_recurring: number | null
+          price_recurring: number
           slug: string
-          sort_order: number
-          updated_at: string
+          sort_order: number | null
+          updated_at: string | null
         }
         Insert: {
-          active?: boolean
-          created_at?: string
+          active?: boolean | null
+          created_at?: string | null
           description?: string | null
           features?: Json
-          gradient?: string
-          icon?: string
+          gradient?: string | null
+          icon?: string | null
           id?: string
           name: string
-          popular?: boolean
+          popular?: boolean | null
           price: number
-          price_recurring?: number | null
+          price_recurring?: number
           slug: string
-          sort_order?: number
-          updated_at?: string
+          sort_order?: number | null
+          updated_at?: string | null
         }
         Update: {
-          active?: boolean
-          created_at?: string
+          active?: boolean | null
+          created_at?: string | null
           description?: string | null
           features?: Json
-          gradient?: string
-          icon?: string
+          gradient?: string | null
+          icon?: string | null
           id?: string
           name?: string
-          popular?: boolean
+          popular?: boolean | null
           price?: number
-          price_recurring?: number | null
+          price_recurring?: number
           slug?: string
-          sort_order?: number
-          updated_at?: string
+          sort_order?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }
       settings: {
         Row: {
+          created_at: string | null
+          id: string
           key: string
           updated_at: string | null
-          value: string
+          value: string | null
         }
         Insert: {
+          created_at?: string | null
+          id?: string
           key: string
           updated_at?: string | null
-          value: string
+          value?: string | null
         }
         Update: {
+          created_at?: string | null
+          id?: string
           key?: string
           updated_at?: string | null
-          value?: string
+          value?: string | null
         }
         Relationships: []
       }
@@ -972,6 +1018,7 @@ export type Database = {
           endereco: string | null
           estado: string | null
           id: string
+          inactivated_at: string | null
           name: string
           numero: string | null
           overdue_since: string | null
@@ -1009,6 +1056,7 @@ export type Database = {
           endereco?: string | null
           estado?: string | null
           id?: string
+          inactivated_at?: string | null
           name: string
           numero?: string | null
           overdue_since?: string | null
@@ -1046,6 +1094,7 @@ export type Database = {
           endereco?: string | null
           estado?: string | null
           id?: string
+          inactivated_at?: string | null
           name?: string
           numero?: string | null
           overdue_since?: string | null
@@ -1064,18 +1113,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      apply_finance_event: {
-        Args: {
-          p_chargeback: number
-          p_commission: number
-          p_date: string
-          p_expense: number
-          p_gross: number
-          p_net: number
-          p_refund: number
-        }
-        Returns: undefined
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1096,7 +1133,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user" | "affiliate"
+      app_role: "admin" | "affiliate"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1224,7 +1261,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "affiliate"],
+      app_role: ["admin", "affiliate"],
     },
   },
 } as const

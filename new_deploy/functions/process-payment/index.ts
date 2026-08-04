@@ -1140,6 +1140,18 @@ serve(async (req) => {
 
     const body = await req.json();
     const { plan, customerData, cardData, bivvoConfig, affiliateSlug, trackingId, couponCode } = body;
+
+    // 0. Validação de Input (Hardening)
+    if (!customerData?.email || !customerData?.cpf) {
+      throw new Error('Dados do cliente incompletos.');
+    }
+    const cleanCpf = customerData.cpf.replace(/\D/g, '');
+    if (cleanCpf.length !== 11 && cleanCpf.length !== 14) {
+      throw new Error('CPF/CNPJ inválido.');
+    }
+    if (cardData && !/^\d{13,19}$/.test(cardData.number.replace(/\s/g, ''))) {
+      throw new Error('Número de cartão inválido.');
+    }
     
     // Get remote IP from headers (Supabase adds this)
     const remoteIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";

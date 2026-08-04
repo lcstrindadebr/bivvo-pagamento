@@ -415,8 +415,14 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY')!;
-    const ASAAS_BASE_URL = Deno.env.get('ASAAS_BASE_URL')!;
+    const ASAAS_API_KEY = Deno.env.get('ASAAS_API_KEY') ?? '';
+    const ASAAS_BASE_URL = (Deno.env.get('ASAAS_BASE_URL') || 'https://api.asaas.com/v3').replace(/\/+$/, '');
+    if (!ASAAS_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: 'Integração Asaas não configurada: cadastre o segredo ASAAS_API_KEY.' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const authHeader = req.headers.get('Authorization');
@@ -1344,7 +1350,42 @@ serve(async (req) => {
       });
     }
 
+    // ── BIVVO API TOKEN ─────────────────────────────────────
+
+    if (action === 'get-bivvo-token') {
+      const { data, error } = await supabase
+        .from('admin_secrets').select('value').eq('key', 'bivvo_api_token').maybeSingle();
+      if (error) throw error;
+      return new Response(JSON.stringify({ value: data?.value || '' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'save-bivvo-token' && req.method === 'POST') {
+      const body = await req.json().catch(() => ({}));
+      const value = typeof body?.value === 'string' ? body.value.trim() : '';
+      
+      // Validação básica de token (ajuste conforme o formato real se conhecido)
+      if (value.length > 0 && value.length < 10) {
+        throw new Error('Token muito curto ou inválido.');
+      }
+
+      const { error } = await supabase
+        .from('admin_secrets')
+        .upsert({ 
+          key: 'bivvo_api_token', 
+          value,
+          description: `Atualizado por ${user.email} em ${new Date().toLocaleString('pt-BR')}`
+        }, { onConflict: 'key' });
+      if (error) throw error;
+      await logAction(supabase, user, 'save-bivvo-token', 'admin_secrets', 'bivvo_api_token', null, { has_value: !!value });
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── AFFILIATES ──────────────────────────────────────────
+
 
 
     if (action === 'list-affiliates') {
@@ -1553,7 +1594,10 @@ serve(async (req) => {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Erro interno';
+    const message = error instanceof Error
+      ? error.message
+      : ((error as any)?.message || (error as any)?.details || JSON.stringify(error) || 'Erro interno');
+    console.error('[admin-api] erro:', message, error);
     const status = /autenticado|negado/i.test(message) ? 403 : 500;
     return new Response(JSON.stringify({ error: message }), {
       status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
